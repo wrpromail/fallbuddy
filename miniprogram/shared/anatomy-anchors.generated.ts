@@ -9,10 +9,6 @@ export const ANATOMY_ANCHORS = {
       50.0,
       40.7
     ],
-    "tailbone": [
-      50.0,
-      47.2
-    ],
     "shoulder_l": [
       65.5,
       21.3

@@ -635,12 +635,18 @@ async function getDraft(): Promise<ApiResponse<StoryDraft | null>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
-  return ok(state.storyDrafts?.[state.currentUserId] ?? null, requestId);
+  const draft = state.storyDrafts?.[state.currentUserId];
+  return ok(draft ? { input: draft.input, version: draft.version, updatedAt: draft.updatedAt } : null, requestId);
 }
 
-async function saveDraft(params: { input: CreateStoryInput; version: number }): Promise<ApiResponse<StoryDraft>> {
-  const requestId = nextRequestId();
+async function saveDraft(params: { input: CreateStoryInput; version: number; requestId?: string }): Promise<ApiResponse<StoryDraft>> {
+  const requestId = params.requestId || nextRequestId();
   await latency();
+  const current = loadState();
+  const saved = current.storyDrafts?.[current.currentUserId];
+  if (params.requestId && saved?.lastRequestId === params.requestId) {
+    return ok({ input: saved.input, version: saved.version, updatedAt: saved.updatedAt }, requestId);
+  }
   const state = loadStateForWrite();
   const invalid = validateCreateStoryInput(params.input, true);
   if (invalid) return fail('VALIDATION_FAILED', invalid, requestId);
@@ -654,7 +660,7 @@ async function saveDraft(params: { input: CreateStoryInput; version: number }): 
     version: Math.max(currentVersion, state.draftRevision ?? 0) + 1,
     updatedAt: new Date().toISOString(),
   };
-  drafts[state.currentUserId] = draft;
+  drafts[state.currentUserId] = { ...draft, lastRequestId: params.requestId || undefined };
   state.draftRevision = draft.version;
   saveState(state, true);
   return ok(draft, requestId);
@@ -764,7 +770,7 @@ async function updateStory(params: { storyId: string; version: number; input: Cr
     return fail('NOT_VISIBLE', '这条故事当前不可编辑', requestId);
   }
   if (story.version !== params.version) {
-    return fail('CONFLICT', '另一个页面已经修改了这条记录，请保留本页文字后重新打开', requestId);
+    return fail('CONFLICT', '这条记录已经更新，请查看已保存版本', requestId);
   }
   const invalid = validateStoryWrite(state, params.input, requestId);
   if (invalid) return invalid;

@@ -4,7 +4,7 @@
 <view class="page" wx:else>
   <view class="intro">
     <view class="intro__title">{{editing ? '编辑事故记录' : '记录一次经历'}}</view>
-    <button wx:if="{{draftAvailable}}" class="btn" bindtap="onResumeDraft">继续写私人草稿</button>
+    <button wx:if="{{draftAvailable && !conflictStatus}}" class="btn" bindtap="onResumeDraft">继续写私人草稿</button>
   </view>
 
   <view class="preview card">
@@ -226,8 +226,36 @@
 
   <view class="disclaimer">发布即表示这是你本人的经历与描述。摔友记不提供诊断、治疗、康复或理赔结论。</view>
 
+  <view id="version-conflict" wx:if="{{conflictStatus}}" class="section card conflict">
+    <view class="section-title">{{editing ? '记录版本有变动' : '草稿版本有变动'}}</view>
+    <view wx:if="{{conflictStatus === 'loading'}}">正在读取已保存版本…</view>
+    <block wx:elif="{{conflictStatus === 'ready'}}">
+      <view>本页的修改还在表单里。若保留本页内容，下次保存会替换下面的版本，请先核对可见范围。</view>
+      <view class="conflict__fields" aria-label="已保存的版本">
+        <view wx:for="{{latestFields}}" wx:key="label" class="conflict__field">
+          <text class="conflict__label">{{item.label}}</text>
+          <text selectable="true">{{item.value || '未填写'}}</text>
+        </view>
+      </view>
+      <view class="conflict__actions">
+        <button class="btn btn--ghost" bindtap="onUseLatest">使用已保存版本</button>
+        <button class="btn btn--primary" bindtap="onKeepEdits">保留本页内容</button>
+      </view>
+    </block>
+    <block wx:elif="{{conflictStatus === 'missing'}}">
+      <view>已保存的草稿可能在另一台设备上发布了。本页内容仍在，可以另存草稿。</view>
+      <button class="btn btn--ghost" bindtap="onKeepEdits">继续编辑本页</button>
+    </block>
+    <block wx:elif="{{conflictStatus === 'retry'}}">
+      <view>暂时无法读取已保存版本，本页的修改还在。</view>
+      <button class="btn btn--ghost" bindtap="onRefreshLatest">重新读取</button>
+    </block>
+    <view wx:else>这条记录当前不可编辑。本页内容仍可查看和复制。</view>
+  </view>
+  <view wx:if="{{mustSaveNewDraft && !conflictStatus}}" class="warn">先另存为私人草稿，再发布为一条新记录。</view>
+
   <view class="footer">
-    <button wx:if="{{!editing}}" class="btn btn--ghost footer__btn" disabled="{{submitting || savingDraft}}" bindtap="onSaveDraft">
+    <button wx:if="{{!editing}}" class="btn btn--ghost footer__btn" disabled="{{submitting || savingDraft || conflictStatus}}" bindtap="onSaveDraft">
       {{savingDraft ? '保存中…' : '保存私人草稿'}}
     </button>
     <button class="btn btn--primary footer__btn" disabled="{{!canSubmit || submitting || savingDraft}}" bindtap="onSubmit">

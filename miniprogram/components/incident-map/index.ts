@@ -11,7 +11,9 @@ Component({
   },
   methods: {
     toggle() {
-      this.setData({ open: !this.data.open });
+      const open = !this.data.open;
+      const hasPosteriorPart = this.data.parts.some((part: string) => part === 'tailbone' || part === 'back');
+      this.setData({ open, view: open && hasPosteriorPart ? 'back' : this.data.view });
     },
     switchView(event: WechatMiniprogram.TouchEvent) {
       this.setData({ view: event.currentTarget.dataset.view === 'back' ? 'back' : 'front' });

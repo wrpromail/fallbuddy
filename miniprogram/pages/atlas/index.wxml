@@ -81,7 +81,7 @@
         </view>
       </view>
       <view wx:if="{{showMarkers}}" class="stage__hint">点一个部位查看记录或新建经历</view>
-      <view wx:if="{{appearanceMode !== 'q'}}" class="stage__hint">解剖模型源自 Écorché · CC BY-SA 4.0</view>
+      <view wx:if="{{appearanceMode !== 'q'}}" class="stage__hint">左右按人体自身标记，后背和尾椎见背面 · Écorché · CC BY-SA 4.0</view>
       <view wx:if="{{hottest.length}}" class="topicline">
         <text class="topicline__label">话题部位</text>
         <text wx:for="{{hottest}}" wx:key="bodyPart" class="topicline__item">{{item.label}} {{item.count}}</text>

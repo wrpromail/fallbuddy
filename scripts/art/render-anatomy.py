@@ -86,7 +86,7 @@ for view, direction in (("front", -1), ("back", 1)):
     anchors[view] = {}
     for part, target in targets.items():
         point = world_to_camera_view(scene, camera, target)
-        if part == "back" and view == "front":
+        if view == "front" and part in {"back", "tailbone"}:
             continue
         anchors[view][part] = [round(100 * point.x, 1), round(100 * (1 - point.y), 1)]
     for layer, shown in (("bones", bones), ("muscles", superficial)):

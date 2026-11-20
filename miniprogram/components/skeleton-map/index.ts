@@ -77,7 +77,8 @@ Component({
       const selectedParts = this.data.selectedParts as BodyPart[];
       const width = RIG.canvas.width;
       const height = RIG.canvas.height;
-      const poses = hotspotsFor(view).filter((spot) => !this.data.selectionOnly || selectedParts.includes(spot.id));
+      const poses = hotspotsFor(view).filter((spot) =>
+        (!plate || coordinates[spot.id]) && (!this.data.selectionOnly || selectedParts.includes(spot.id)));
       const spots = poses.map((spot) => {
         const summary = byId.get(spot.id);
         const users = summary?.users ?? [];

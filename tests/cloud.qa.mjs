@@ -96,6 +96,19 @@ test('云函数合同：身份来自微信上下文、入圈须审批、两位�
   assert.equal(snapshot().stories.length, 1);
   expectOk(await call('visitor', 'story', 'getDetail', { storyId, groupId }));
 
+  const { items: [gift] } = expectOk(await call('visitor', 'inventory', 'claimWeekly', { requestId: 'cloud_weekly' }));
+  const giftParams = { storyId, itemDefId: gift.itemDefId, requestId: 'cloud_gift_once' };
+  const [sent, repeated, competing] = await Promise.all([
+    call('visitor', 'inventory', 'gift', giftParams),
+    call('visitor', 'inventory', 'gift', giftParams),
+    call('visitor', 'inventory', 'gift', { ...giftParams, requestId: 'cloud_gift_competing' }),
+  ]);
+  assert.equal(expectOk(sent).eventId, expectOk(repeated).eventId);
+  assert.equal(competing.code, 'INVENTORY_INSUFFICIENT');
+  assert.equal(snapshot().interactions.length, 1);
+  assert.equal(snapshot().inventory.find((item) => item.ownerId === owner.user.id && item.itemDefId === gift.itemDefId).quantity, 1);
+  assert.deepEqual(expectOk(await call('owner', 'avatar', 'getMine')), owner.avatar);
+
   const edited = { ...input, incident: { ...input.incident, bodyParts: ['knee_r'] } };
   const writes = await Promise.all([
     call('owner', 'story', 'update', { storyId, version, input: edited, requestId: 'cloud_edit_a' }),
@@ -106,6 +119,30 @@ test('云函数合同：身份来自微信上下文、入圈须审批、两位�
   const privateStory = { ...edited, story: { ...edited.story, visibility: 'self' } };
   expectOk(await call('owner', 'story', 'update', { storyId, version: version + 1, input: privateStory, requestId: 'cloud_private' }));
   assert.equal((await call('visitor', 'story', 'getDetail', { storyId, groupId })).code, 'NOT_VISIBLE');
+});
+
+test('云端私人草稿保存可重试，过期版本无法替换或发布新草稿', async () => {
+  const { call, snapshot } = pilot();
+  const args = { version: 0, input, requestId: 'draft_original' };
+  const [first, retry] = await Promise.all([0, 1].map(() => call('owner', 'story', 'saveDraft', args)));
+  const saved = expectOk(first);
+  assert.deepEqual(expectOk(retry), saved);
+  assert.equal(expectOk(await call('visitor', 'story', 'getDraft')), null);
+  const changed = { ...input, story: { ...input.story, title: '从另一台设备保存' } };
+  const latest = expectOk(await call('owner', 'story', 'saveDraft', {
+    input: changed, version: saved.version, requestId: 'draft_changed',
+  }));
+  assert.equal((await call('owner', 'story', 'saveDraft', args)).code, 'CONFLICT');
+  assert.equal((await call('owner', 'story', 'publish', {
+    input, draftVersion: saved.version, requestId: 'draft_publish_old',
+  })).code, 'CONFLICT');
+  assert.equal(snapshot().stories.length, 0);
+  assert.deepEqual(expectOk(await call('owner', 'story', 'getDraft')), latest);
+  const publishArgs = { input: changed, draftVersion: latest.version, requestId: 'draft_publish_latest' };
+  const published = expectOk(await call('owner', 'story', 'publish', publishArgs));
+  assert.deepEqual(expectOk(await call('owner', 'story', 'publish', publishArgs)), published);
+  assert.equal(expectOk(await call('owner', 'story', 'getDraft')), null);
+  assert.equal(snapshot().stories.length, 1);
 });
 
 test('云函数合同：审核拒绝的正文不入库，举报隐藏后旧详情和互动入口拒绝访问', async () => {

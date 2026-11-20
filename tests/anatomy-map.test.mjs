@@ -5,9 +5,12 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 let component;
+let incidentMap;
 globalThis.Component = (definition) => { component = definition; };
 try {
   require('../build/test/miniprogram/components/skeleton-map/index.js');
+  globalThis.Component = (definition) => { incidentMap = definition; };
+  require('../build/test/miniprogram/components/incident-map/index.js');
 } finally {
   delete globalThis.Component;
 }
@@ -22,6 +25,9 @@ test('人体图使用患者左右，正背面切换时屏幕侧别反向，骨�
         triggerEvent(name, detail) { emitted.push([name, detail.id]); },
       };
       component.methods.build.call(instance);
+      for (const id of ['back', 'tailbone']) {
+        if (appearanceMode !== 'q') assert.equal(instance.data.spots.some((spot) => spot.id === id), view === 'back');
+      }
       for (const id of ['knee', 'shoulder', 'wrist', 'ankle']) {
         const left = instance.data.spots.find((part) => part.id === id + '_l');
         const right = instance.data.spots.find((part) => part.id === id + '_r');
@@ -44,4 +50,18 @@ test('人体图使用患者左右，正背面切换时屏幕侧别反向，骨�
       assert.equal(png.readUInt32BE(20), 900);
     }
   }
+});
+
+test('有后背或尾椎记录时，展开标准人体图优先显示背面', () => {
+  const map = {
+    data: { ...incidentMap.data, parts: ['tailbone'] },
+    setData(patch) { Object.assign(this.data, patch); },
+    ...incidentMap.methods,
+  };
+  map.toggle();
+  assert.equal(map.data.open, true);
+  assert.equal(map.data.view, 'back');
+  map.switchMode({ currentTarget: { dataset: { mode: 'muscles' } } });
+  assert.equal(map.data.view, 'back');
+  assert.equal(map.data.mode, 'muscles');
 });

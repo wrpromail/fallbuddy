@@ -49,12 +49,17 @@ interface GroupChip {
   checked: boolean;
 }
 
+type ConflictStatus = '' | 'loading' | 'ready' | 'missing' | 'retry' | 'unavailable';
+
 interface CreatePageData {
   loading: boolean;
   loadError: string;
   editing: boolean;
   draftAvailable: boolean;
   savingDraft: boolean;
+  conflictStatus: ConflictStatus;
+  latestFields: { label: string; value: string }[];
+  mustSaveNewDraft: boolean;
   happenedOn: string;
   userSummary: string;
   groups: GroupSummary[];
@@ -116,7 +121,7 @@ const FALLBACK_PRESETS = ['今天在雪里打了个滚', '一次不太优雅的�
 let reqSeq = 0;
 function requestId(): string {
   reqSeq += 1;
-  return `req_publish_${Date.now()}_${reqSeq}`;
+  return `req_incident_${Date.now().toString(36)}_${reqSeq}_${Math.random().toString(36).slice(2)}`;
 }
 
 function toggle<T>(list: T[], value: T, max: number): { list: T[]; limited: boolean } {
@@ -132,6 +137,9 @@ Page({
     editing: false,
     draftAvailable: false,
     savingDraft: false,
+    conflictStatus: '',
+    latestFields: [],
+    mustSaveNewDraft: false,
     happenedOn: '',
     userSummary: '',
     groups: [],
@@ -185,7 +193,9 @@ Page({
   version: 0,
   draft: null as StoryDraft | null,
   usingDraft: false,
+  latest: null as StoryDraft | null,
   lastSubmission: null as { signature: string; id: string } | null,
+  lastDraftSave: null as { signature: string; id: string } | null,
 
   onLoad(query: Record<string, string | undefined>) {
     this.storyId = query.storyId ?? '';
@@ -298,7 +308,8 @@ Page({
       scenario.length >= 1 &&
       cause.length >= 1 &&
       (selfOnly || groupChips.some((group) => group.checked));
-    this.setData({ canSubmit: canSubmit && !this.data.loading && !this.data.loadError });
+    this.setData({ canSubmit: canSubmit && !this.data.loading && !this.data.loadError &&
+      !this.data.conflictStatus && !this.data.mustSaveNewDraft });
   },
 
   onSport(event: WechatMiniprogram.TouchEvent) {
@@ -458,7 +469,7 @@ Page({
   },
 
   onResumeDraft() {
-    if (!this.draft || this.data.savingDraft || this.data.submitting) return;
+    if (!this.draft || this.data.savingDraft || this.data.submitting || this.data.conflictStatus) return;
     const draft = this.draft;
     wx.showModal({
       title: '继续写私人草稿',
@@ -473,14 +484,15 @@ Page({
   },
 
   onSaveDraft() {
-    if (this.storyId || this.data.loading || this.data.loadError || this.data.submitting || this.data.savingDraft) return;
+    if (this.storyId || this.data.loading || this.data.loadError || this.data.submitting || this.data.savingDraft ||
+      this.data.conflictStatus) return;
     if (!this.draft || this.usingDraft) {
       void this.saveDraft();
       return;
     }
     wx.showModal({
       title: '替换已保存的草稿？',
-      content: '当前设备为你保留一份私人草稿。',
+      content: '每个账号保留一份已保存的私人草稿。',
       confirmText: '替换',
       success: ({ confirm }) => {
         if (confirm) void this.saveDraft();
@@ -489,16 +501,23 @@ Page({
   },
 
   async saveDraft() {
+    if (this.data.conflictStatus || this.data.savingDraft || this.data.submitting) return;
+    const input = this.formInput();
+    const version = this.draft?.version ?? 0;
+    const signature = JSON.stringify({ input, version });
+    if (this.lastDraftSave?.signature !== signature) this.lastDraftSave = { signature, id: requestId() };
     this.setData({ savingDraft: true });
     try {
-      const res = await api.story.saveDraft({ input: this.formInput(), version: this.draft?.version ?? 0 });
+      const res = await api.story.saveDraft({ input, version, requestId: this.lastDraftSave.id });
       if (!res.ok) {
-        wx.showToast({ title: res.message, icon: 'none' });
+        if (res.code === 'CONFLICT') await this.onRefreshLatest();
+        else wx.showToast({ title: res.message, icon: 'none' });
         return;
       }
       this.draft = res.data;
       this.usingDraft = true;
-      this.setData({ draftAvailable: true });
+      this.setData({ draftAvailable: true, mustSaveNewDraft: false });
+      this.refreshSubmitState();
       wx.showToast({ title: '已保存私人草稿', icon: 'success' });
     } catch {
       wx.showToast({ title: '草稿保存失败，请重试', icon: 'none' });
@@ -507,10 +526,108 @@ Page({
     }
   },
 
+  async onRefreshLatest() {
+    if (this.data.conflictStatus === 'loading') return;
+    this.latest = null;
+    this.setData({ conflictStatus: 'loading', latestFields: [] }, () => {
+      wx.pageScrollTo({ selector: '#version-conflict', duration: 200 });
+    });
+    this.refreshSubmitState();
+    try {
+      if (this.storyId) {
+        const res = await api.story.getDetail({ storyId: this.storyId });
+        if (!res.ok) {
+          this.setData({ conflictStatus: res.code === 'UNAVAILABLE' ? 'retry' : 'unavailable' });
+          return;
+        }
+        const { incident, story, viewerIsAuthor } = res.data;
+        if (!viewerIsAuthor || story.publishStatus !== 'published' || story.moderationStatus === 'hidden') {
+          this.setData({ conflictStatus: 'unavailable' });
+          return;
+        }
+        this.latest = { input: { incident, story }, version: story.version, updatedAt: story.updatedAt };
+      } else {
+        const res = await api.story.getDraft();
+        if (!res.ok) {
+          this.setData({ conflictStatus: 'retry' });
+          return;
+        }
+        this.latest = res.data;
+      }
+      if (this.latest) {
+        this.setData({ conflictStatus: 'ready', latestFields: this.describeLatest(this.latest.input) });
+      } else {
+        this.setData({ conflictStatus: 'missing' });
+      }
+    } catch {
+      this.setData({ conflictStatus: 'retry' });
+    }
+  },
+
+  describeLatest({ incident, story }: CreateStoryInput) {
+    const circles = story.visibilityGroupIds.map((id) =>
+      this.data.groups.find((group) => group.id === id)?.name ?? '已退出的圈子');
+    return [
+      { label: '标题', value: story.title },
+      { label: '故事正文', value: story.body },
+      { label: '事故自述', value: incident.userSummary ?? '' },
+      { label: '发生日期', value: incident.happenedOn ?? '' },
+      { label: '运动', value: SPORT_LABEL[incident.sport] },
+      { label: '发生背景', value: incident.scenario.map((id) => SCENARIO_LABEL[id]).join('、') },
+      { label: '自述原因', value: incident.selfReportedCause.map((id) => CAUSE_LABEL[id]).join('、') },
+      { label: '身体部位', value: incident.bodyParts.map((id) => BODY_PART_LABEL[id]).join('、') },
+      { label: '当时情况', value: IMPACT_LABEL[incident.impactKind] },
+      { label: '当时戴了', value: incident.protectiveItems.map((id) => PROTECTIVE_LABEL[id]).join('、') },
+      { label: '可见范围', value: story.visibility === 'self' ? '仅自己可见' : circles.join('、') },
+      { label: '匿名展示', value: story.isAnonymous ? '开启' : '关闭' },
+      { label: '搞笑动作', value: story.allowFunnyActions ? '开启' : '关闭' },
+      { label: '收礼物', value: story.allowGifts ? '开启' : '关闭' },
+      { label: '语气', value: TONE_LABEL[story.tone] },
+    ];
+  },
+
+  onUseLatest() {
+    if (this.data.conflictStatus !== 'ready' || !this.latest) return;
+    const latest = this.latest;
+    wx.showModal({
+      title: '使用已保存版本？',
+      content: '本页尚未保存的内容将被替换。',
+      confirmText: '使用此版',
+      success: ({ confirm }) => {
+        if (confirm && this.latest === latest) this.finishConflict(true);
+      },
+    });
+  },
+
+  onKeepEdits() {
+    if (this.data.conflictStatus === 'ready' || this.data.conflictStatus === 'missing') this.finishConflict(false);
+  },
+
+  finishConflict(useLatest: boolean) {
+    const latest = this.latest;
+    if (this.storyId) {
+      if (!latest) return;
+      this.version = latest.version;
+    } else {
+      this.draft = latest;
+      this.usingDraft = true;
+    }
+    this.latest = null;
+    this.lastSubmission = null;
+    this.lastDraftSave = null;
+    this.setData({
+      conflictStatus: '', latestFields: [], draftAvailable: !!this.draft,
+      mustSaveNewDraft: !this.storyId && !latest,
+    });
+    if (useLatest && latest) this.applyInput(latest.input);
+    else this.refreshSubmitState();
+  },
+
   async onSubmit() {
     if (!this.data.canSubmit || this.data.submitting || this.data.savingDraft) return;
     const input = this.formInput();
-    const signature = JSON.stringify(input);
+    const draftVersion = this.usingDraft ? this.draft?.version ?? 0 : undefined;
+    const signature = JSON.stringify({ input, version: this.version, draftVersion });
     if (this.lastSubmission?.signature !== signature) this.lastSubmission = { signature, id: requestId() };
     const id = this.lastSubmission.id;
     this.setData({ submitting: true });
@@ -520,11 +637,11 @@ Page({
         : await api.story.publish({
           input,
           requestId: id,
-          draftVersion: this.usingDraft ? this.draft?.version : undefined,
+          draftVersion,
         });
       if (!res.ok) {
         if (res.code === 'CONFLICT') {
-          wx.showModal({ title: '记录有更新', content: res.message, showCancel: false });
+          await this.onRefreshLatest();
         } else {
           wx.showToast({ title: res.message, icon: 'none' });
         }

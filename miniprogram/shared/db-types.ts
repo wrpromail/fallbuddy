@@ -70,7 +70,7 @@ export interface DbState {
   stories: Story[];
   reports?: StoryReport[];
   draftRevision?: number;
-  storyDrafts?: Record<string, StoryDraft>;
+  storyDrafts?: Record<string, StoryDraft & { lastRequestId?: string }>;
   storyUpdates: StoryUpdate[];
   inventory: InventoryItem[];
   ledger: LedgerEntry[];

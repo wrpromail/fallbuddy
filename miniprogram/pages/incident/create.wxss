@@ -285,3 +285,36 @@
   height: 92rpx;
   font-size: 30rpx;
 }
+
+.conflict {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.conflict__fields {
+  padding: 12rpx 20rpx;
+  border-radius: 18rpx;
+  background: #f5f7fc;
+}
+
+.conflict__field {
+  display: grid;
+  grid-template-columns: 5em minmax(0, 1fr);
+  gap: 12rpx;
+  padding: 8rpx 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conflict__label {
+  font-weight: 600;
+}
+
+.conflict__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
