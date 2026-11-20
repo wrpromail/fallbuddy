@@ -1,4 +1,4 @@
-import { ACTIONS, ACTION_MAP, ANIMATION_VERSION, MAX_GIFTS_PER_DAY } from '../../shared/actions';
+import { ACTIONS, ACTION_MAP, ANIMATION_VERSION, MAX_GIFTS_PER_DAY, MAX_INTERACTIONS_PER_DAY } from '../../shared/actions';
 import { ITEM_DEFINITIONS, ITEM_MAP, WEEKLY_GRANT } from '../../shared/items';
 import {
   BODY_PART_LABEL,
@@ -28,6 +28,7 @@ import type {
   GroupSummary,
   HotspotSummary,
   InboxEvent,
+  Incident,
   InteractionEvent,
   InventoryItem,
   InventoryView,
@@ -150,6 +151,8 @@ function visibleGroupIds(state: DbState, story: Story): string[] {
 
 /** 返回当前用户在该故事上可用的 groupId；无权访问返回 null */
 function resolveStoryGroup(state: DbState, story: Story, preferredGroupId?: string): string | null {
+  // 仅自己可见不参与任何圈子，也不接受互动/赠礼
+  if (story.visibility === 'self') return null;
   const groups = visibleGroupIds(state, story);
   if (groups.length) {
     if (preferredGroupId && groups.includes(preferredGroupId)) return preferredGroupId;
@@ -163,6 +166,27 @@ function resolveStoryGroup(state: DbState, story: Story, preferredGroupId?: stri
   return null;
 }
 
+function anonymousName(): string {
+  return '匿名雪友';
+}
+
+/** 匿名故事的对外作者 ID：按故事生成，避免跨故事关联到真实用户 */
+function anonymousAuthorId(story: Story): string {
+  return `anon_${story.id}`;
+}
+
+/** 匿名故事对客户端暴露的作者标识（真实 ID 只留在服务端） */
+function publicAuthorId(story: Story): string {
+  return story.isAnonymous ? anonymousAuthorId(story) : story.authorId;
+}
+
+function stickerFor(tone: Story['tone'], impactKind: Incident['impactKind']): string {
+  if (tone === 'supportive' || impactKind === 'prefer_not_to_say') return '💗';
+  if (impactKind === 'near_miss') return '💨';
+  if (impactKind === 'stopped_activity' || impactKind === 'minor_discomfort') return '🩹';
+  return '✨';
+}
+
 function storyCard(state: DbState, story: Story): AtlasStoryCard {
   const author = userById(state, story.authorId);
   const avatar = avatarOf(state, story.authorId);
@@ -171,13 +195,14 @@ function storyCard(state: DbState, story: Story): AtlasStoryCard {
   return {
     id: story.id,
     title: story.title,
-    authorId: story.authorId,
-    authorName: anonymous ? '匿名雪友' : (author?.displayName ?? '雪友'),
+    authorId: publicAuthorId(story),
+    authorName: anonymous ? anonymousName() : (author?.displayName ?? '雪友'),
     isAnonymous: anonymous,
     sport: incident?.sport ?? 'other',
     bodyParts: incident?.bodyParts ?? ['other'],
     impactKind: incident?.impactKind ?? 'prefer_not_to_say',
     tone: story.tone,
+    visibility: story.visibility,
     allowFunnyActions: story.allowFunnyActions,
     allowGifts: story.allowGifts,
     publishStatus: story.publishStatus,
@@ -194,17 +219,17 @@ function storyCard(state: DbState, story: Story): AtlasStoryCard {
   };
 }
 
-function chipOf(state: DbState, authorId: string, anonymous: boolean): AtlasUserChip | null {
-  const author = userById(state, authorId);
-  const avatar = avatarOf(state, authorId);
+function chipOf(state: DbState, story: Story): AtlasUserChip | null {
+  const author = userById(state, story.authorId);
+  const avatar = avatarOf(state, story.authorId);
   if (!author || !avatar) return null;
   return {
-    userId: authorId,
-    displayName: anonymous ? '匿名雪友' : author.displayName,
+    userId: publicAuthorId(story),
+    displayName: story.isAnonymous ? anonymousName() : author.displayName,
     palette: avatar.palette,
     expression: avatar.expression,
     equipped: avatar.equipped,
-    isAnonymous: anonymous,
+    isAnonymous: story.isAnonymous,
   };
 }
 
@@ -341,7 +366,7 @@ async function getAtlas(params: {
       if (!bucket) continue;
       bucket.stories.push(story.id);
       if (!seenChip.has(story.authorId)) {
-        const chip = chipOf(state, story.authorId, story.isAnonymous);
+        const chip = chipOf(state, story);
         if (chip && !bucket.users.some((u) => u.userId === chip.userId)) bucket.users.push(chip);
         seenChip.add(story.authorId);
       }
@@ -350,7 +375,18 @@ async function getAtlas(params: {
 
   const hotspots: HotspotSummary[] = hotspotsFor(view).map((spot) => {
     const bucket = byHotspot.get(spot.id) ?? { stories: [], users: [] };
-    return { id: spot.id, label: spot.label, count: bucket.stories.length, users: bucket.users, storyIds: bucket.stories };
+    const latest = stories
+      .filter((story) => bucket.stories.includes(story.id))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const latestIncident = latest ? state.incidents.find((i) => i.id === latest.incidentId) : undefined;
+    return {
+      id: spot.id,
+      label: spot.label,
+      count: bucket.stories.length,
+      users: bucket.users,
+      storyIds: bucket.stories,
+      sticker: latest && latestIncident ? stickerFor(latest.tone, latestIncident.impactKind) : '',
+    };
   });
 
   const hottest = [...partCounts.entries()]
@@ -488,15 +524,19 @@ async function getDetail(params: {
   const state = loadState();
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在或已被删除', requestId);
-  const isAuthor = story.authorId === state.currentUserId;
-  if (story.publishStatus !== 'published' && !isAuthor) {
+  const viewerIsAuthor = story.authorId === state.currentUserId;
+  if (story.publishStatus !== 'published' && !viewerIsAuthor) {
     return fail('NOT_VISIBLE', '这条故事已被作者撤回', requestId);
   }
-  if (story.moderationStatus !== 'approved' && !isAuthor) {
+  if (story.moderationStatus !== 'approved' && !viewerIsAuthor) {
     return fail('NOT_VISIBLE', '这条故事还在处理中', requestId);
   }
-  const groupId = resolveStoryGroup(state, story, params.groupId);
-  if (!groupId) return fail('NOT_VISIBLE', '这条故事不在你加入的圈子里', requestId);
+  const isSelfOnly = story.visibility === 'self';
+  if (isSelfOnly && !viewerIsAuthor) {
+    return fail('NOT_VISIBLE', '这条故事仅作者自己可见', requestId);
+  }
+  const groupId = isSelfOnly ? null : resolveStoryGroup(state, story, params.groupId);
+  if (!isSelfOnly && !groupId) return fail('NOT_VISIBLE', '这条故事不在你加入的圈子里', requestId);
   const incident = state.incidents.find((i) => i.id === story.incidentId);
   const author = userById(state, story.authorId);
   const avatar = avatarOf(state, story.authorId);
@@ -507,27 +547,42 @@ async function getDetail(params: {
       (u) =>
         u.storyId === story.id &&
         u.moderationStatus === 'approved' &&
-        u.visibilityGroupIds.includes(groupId),
+        (viewerIsAuthor || (!!groupId && u.visibilityGroupIds.includes(groupId))),
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-  const group = groupSummary(state, groupId);
+  const maskedAuthorId = publicAuthorId(story);
+  const maskedStory: Story = story.isAnonymous ? { ...story, authorId: maskedAuthorId } : story;
+  const maskedIncident: Incident = story.isAnonymous ? { ...incident, authorId: maskedAuthorId } : incident;
+  const maskedUpdates: StoryUpdate[] = story.isAnonymous
+    ? updates.map((update) => ({ ...update, authorId: maskedAuthorId }))
+    : updates;
+  const maskedAvatar: AvatarState = story.isAnonymous
+    ? { ...avatar, id: `avt_${maskedAuthorId}`, ownerId: maskedAuthorId }
+    : avatar;
+
+  const group = groupId ? groupSummary(state, groupId) : null;
   const authorPrefs = author.preferences;
   const detail: StoryDetail = {
-    story,
-    incident,
+    story: maskedStory,
+    incident: maskedIncident,
     author: {
-      ...toPublicUser(author, state.currentUserId),
-      displayName: story.isAnonymous ? '匿名雪友' : author.displayName,
+      id: maskedAuthorId,
+      displayName: story.isAnonymous ? anonymousName() : author.displayName,
+      palette: avatar.palette,
+      avatarId: story.isAnonymous ? `avt_${maskedAuthorId}` : author.avatarId,
+      isMe: viewerIsAuthor,
     },
-    avatar,
-    updates,
+    avatar: maskedAvatar,
+    updates: maskedUpdates,
     reactions: reactionSummary(state, story.id),
     myReactions: todayMine(state, story.id),
-    giftable: story.allowGifts && authorPrefs.allowGifts && story.publishStatus === 'published',
-    canSpin: story.allowFunnyActions && authorPrefs.allowFunnyActions,
+    giftable:
+      !!groupId && !viewerIsAuthor && story.allowGifts && authorPrefs.allowGifts && story.publishStatus === 'published',
+    canSpin: !!groupId && !viewerIsAuthor && story.allowFunnyActions && authorPrefs.allowFunnyActions,
     group,
-    canInteract: story.publishStatus === 'published' && !!group,
+    canInteract: !!groupId && story.publishStatus === 'published' && !viewerIsAuthor,
+    viewerIsAuthor,
   };
   return ok(detail, requestId);
 }
@@ -550,10 +605,12 @@ async function publish(params: {
   if (input.incident.bodyParts.length < 1 || input.incident.bodyParts.length > 3) {
     return fail('VALIDATION_FAILED', '请选择 1–3 个身体部位', requestId);
   }
-  if (input.story.visibilityGroupIds.length < 1) {
-    return fail('VALIDATION_FAILED', '请至少选择一个可见圈子', requestId);
+  const visibility: Story['visibility'] = input.story.visibility === 'self' ? 'self' : 'groups';
+  const visibilityGroupIds = visibility === 'self' ? [] : [...new Set(input.story.visibilityGroupIds ?? [])];
+  if (visibility === 'groups' && visibilityGroupIds.length < 1) {
+    return fail('VALIDATION_FAILED', '请至少选择一个可见圈子，或选择「仅自己可见」', requestId);
   }
-  for (const groupId of input.story.visibilityGroupIds) {
+  for (const groupId of visibilityGroupIds) {
     if (!isActiveMember(state, groupId, state.currentUserId)) {
       return fail('NOT_MEMBER', '只能发布到你已加入的圈子', requestId);
     }
@@ -595,7 +652,8 @@ async function publish(params: {
     title,
     body,
     tone: input.story.tone,
-    visibilityGroupIds: [...new Set(input.story.visibilityGroupIds)],
+    visibility,
+    visibilityGroupIds,
     allowFunnyActions: input.story.allowFunnyActions,
     allowGifts: input.story.allowGifts,
     isAnonymous: input.story.isAnonymous,
@@ -769,7 +827,8 @@ async function getWeeklyStatus(): Promise<ApiResponse<WeeklyStatus>> {
 }
 
 async function gift(params: {
-  toUserId: string;
+  /** 可选：服务端从 storyId 解析真实作者，客户端不需要（也不应该）拿到匿名作者 ID */
+  toUserId?: string;
   storyId: string;
   itemDefId: string;
   requestId: string;
@@ -782,16 +841,20 @@ async function gift(params: {
 
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
-  if (story.authorId !== params.toUserId) return fail('VALIDATION_FAILED', '只能送给故事作者', requestId);
+  const targetId = story.authorId;
+  if (params.toUserId && params.toUserId !== targetId) {
+    return fail('VALIDATION_FAILED', '只能送给故事作者', requestId);
+  }
+  if (story.visibility === 'self') return fail('INTERACTION_DISABLED', '仅自己可见的故事不能收礼', requestId);
   if (story.publishStatus !== 'published') return fail('NOT_VISIBLE', '这条故事已撤回', requestId);
   if (!resolveStoryGroup(state, story)) {
     return fail('NOT_MEMBER', '你不在这个故事所属的圈子里', requestId);
   }
   if (!story.allowGifts) return fail('INTERACTION_DISABLED', '作者关闭了收礼', requestId);
-  const target = userById(state, params.toUserId);
+  const target = userById(state, targetId);
   if (!target) return fail('NOT_FOUND', '收礼的雪友不存在', requestId);
   if (!target.preferences.allowGifts) return fail('INTERACTION_DISABLED', '对方关闭了收礼', requestId);
-  if (params.toUserId === state.currentUserId) return fail('VALIDATION_FAILED', '不能给自己送装备', requestId);
+  if (targetId === state.currentUserId) return fail('VALIDATION_FAILED', '不能给自己送装备', requestId);
   const def = ITEM_MAP[params.itemDefId];
   if (!def || def.category !== 'consumable' || !def.transferable) {
     return fail('VALIDATION_FAILED', '这个道具不能赠送', requestId);
@@ -814,7 +877,7 @@ async function gift(params: {
   // 事务：扣减 → 增加 → 台账（任何一步失败都不保存）
   mine.quantity -= 1;
   mine.version += 1;
-  const targetInv = ensureInventory(state, params.toUserId, params.itemDefId);
+  const targetInv = ensureInventory(state, targetId, params.itemDefId);
   targetInv.quantity = Math.min(ITEM_MAP[params.itemDefId].maxStack, targetInv.quantity + 1);
   if (!ITEM_MAP[params.itemDefId].permanent) {
     targetInv.expiresAt = addDays(Date.now(), ITEM_MAP[params.itemDefId].ttlDays ?? 14);
@@ -824,7 +887,7 @@ async function gift(params: {
     id: `evt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     storyId: params.storyId,
     actorId: state.currentUserId,
-    targetId: params.toUserId,
+    targetId,
     actionId: 'receive_gift',
     itemDefId: params.itemDefId,
     animationVersion: ANIMATION_VERSION,
@@ -836,13 +899,13 @@ async function gift(params: {
   state.ledger.push({
     operationId: `gift_${requestId}`,
     fromUserId: state.currentUserId,
-    toUserId: params.toUserId,
+    toUserId: targetId,
     itemDefId: params.itemDefId,
     delta: 1,
     eventId: event.id,
     createdAt: event.createdAt,
   });
-  const response = ok({ eventId: event.id, itemDefId: params.itemDefId, toUserId: params.toUserId }, requestId);
+  const response = ok({ eventId: event.id, itemDefId: params.itemDefId, toUserId: targetId }, requestId);
   remember(state, 'inventory.gift', requestId, response);
   saveState(state);
   return response;
@@ -866,6 +929,7 @@ async function react(params: {
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
   if (story.publishStatus !== 'published') return fail('NOT_VISIBLE', '这条故事已撤回', requestId);
+  if (story.visibility === 'self') return fail('NOT_VISIBLE', '这条故事仅作者自己可见', requestId);
   if (story.authorId === state.currentUserId) return fail('VALIDATION_FAILED', '不能给自己的故事做互动', requestId);
   const groupId = resolveStoryGroup(state, story);
   if (!groupId) return fail('NOT_MEMBER', '你不在这个故事所属的圈子里', requestId);
@@ -874,8 +938,8 @@ async function react(params: {
   if (def.requiresFunnyConsent && (!story.allowFunnyActions || !author.preferences.allowFunnyActions)) {
     return fail('INTERACTION_DISABLED', '作者关闭了这个搞笑动作', requestId);
   }
-  const used = todayMine(state, story.id).find((r) => r.actionId === params.actionId)?.count ?? 0;
-  if (used >= def.maxPerActorPerStoryPerDay) {
+  const usedToday = todayMine(state, story.id).reduce((sum, item) => sum + item.mine, 0);
+  if (usedToday >= MAX_INTERACTIONS_PER_DAY) {
     return fail('RATE_LIMIT', '今天对这条故事的互动次数用完了', requestId);
   }
   const event: InteractionEvent = {

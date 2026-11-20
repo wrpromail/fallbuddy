@@ -12,6 +12,7 @@
       <view class="story-card__name">
         {{story.authorName}}
         <text wx:if="{{view.anonymous}}" class="story-card__badge">匿名</text>
+        <text wx:if="{{view.selfOnly}}" class="story-card__badge story-card__badge--grey">仅自己</text>
         <text wx:if="{{view.withdrawn}}" class="story-card__badge story-card__badge--grey">已撤回</text>
       </view>
       <view class="story-card__meta">{{view.timeText}} · {{view.sportEmoji}}</view>

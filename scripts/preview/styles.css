@@ -508,6 +508,22 @@ body.full-mode .form-footer {
   background: rgba(255, 255, 255, 0.55);
 }
 
+.hotspot__sticker {
+  position: absolute;
+  right: -4px;
+  top: -6px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-size: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(43, 35, 64, 0.18);
+  z-index: 9;
+  pointer-events: none;
+}
+
 .stack {
   display: flex;
   align-items: center;

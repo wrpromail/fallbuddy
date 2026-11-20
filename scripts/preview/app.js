@@ -34,7 +34,8 @@
       body: '',
       groups: [(DATA.groups[0] || {}).id].filter(Boolean),
       anonymous: false,
-      funny: true,
+      selfOnly: false,
+      funny: false,
       gifts: true,
     },
   };
@@ -229,6 +230,7 @@
         return `<div class="hotspot" style="left:${(def.x / RIG.canvas.width) * 100}%;top:${
           (def.y / RIG.canvas.height) * 100
         }%" onclick="P.openHotspot('${spot.id}')" title="${esc(spot.label)}">
+          ${spot.sticker ? `<span class="hotspot__sticker">${spot.sticker}</span>` : ''}
           ${spot.count ? `<div class="stack">${chips}${more}</div>` : '<div class="dot"></div>'}
         </div>`;
       })
@@ -293,7 +295,8 @@
     const avatar = detail.avatar;
     const story = detail.story;
     const incident = detail.incident;
-    const group = detail.group || groupOf(S.groupId);
+    const selfOnly = story.visibility === 'self';
+    const group = selfOnly ? null : detail.group || groupOf(S.groupId);
     const tags = [
       `<span class="tag tag--blue">${DATA.labels.sport[incident.sport] || ''}</span>`,
       `<span class="tag">${DATA.labels.impact[incident.impactKind] || ''}</span>`,
@@ -314,14 +317,14 @@
         </div>`,
       )
       .join('');
+    const usedTotal = (detail.myReactions || []).reduce((sum, item) => sum + (item.mine || 0), 0);
     const reactionButtons = DATA.actions
       .filter((action) => action.id !== 'receive_gift')
       .map((action) => {
-        const mine = (detail.myReactions || []).find((item) => item.actionId === action.id) || { mine: 0 };
         const total = (detail.reactions || []).find((item) => item.actionId === action.id) || { count: 0 };
         const blocked = action.requiresFunnyConsent && !detail.canSpin;
-        const used = mine.mine >= action.maxPerActorPerStoryPerDay;
-        return `<button class="reaction" ${blocked || used ? 'disabled' : ''} onclick="P.react('${action.id}')">
+        const disabled = selfOnly || detail.viewerIsAuthor || blocked || usedTotal >= 3;
+        return `<button class="reaction" ${disabled ? 'disabled' : ''} onclick="P.react('${action.id}')">
           <span class="reaction__emoji">${action.fallbackEmoji}</span>${action.name}
           ${total.count ? `<span class="reaction__count">${total.count}</span>` : ''}
         </button>`;
@@ -335,12 +338,16 @@
             <div class="author__name">${esc(detail.author.displayName)}${
               story.isAnonymous ? '<span class="story-card__badge">匿名展示</span>' : ''
             }</div>
-            <div class="author__meta">${esc(group.name)} · ${timeText(story.createdAt)} · ${
+            <div class="author__meta">${esc(selfOnly ? '仅自己可见' : group.name)} · ${timeText(story.createdAt)} · ${
               DATA.labels.sportEmoji[incident.sport] || ''
             } ${DATA.labels.sport[incident.sport] || ''}</div>
           </div>
         </div>
-        <button class="icon-btn" onclick="P.toast('分享卡片会带 storyId，但不授予查看权限')">↗</button>
+        ${
+          selfOnly
+            ? ''
+            : `<button class="icon-btn" onclick="P.toast('分享卡片会带 storyId，但不授予查看权限')">↗</button>`
+        }
       </div>
 
       <div class="story-stage" id="story-stage">
@@ -357,6 +364,7 @@
         <div class="story-body__text">${esc(story.body)}</div>
         <div class="chips" style="margin-top:10px">${tags}</div>
         <div class="story-body__note">「原因」是本人自述，不是责任认定，也不构成医疗或理赔判断。</div>
+        ${selfOnly ? '<div class="story-body__note">这条故事仅自己可见，不会出现在圈子图鉴。</div>' : ''}
       </div>
 
       ${updates ? `<div class="card timeline"><div class="section-title">后续</div>${updates}</div>` : ''}
@@ -367,13 +375,13 @@
             <span class="reaction__emoji">🎁</span>送装备
           </button>
         </div>
-        <div class="reactions__note">每人每天对同一条故事最多互动 3 次；装备免费、无现金价值。作者关闭搞笑动作后，「转圈」会自动禁用。</div>
+        <div class="reactions__note">每人每天对同一条故事最多互动 3 次（抱抱/转圈/鼓掌合计）；装备免费、无现金价值。作者关闭搞笑动作后，「转圈」会自动禁用。</div>
       </div>
 
       <div class="links">
         <div class="link" onclick="P.toast('V0 本地原型没有平台审核后台，举报不会真的提交')">举报这条内容</div>
         ${
-          detail.author.isMe
+          detail.viewerIsAuthor || detail.author.isMe
             ? `<div class="link" onclick="P.toast('撤回后统计会同步更新（演示）')">撤回我的故事</div>`
             : ''
         }
@@ -591,8 +599,13 @@
       </div>
 
       <div class="card panel">
-        <div class="panel__head"><div class="section-title">可见圈子</div><div class="tiny">逐个勾选，不会自动跨群</div></div>
-        ${groups}
+        <div class="panel__head"><div class="section-title">可见范围</div><div class="tiny">不会自动跨群</div></div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">仅自己可见</div><div class="tiny">不会进圈子图鉴，别人打不开</div></div>
+          <button class="switch switch--self ${F.selfOnly ? 'on' : ''}" onclick="P.toggleSelfOnly()"></button>
+        </div>
+        ${F.selfOnly ? '<div class="tiny" style="margin:6px 0 8px;color:#2f6fe0">已选择私密记录；下面的圈子不会生效。</div>' : ''}
+        <div style="opacity:${F.selfOnly ? 0.42 : 1}">${groups}</div>
       </div>
 
       <div class="card panel">
@@ -602,7 +615,7 @@
           <button class="switch ${F.anonymous ? 'on' : ''}" onclick="P.toggleField('anonymous')"></button>
         </div>
         <div class="toggle-row">
-          <div><div class="toggle-row__name">允许搞笑动作</div><div class="tiny">关闭后不能「转圈」</div></div>
+          <div><div class="toggle-row__name">允许搞笑动作</div><div class="tiny">默认关闭；打开后才能「转圈」</div></div>
           <button class="switch ${F.funny ? 'on' : ''}" onclick="P.toggleField('funny')"></button>
         </div>
         <div class="toggle-row">
@@ -812,12 +825,15 @@
     react(actionId) {
       const detail = detailOf(S.storyId);
       if (!detail) return;
+      if (detail.story && detail.story.visibility === 'self') return toast('仅自己可见的故事不能互动');
+      if (detail.viewerIsAuthor) return toast('不能给自己的故事做互动');
       const action = DATA.actions.find((item) => item.id === actionId);
       if (!action) return;
       if (action.requiresFunnyConsent && !detail.canSpin) return toast('作者关闭了这个搞笑动作');
+      const usedTotal = (detail.myReactions || []).reduce((sum, item) => sum + (item.mine || 0), 0);
+      if (usedTotal >= 3) return toast('今天对这条故事的互动次数用完了');
       const mine = (detail.myReactions || []).find((item) => item.actionId === actionId);
       if (!mine) return;
-      if (mine.mine >= action.maxPerActorPerStoryPerDay) return toast('今天对这条故事的互动次数用完了');
       mine.mine += 1;
       const total = (detail.reactions || []).find((item) => item.actionId === actionId);
       if (total) total.count += 1;
@@ -827,6 +843,7 @@
     openGift() {
       const detail = detailOf(S.storyId);
       if (!detail) return;
+      if (detail.viewerIsAuthor) return toast('不能给自己送装备');
       if (!detail.giftable) return toast('作者暂时不收礼物');
       const items = S.inventory.filter((item) => item.category === 'consumable' && item.quantity > 0);
       if (!items.length) return toast('背包里还没有可以送出的道具');
@@ -908,6 +925,7 @@
       if (kind === 'bodyParts') refreshPresets();
     },
     toggleGroup(groupId) {
+      if (S.form.selfOnly) return toast('已选择仅自己可见，圈子不会生效');
       const list = S.form.groups;
       const index = list.indexOf(groupId);
       if (index >= 0) list.splice(index, 1);
@@ -922,11 +940,15 @@
     },
     toggleField(field) {
       S.form[field] = !S.form[field];
-      const rows = document.querySelectorAll('.toggle-row .switch');
+      const rows = document.querySelectorAll('.toggle-row .switch:not(.switch--self)');
       // 三个开关按顺序：匿名 / 搞笑 / 礼物
       const order = ['anonymous', 'funny', 'gifts'];
       const index = order.indexOf(field);
       if (index >= 0 && rows[index]) rows[index].classList.toggle('on', S.form[field]);
+    },
+    toggleSelfOnly() {
+      S.form.selfOnly = !S.form.selfOnly;
+      render();
     },
     inputTitle(value) {
       S.form.title = value;
@@ -952,11 +974,13 @@
       if (!F.bodyParts.length) return toast('选一下身体部位');
       if (!F.scenario.length) return toast('选一下发生背景');
       if (!F.cause.length) return toast('选一下原因，或选「原因未知」');
-      if (!F.groups.length) return toast('至少选择一个可见圈子');
+      if (!F.selfOnly && !F.groups.length) return toast('至少选择一个可见圈子，或选择「仅自己可见」');
       const storyId = `sty_preview_${Date.now()}`;
+      const authorId = F.anonymous ? `anon_${storyId}` : 'usr_me';
       const now = new Date().toISOString();
       const incident = {
         id: `inc_${storyId}`,
+        authorId,
         sport: F.sport,
         scenario: F.scenario.slice(),
         selfReportedCause: F.cause.slice(),
@@ -967,20 +991,28 @@
       };
       const story = {
         id: storyId,
+        authorId,
         title: F.title.trim(),
         body: F.body.trim(),
         isAnonymous: F.anonymous,
+        visibility: F.selfOnly ? 'self' : 'groups',
         allowFunnyActions: F.funny,
         allowGifts: F.gifts,
-        visibilityGroupIds: F.groups.slice(),
+        visibilityGroupIds: F.selfOnly ? [] : F.groups.slice(),
         createdAt: now,
       };
-      const group = groupOf(F.groups[0]);
+      const groupIds = F.selfOnly ? [] : F.groups.slice();
+      const group = groupIds.length ? groupOf(groupIds[0]) : null;
+      const avatar = JSON.parse(JSON.stringify(S.me));
+      if (F.anonymous) {
+        avatar.id = `avt_${authorId}`;
+        avatar.ownerId = authorId;
+      }
       const detail = {
         story,
         incident,
-        author: { id: 'usr_me', displayName: '小北', palette: S.me.palette, isMe: true },
-        avatar: JSON.parse(JSON.stringify(S.me)),
+        author: { id: authorId, displayName: F.anonymous ? '匿名雪友' : '小北', palette: S.me.palette, isMe: true },
+        avatar,
         updates: [],
         reactions: DATA.actions
           .filter((action) => action.id !== 'receive_gift')
@@ -988,21 +1020,23 @@
         myReactions: DATA.actions
           .filter((action) => action.id !== 'receive_gift')
           .map((action) => ({ actionId: action.id, count: 0, mine: 0 })),
-        giftable: F.gifts,
-        canSpin: F.funny,
+        giftable: false,
+        canSpin: false,
         group,
-        canInteract: true,
+        canInteract: !F.selfOnly,
+        viewerIsAuthor: true,
       };
       const card = {
         id: storyId,
         title: story.title,
-        authorId: 'usr_me',
+        authorId,
         authorName: F.anonymous ? '匿名雪友' : '小北',
         isAnonymous: F.anonymous,
         sport: F.sport,
         bodyParts: F.bodyParts,
         impactKind: F.impactKind,
         tone: F.tone,
+        visibility: story.visibility,
         allowFunnyActions: F.funny,
         allowGifts: F.gifts,
         publishStatus: 'published',
@@ -1012,9 +1046,9 @@
         equipped: JSON.parse(JSON.stringify(S.me.equipped)),
       };
       S.publishedDetails[storyId] = detail;
-      S.published.push({ groupIds: F.groups.slice(), detail, card });
+      S.published.push({ groupIds, detail, card });
       S.storyId = storyId;
-      S.groupId = F.groups[0];
+      if (groupIds.length) S.groupId = groupIds[0];
       S.screen = 'story';
       render();
       toast('发布成功');

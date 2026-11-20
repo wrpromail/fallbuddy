@@ -58,6 +58,12 @@ export const ACTION_MAP: Record<ActionId, ActionDefinition> = ACTIONS.reduce(
 /** 故事详情页的主要互动按钮（礼物在背包选择后单独触发） */
 export const REACTION_ACTION_IDS: ActionId[] = ['hug', 'spin', 'cheer'];
 
+/**
+ * 方案 5.4：同一用户对同一故事每天最多 3 次互动（抱抱/转圈/鼓掌合计）。
+ * ActionDefinition 里的 maxPerActorPerStoryPerDay 保留为单动作配置，服务端以本常量为准。
+ */
+export const MAX_INTERACTIONS_PER_DAY = 3;
+
 /** 动画协议版本：历史事件回放时用于降级 */
 export const ANIMATION_VERSION = 1;
 

@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { mockApi } = require('../build/test/miniprogram/services/mock/api.js');
-const { resetState, loadState } = require('../build/test/miniprogram/services/store.js');
+const { resetState, loadState, saveState } = require('../build/test/miniprogram/services/store.js');
 const { buildMockState } = require('../build/test/miniprogram/shared/mock-build.js');
 
 function expectOk(res) {
@@ -20,6 +20,46 @@ function expectErr(res, code) {
 function myItem(itemDefId) {
   const state = loadState();
   return state.inventory.find((inv) => inv.ownerId === state.currentUserId && inv.itemDefId === itemDefId);
+}
+
+/** 临时切换当前用户，用于测试“非作者/非成员”视角；结束后恢复 */
+async function asUser(userId, fn) {
+  const state = loadState();
+  const previous = state.currentUserId;
+  state.currentUserId = userId;
+  saveState(state);
+  try {
+    return await fn();
+  } finally {
+    const restored = loadState();
+    restored.currentUserId = previous;
+    saveState(restored);
+  }
+}
+
+function publishInput(overrides = {}) {
+  return {
+    incident: {
+      sport: 'ski_double',
+      scenario: ['turning'],
+      selfReportedCause: ['edge_catch'],
+      bodyParts: ['tailbone'],
+      impactKind: 'near_miss',
+      protectiveItems: ['hip_protector'],
+      userSummary: '测试',
+    },
+    story: {
+      title: '我的测试故事',
+      body: '今天练习换刃，护臀又一次救了尾椎。',
+      tone: 'humorous',
+      visibility: 'groups',
+      visibilityGroupIds: ['grp_snow'],
+      allowFunnyActions: true,
+      allowGifts: true,
+      isAnonymous: false,
+      ...overrides,
+    },
+  };
 }
 
 test.beforeEach(() => {
@@ -303,4 +343,105 @@ test('邀请：非圈主不能创建邀请，圈主可以，过期/无效 token 
   const invite = expectOk(await mockApi.group.createInvite({ groupId: 'grp_skate' }));
   assert.ok(invite.sharePath.includes('inviteToken='));
   expectErr(await mockApi.group.join({ inviteToken: 'inv_not_exists' }), 'NOT_FOUND');
+});
+
+test('匿名故事：客户端拿不到真实作者 ID / 头像 ID', async () => {
+  const detail = expectOk(await mockApi.story.getDetail({ storyId: 'sty_back' }));
+  assert.equal(detail.author.displayName, '匿名雪友');
+  assert.equal(detail.author.id, 'anon_sty_back');
+  assert.equal(detail.story.authorId, 'anon_sty_back');
+  assert.equal(detail.incident.authorId, 'anon_sty_back');
+  assert.equal(detail.avatar.ownerId, 'anon_sty_back');
+  assert.equal(detail.avatar.id, 'avt_anon_sty_back');
+  assert.equal(detail.viewerIsAuthor, false);
+  const payload = JSON.stringify(detail);
+  assert.ok(!payload.includes('usr_ma'), payload);
+  assert.ok(!payload.includes('avt_usr_ma'), payload);
+
+  const atlas = expectOk(await mockApi.group.getAtlas({ groupId: 'grp_skate', period: 'all', view: 'back' }));
+  const card = atlas.stories.find((story) => story.id === 'sty_back');
+  assert.equal(card.authorId, 'anon_sty_back');
+  const chip = atlas.hotspots.find((spot) => spot.id === 'back').users[0];
+  assert.equal(chip.userId, 'anon_sty_back');
+});
+
+test('匿名故事：作者本人仍可识别并撤回', async () => {
+  await asUser('usr_ma', async () => {
+    const detail = expectOk(await mockApi.story.getDetail({ storyId: 'sty_back' }));
+    assert.equal(detail.viewerIsAuthor, true);
+    assert.equal(detail.author.isMe, true);
+    const withdrawn = expectOk(await mockApi.story.withdraw({ storyId: 'sty_back' }));
+    assert.equal(withdrawn.status, 'withdrawn');
+  });
+});
+
+test('赠礼：不传 toUserId 时由服务端解析真实作者', async () => {
+  const before = loadState().inventory.find((inv) => inv.ownerId === 'usr_ma' && inv.itemDefId === 'hot_cocoa')?.quantity ?? 0;
+  const res = expectOk(
+    await mockApi.inventory.gift({
+      storyId: 'sty_back',
+      itemDefId: 'hot_cocoa',
+      requestId: 'req_gift_anon',
+    }),
+  );
+  assert.equal(res.toUserId, 'usr_ma');
+  const after = loadState().inventory.find((inv) => inv.ownerId === 'usr_ma' && inv.itemDefId === 'hot_cocoa')?.quantity ?? 0;
+  assert.equal(after, before + 1);
+});
+
+test('仅自己可见：发布后不进图鉴，作者可读，他人 NOT_VISIBLE', async () => {
+  const published = expectOk(
+    await mockApi.story.publish({
+      requestId: 'req_self_only',
+      input: publishInput({ visibility: 'self', visibilityGroupIds: ['grp_snow'] }),
+    }),
+  );
+  const story = loadState().stories.find((item) => item.id === published.storyId);
+  assert.equal(story.visibility, 'self');
+  assert.deepEqual(story.visibilityGroupIds, []);
+
+  const atlas = expectOk(await mockApi.group.getAtlas({ groupId: 'grp_snow', period: 'all' }));
+  assert.ok(!atlas.stories.some((item) => item.id === published.storyId));
+
+  const detail = expectOk(await mockApi.story.getDetail({ storyId: published.storyId }));
+  assert.equal(detail.story.visibility, 'self');
+  assert.equal(detail.group, null);
+  assert.equal(detail.canInteract, false);
+
+  await asUser('usr_lin', async () => {
+    expectErr(await mockApi.story.getDetail({ storyId: published.storyId }), 'NOT_VISIBLE');
+  });
+
+  const mine = expectOk(await mockApi.story.listMine());
+  assert.equal(mine.find((item) => item.id === published.storyId).visibility, 'self');
+  expectOk(await mockApi.story.withdraw({ storyId: published.storyId }));
+});
+
+test('仅自己可见：普通发布仍要求至少一个圈子', async () => {
+  expectErr(
+    await mockApi.story.publish({
+      requestId: 'req_no_visibility',
+      input: publishInput({ visibility: 'groups', visibilityGroupIds: [] }),
+    }),
+    'VALIDATION_FAILED',
+  );
+});
+
+test('互动：抱抱/转圈/鼓掌合计每天最多 3 次', async () => {
+  expectOk(await mockApi.interaction.react({ storyId: 'sty_tailbone', actionId: 'hug', requestId: 'req_mix_1' }));
+  expectOk(await mockApi.interaction.react({ storyId: 'sty_tailbone', actionId: 'hug', requestId: 'req_mix_2' }));
+  expectOk(await mockApi.interaction.react({ storyId: 'sty_tailbone', actionId: 'cheer', requestId: 'req_mix_3' }));
+  expectErr(
+    await mockApi.interaction.react({ storyId: 'sty_tailbone', actionId: 'spin', requestId: 'req_mix_4' }),
+    'RATE_LIMIT',
+  );
+});
+
+test('图鉴：热点状态贴纸按最新故事生成，空热点为空', async () => {
+  const atlas = expectOk(await mockApi.group.getAtlas({ groupId: 'grp_snow', period: 'all', view: 'back' }));
+  const tailbone = atlas.hotspots.find((spot) => spot.id === 'tailbone');
+  assert.equal(tailbone.sticker, '💨');
+  const ankle = atlas.hotspots.find((spot) => spot.id === 'ankle_l');
+  assert.equal(ankle.count, 0);
+  assert.equal(ankle.sticker, '');
 });

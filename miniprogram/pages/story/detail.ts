@@ -130,8 +130,13 @@ Page({
       error: '',
       myAvatar,
       reduceMotion: prefs?.reduceMotion ?? false,
-      isMine: detail.author.isMe === true,
-      groupName: detail.group ? detail.group.name : '私密记录',
+      isMine: detail.viewerIsAuthor,
+      groupName:
+        detail.story.visibility === 'self'
+          ? '仅自己可见'
+          : detail.group
+            ? detail.group.name
+            : '私密记录',
       timeText: relativeTime(detail.story.createdAt),
       sportLabel: SPORT_LABEL[incident.sport],
       sportEmoji: SPORT_EMOJI[incident.sport],
@@ -175,6 +180,10 @@ Page({
   async onReact(event: WechatMiniprogram.CustomEvent<{ actionId: ActionId }>) {
     const detail = this.data.detail;
     if (!detail) return;
+    if (!detail.canInteract) {
+      wx.showToast({ title: '这条故事暂时不能互动', icon: 'none' });
+      return;
+    }
     const actionId = event.detail.actionId;
     if (actionId === 'spin' && !detail.canSpin) {
       wx.showToast({ title: '作者关闭了转圈', icon: 'none' });
@@ -235,7 +244,6 @@ Page({
       return;
     }
     const res = await api.inventory.gift({
-      toUserId: detail.story.authorId,
       storyId: detail.story.id,
       itemDefId,
       requestId: requestId(),
@@ -290,6 +298,9 @@ Page({
 
   onShareAppMessage() {
     const detail = this.data.detail;
+    if (detail && detail.story.visibility === 'self') {
+      return { title: '摔友记 · 把运动翻车现场变成共同回忆', path: '/pages/atlas/index' };
+    }
     return {
       title: detail ? detail.story.title : '摔友记',
       path: detail ? `/pages/story/detail?storyId=${detail.story.id}` : '/pages/atlas/index',

@@ -43,6 +43,7 @@ const stories = state.stories.map((story) => ({
   body: story.body,
   tone: story.tone,
   authorId: story.authorId,
+  visibility: story.visibility,
   visibilityGroupIds: story.visibilityGroupIds,
   allowFunnyActions: story.allowFunnyActions,
   allowGifts: story.allowGifts,

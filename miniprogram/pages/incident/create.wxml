@@ -139,16 +139,24 @@
   </view>
 
   <view class="section card">
-    <view class="section__head"><view class="section-title">可见圈子</view><view class="tiny muted">逐个勾选，不会自动跨群</view></view>
+    <view class="section__head"><view class="section-title">可见范围</view><view class="tiny muted">不会自动跨群</view></view>
+    <view class="switch-row">
+      <view>
+        <view class="switch-row__name">仅自己可见</view>
+        <view class="tiny muted">不会出现在任何圈子图鉴，别人打不开</view>
+      </view>
+      <switch checked="{{selfOnly}}" color="#2F6FE0" bindchange="onSelfOnly" />
+    </view>
+    <view wx:if="{{selfOnly}}" class="self-hint">已选择私密记录；下面的圈子不会生效。</view>
     <view class="groups">
       <view
         wx:for="{{groupChips}}"
         wx:key="id"
-        class="group-row"
+        class="group-row {{selfOnly ? 'group-row--off' : ''}}"
         data-id="{{item.id}}"
         bindtap="onToggleGroup"
       >
-        <view class="checkbox {{item.checked ? 'checkbox--on' : ''}}">{{item.checked ? '✓' : ''}}</view>
+        <view class="checkbox {{item.checked && !selfOnly ? 'checkbox--on' : ''}}">{{item.checked && !selfOnly ? '✓' : ''}}</view>
         <view class="group-row__main">
           <view class="group-row__name">{{item.name}}</view>
           <view class="tiny muted">{{item.memberCount}} 位雪友</view>
@@ -169,7 +177,7 @@
     <view class="switch-row">
       <view>
         <view class="switch-row__name">允许搞笑动作</view>
-        <view class="tiny muted">关闭后，别人不能对你使用「转圈」</view>
+        <view class="tiny muted">默认关闭；打开后别人才能对你使用「转圈」</view>
       </view>
       <switch checked="{{allowFunnyActions}}" color="#2F6FE0" bindchange="onFunny" />
     </view>

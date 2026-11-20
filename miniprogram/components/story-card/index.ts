@@ -8,6 +8,7 @@ interface CardView {
   timeText: string;
   parts: string[];
   anonymous: boolean;
+  selfOnly: boolean;
   withdrawn: boolean;
 }
 
@@ -25,6 +26,7 @@ Component({
       timeText: '',
       parts: [],
       anonymous: false,
+      selfOnly: false,
       withdrawn: false,
     } as CardView,
   },
@@ -38,6 +40,7 @@ Component({
           timeText: relativeTime(story.createdAt),
           parts: story.bodyParts.filter((part) => part !== 'other').map((part) => BODY_PART_LABEL[part]),
           anonymous: story.isAnonymous,
+          selfOnly: story.visibility === 'self',
           withdrawn: story.publishStatus === 'withdrawn',
         },
       });

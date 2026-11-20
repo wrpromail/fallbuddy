@@ -55,9 +55,11 @@ const layout = await page.evaluate(() => {
     chips,
     hotspots: hotspots.length,
     clipped,
+    stickers: document.querySelectorAll('.hotspot__sticker').length,
   };
 });
 check('图鉴：身体热点渲染小头像', layout.chips > 0, `${layout.chips} 个头像`);
+check('图鉴：热点状态贴纸已渲染', layout.stickers > 0, `${layout.stickers} 个贴纸`);
 check('图鉴：热点未越出角色区域', layout.clipped === 0, `${layout.hotspots} 个热点，${layout.clipped} 个越界`);
 const firstCard = await page.evaluate(() => {
   const card = document.querySelector('.recent__list .story-card');
@@ -171,6 +173,29 @@ const published = await page.evaluate(() => ({
 check('预览内发布故事并进入详情', published.screen === 'story' && published.detail, JSON.stringify(published));
 check('发布内容正确', published.title === form.title, published.title);
 await page.screenshot({ path: join(OUT, 'story-published@2x.png') });
+
+// 仅自己可见
+await page.evaluate(() => {
+  window.P.toggleSelfOnly();
+  window.P.publish();
+});
+await new Promise((r) => setTimeout(r, 300));
+const selfOnly = await page.evaluate(() => {
+  const state = window.PREVIEW_STATE;
+  const detail = state.publishedDetails[state.storyId];
+  return {
+    visibility: detail ? detail.story.visibility : '',
+    group: detail ? detail.group : 'missing',
+    hasShare: !!document.querySelector('.icon-btn[onclick*="分享卡片"]'),
+    hasNote: document.body.textContent.includes('这条故事仅自己可见'),
+  };
+});
+check(
+  '仅自己可见：不进圈子、隐藏分享、显示提示',
+  selfOnly.visibility === 'self' && selfOnly.group === null && !selfOnly.hasShare && selfOnly.hasNote,
+  JSON.stringify(selfOnly),
+);
+await page.screenshot({ path: join(OUT, 'story-self@2x.png') });
 
 // 消息页
 await page.evaluate(() => window.P.go('inbox'));

@@ -19,6 +19,7 @@
     aria-role="button"
     aria-label="{{item.label}}（{{item.count}} 条故事）"
   >
+    <view wx:if="{{item.sticker}}" class="spot__sticker">{{item.sticker}}</view>
     <view wx:if="{{item.chips.length}}" class="stack">
       <view
         wx:for="{{item.chips}}"

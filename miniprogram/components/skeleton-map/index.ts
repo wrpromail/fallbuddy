@@ -15,6 +15,7 @@ interface SpotView {
   count: number;
   chips: SpotChip[];
   more: number;
+  sticker: string;
 }
 
 interface MapAppearance {
@@ -80,6 +81,7 @@ Component({
           count: summary?.count ?? 0,
           chips,
           more: Math.max(0, users.length - 2),
+          sticker: summary?.sticker ?? '',
         };
       });
       this.setData({

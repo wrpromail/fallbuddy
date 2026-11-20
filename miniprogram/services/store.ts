@@ -2,7 +2,7 @@ import type { DbState } from '../shared/db-types';
 import { buildMockState } from '../shared/mock-build';
 
 const STORAGE_KEY = 'shaiyouji.v0.state';
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 type StoredState = DbState & { seedVersion?: number };
 

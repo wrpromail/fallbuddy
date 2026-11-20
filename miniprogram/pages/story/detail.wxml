@@ -23,11 +23,12 @@
           <view class="author__name">
             {{detail.author.displayName}}
             <text wx:if="{{detail.story.isAnonymous}}" class="badge">匿名展示</text>
+            <text wx:if="{{detail.story.visibility === 'self'}}" class="badge">仅自己可见</text>
           </view>
           <view class="author__meta">{{groupName}} · {{timeText}} · {{sportEmoji}} {{sportLabel}}</view>
         </view>
       </view>
-      <button class="share-btn" open-type="share">↗</button>
+      <button wx:if="{{detail.story.visibility !== 'self'}}" class="share-btn" open-type="share">↗</button>
     </view>
 
     <view class="stage {{stageClass}}">
@@ -66,6 +67,7 @@
         <text wx:for="{{protectiveLabels}}" wx:key="*this" class="tag tag--mint">{{item}}</text>
       </view>
       <view class="story__note">「原因」是本人自述，不是责任认定，也不构成医疗或理赔判断。</view>
+      <view wx:if="{{detail.story.visibility === 'self'}}" class="story__note">这条故事仅自己可见，不会出现在圈子图鉴，别人也打不开。</view>
     </view>
 
     <view wx:if="{{updatesView.length}}" class="timeline card">
@@ -94,7 +96,7 @@
         bind:react="onReact"
         bind:gift="openGift"
       />
-      <view class="react__note">每人每天对同一条故事最多互动 3 次；装备免费、无现金价值。作者关闭搞笑动作后，「转圈」会自动禁用。</view>
+      <view class="react__note">每人每天对同一条故事最多互动 3 次（抱抱/转圈/鼓掌合计）；装备免费、无现金价值。作者关闭搞笑动作后，「转圈」会自动禁用。</view>
     </view>
 
     <view class="links">

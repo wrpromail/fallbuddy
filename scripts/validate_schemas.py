@@ -75,8 +75,15 @@ def main() -> int:
             errors.append(f"story {sid}: 标题长度 {len(story['title'])} 不在 1–24")
         if not (1 <= len(story["body"]) <= 140):
             errors.append(f"story {sid}: 正文长度 {len(story['body'])} 不在 1–140")
-        if not story["visibilityGroupIds"]:
-            errors.append(f"story {sid}: 必须显式选择可见圈子")
+        visibility = story.get("visibility")
+        if visibility not in {"groups", "self"}:
+            errors.append(f"story {sid}: visibility 非法（{visibility}）")
+        if visibility == "self":
+            if story["visibilityGroupIds"]:
+                errors.append(f"story {sid}: 仅自己可见的故事不应带可见圈子")
+        else:
+            if not story["visibilityGroupIds"]:
+                errors.append(f"story {sid}: 必须显式选择可见圈子或标记为仅自己可见")
         for gid in story["visibilityGroupIds"]:
             if gid not in group_ids:
                 errors.append(f"story {sid}: 可见圈子 {gid} 不存在")

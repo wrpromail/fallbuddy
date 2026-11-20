@@ -128,6 +128,8 @@ export interface Incident {
 
 export type ModerationStatus = 'pending' | 'approved' | 'rejected' | 'hidden';
 export type PublishStatus = 'draft' | 'published' | 'withdrawn';
+/** 发布范围：groups=指定圈子；self=仅自己可见（不进入任何圈子图鉴） */
+export type StoryVisibility = 'groups' | 'self';
 
 export interface Story {
   id: string;
@@ -137,6 +139,7 @@ export interface Story {
   title: string;
   body: string;
   tone: Tone;
+  visibility: StoryVisibility;
   visibilityGroupIds: string[];
   allowFunnyActions: boolean;
   allowGifts: boolean;
@@ -254,6 +257,8 @@ export interface HotspotSummary {
   count: number;
   users: AtlasUserChip[];
   storyIds: string[];
+  /** V0 状态贴纸：按该部位最新故事的语气/情况推导；无故事为空字符串 */
+  sticker: string;
 }
 
 export interface AtlasStoryCard {
@@ -266,6 +271,7 @@ export interface AtlasStoryCard {
   bodyParts: BodyPart[];
   impactKind: ImpactKind;
   tone: Tone;
+  visibility: StoryVisibility;
   allowFunnyActions: boolean;
   allowGifts: boolean;
   publishStatus: PublishStatus;
@@ -300,6 +306,8 @@ export interface StoryDetail {
   canSpin: boolean;
   group: GroupSummary | null;
   canInteract: boolean;
+  /** 当前调用者是否是作者（匿名故事不能靠 authorId 判断） */
+  viewerIsAuthor: boolean;
 }
 
 /* -------------------------------------------------------------------- 动作 */
@@ -331,6 +339,8 @@ export interface CreateStoryInput {
     title: string;
     body: string;
     tone: Tone;
+    /** 缺省为 groups，兼容既有调用方 */
+    visibility?: StoryVisibility;
     visibilityGroupIds: string[];
     allowFunnyActions: boolean;
     allowGifts: boolean;

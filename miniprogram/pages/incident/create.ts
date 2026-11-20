@@ -77,6 +77,7 @@ interface CreatePageData {
   isAnonymous: boolean;
   allowFunnyActions: boolean;
   allowGifts: boolean;
+  selfOnly: boolean;
   presets: string[];
   sensitive: string;
   selectedPartLabels: string[];
@@ -151,8 +152,9 @@ Page({
     titleLen: 0,
     bodyLen: 0,
     isAnonymous: false,
-    allowFunnyActions: true,
+    allowFunnyActions: false,
     allowGifts: true,
+    selfOnly: false,
     presets: FALLBACK_PRESETS,
     sensitive: '',
     selectedPartLabels: [],
@@ -202,21 +204,22 @@ Page({
       avatarExpression: avatar?.expression ?? 'happy',
       avatarEquipped: avatar?.equipped ?? null,
       isAnonymous: prefs?.anonymousByDefault ?? false,
-      allowFunnyActions: prefs?.allowFunnyActions ?? true,
+      // 方案 4.2 建议默认关闭；作者可在发布页手动打开
+      allowFunnyActions: false,
       allowGifts: prefs?.allowGifts ?? true,
     });
     this.refreshSubmitState();
   },
 
   refreshSubmitState() {
-    const { title, body, bodyParts, scenario, cause, groupChips } = this.data;
+    const { title, body, bodyParts, scenario, cause, groupChips, selfOnly } = this.data;
     const canSubmit =
       title.trim().length > 0 &&
       body.trim().length > 0 &&
       bodyParts.length >= 1 &&
       scenario.length >= 1 &&
       cause.length >= 1 &&
-      groupChips.some((group) => group.checked);
+      (selfOnly || groupChips.some((group) => group.checked));
     this.setData({ canSubmit });
   },
 
@@ -303,9 +306,15 @@ Page({
   },
 
   onToggleGroup(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.selfOnly) return;
     const id = (event.currentTarget.dataset as { id: string }).id;
     const groupChips = this.data.groupChips.map((group) => (group.id === id ? { ...group, checked: !group.checked } : group));
     this.setData({ groupChips });
+    this.refreshSubmitState();
+  },
+
+  onSelfOnly(event: WechatMiniprogram.SwitchChange) {
+    this.setData({ selfOnly: event.detail.value });
     this.refreshSubmitState();
   },
 
@@ -329,8 +338,12 @@ Page({
     if (!bodyParts.length) return wx.showToast({ title: '选一下身体部位', icon: 'none' });
     if (!scenario.length) return wx.showToast({ title: '选一下发生背景', icon: 'none' });
     if (!cause.length) return wx.showToast({ title: '选一下原因，或选「原因未知」', icon: 'none' });
-    const groupIds = groupChips.filter((group) => group.checked).map((group) => group.id);
-    if (!groupIds.length) return wx.showToast({ title: '至少选择一个可见圈子', icon: 'none' });
+    const groupIds = this.data.selfOnly
+      ? []
+      : groupChips.filter((group) => group.checked).map((group) => group.id);
+    if (!this.data.selfOnly && !groupIds.length) {
+      return wx.showToast({ title: '至少选择一个可见圈子，或选择「仅自己可见」', icon: 'none' });
+    }
 
     this.setData({ submitting: true });
     const res = await api.story.publish({
@@ -349,6 +362,7 @@ Page({
           title: title.trim(),
           body: body.trim(),
           tone: this.data.tone,
+          visibility: this.data.selfOnly ? 'self' : 'groups',
           visibilityGroupIds: groupIds,
           allowFunnyActions: this.data.allowFunnyActions,
           allowGifts: this.data.allowGifts,
@@ -363,7 +377,7 @@ Page({
     }
     wx.showToast({ title: '发布成功', icon: 'success' });
     setTimeout(() => {
-      wx.redirectTo({ url: `/pages/story/detail?storyId=${res.data.storyId}&groupId=${groupIds[0]}` });
+      wx.redirectTo({ url: `/pages/story/detail?storyId=${res.data.storyId}${groupIds[0] ? `&groupId=${groupIds[0]}` : ''}` });
     }, 500);
   },
 });

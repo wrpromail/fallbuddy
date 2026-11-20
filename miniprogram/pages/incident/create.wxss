@@ -178,6 +178,17 @@
   background: #f7f9ff;
 }
 
+.group-row--off {
+  opacity: 0.42;
+}
+
+.self-hint {
+  margin-top: 12rpx;
+  font-size: 21rpx;
+  color: #2f6fe0;
+  line-height: 1.6;
+}
+
 .group-row__main {
   flex: 1;
 }

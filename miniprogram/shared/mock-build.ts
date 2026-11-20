@@ -45,6 +45,7 @@ function storyFromFixture(story: FixtureStory, now: number): Story {
     title: story.title,
     body: story.body,
     tone: story.tone,
+    visibility: 'groups',
     visibilityGroupIds: story.groupIds,
     allowFunnyActions: story.allowFunnyActions,
     allowGifts: story.allowGifts,
