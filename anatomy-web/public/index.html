@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>解剖战损人体 · 摔友记基础组件 01</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="anatomy.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>解剖战损人体</h1>
+    <p class="sub">摔友记 · 基础组件 01 —— 可动的骨骼肌肉框架 · 群友受伤分布 · AI 讲解与调侃</p>
+  </div>
+  <span class="health" id="health">检查大模型接入…</span>
+</header>
+
+<main class="layout">
+  <section class="stage-card">
+    <svg id="body" viewBox="0 0 520 760" role="img" aria-label="可动人体战损图鉴">
+      <g id="gBody"></g>
+      <g id="gOverlays"></g>
+      <g id="gBadges" style="pointer-events:none"></g>
+    </svg>
+    <div class="controls">
+      <div class="seg" id="styleSeg">
+        <button data-style="standard" class="on">标准解剖</button>
+        <button data-style="q">Q版骷髅</button>
+      </div>
+      <div class="seg" id="viewSeg">
+        <button data-view="front" class="on">正面</button>
+        <button data-view="back">背面</button>
+      </div>
+      <div class="seg" id="layerSeg">
+        <button data-layer="bones" class="on">骨骼</button>
+        <button data-layer="muscles">肌肉</button>
+        <button data-layer="both">双层</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="heatChk" checked>受伤热力</label>
+      <div class="seg" id="motionBtns">
+        <button data-motion="idle">待机</button>
+        <button data-motion="wave">挥手</button>
+        <button data-motion="fall">摔倒回放</button>
+      </div>
+    </div>
+    <p class="hint">点身体部位看解剖卡片与群友战损；骨架带关节可动，选中部位会自动演示对应动作。</p>
+  </section>
+
+  <aside class="panel">
+    <nav class="tabs">
+      <button class="on" data-tab="region">部位详情</button>
+      <button data-tab="board">战损榜</button>
+    </nav>
+
+    <section id="tabRegion">
+      <div id="regionEmpty" class="empty">
+        从左边点一个部位开始——<br>骨骼、肌肉、战损名单和 AI 解说都会在这里出现。
+      </div>
+      <div id="regionCard" hidden>
+        <div class="rg-head">
+          <h2 id="rgName">膝</h2>
+          <button id="btnDemo" class="ghost">▶ 演示动作</button>
+        </div>
+        <div class="rg-block"><h3>骨骼</h3><div class="chips" id="rgBones"></div></div>
+        <div class="rg-block"><h3>肌肉与分工</h3><ul class="muscles" id="rgMuscles"></ul></div>
+        <p class="motion" id="rgMotion"></p>
+        <p class="injuries" id="rgInjuries"></p>
+        <div class="rg-block"><h3>该部位战损</h3><div id="rgInjured" class="injured"></div></div>
+        <div class="ai-row">
+          <button id="btnExplain">🧠 AI 讲解骨骼与肌肉</button>
+          <button id="btnRoast">😏 AI 调侃这批战损</button>
+        </div>
+        <div id="aiText" class="ai-text" hidden></div>
+      </div>
+    </section>
+
+    <section id="tabBoard" hidden>
+      <form id="addForm" class="add-form">
+        <h3>记一笔战损（群友可从外部 API 注入）</h3>
+        <div class="row">
+          <input id="fMember" placeholder="群友昵称" maxlength="24">
+          <select id="fRegion"></select>
+        </div>
+        <div class="row">
+          <label class="sev">严重度 <output id="fSevOut">2</output>
+            <input type="range" id="fSev" min="1" max="5" value="2">
+          </label>
+          <select id="fSport">
+            <option value="">运动（可选）</option>
+            <option>单板滑雪</option><option>双板滑雪</option><option>轮滑</option>
+            <option>骑行</option><option>球类</option><option>其他</option>
+          </select>
+        </div>
+        <div class="row"><input id="fNote" placeholder="一句话经过（可选）" maxlength="80"></div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="fAnon">匿名</label>
+          <button type="submit" class="primary">添加到图鉴</button>
+        </div>
+      </form>
+
+      <div class="board-head">
+        <h3>战损榜 <span id="boardCount" class="muted"></span></h3>
+        <button id="btnWholeRoast" class="ghost">😏 AI 调侃全群战况</button>
+      </div>
+      <ul id="recordList" class="records"></ul>
+
+      <details class="curl">
+        <summary>外部注入记录 API</summary>
+        <pre>curl -X POST http://localhost:7788/api/records \
+  -H 'content-type: application/json' \
+  -d '{"member":"老白","regionId":"knee","severity":3,
+       "sport":"单板滑雪","note":"又卡刃了"}'</pre>
+        <p class="muted">返回值带最新的全量记录与分布；数据持久化在 anatomy-web/data/records.json。</p>
+      </details>
+      <div id="aiWholeText" class="ai-text" hidden></div>
+    </section>
+  </aside>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="anatomy-app.mjs"></script>
+</body>
+</html>

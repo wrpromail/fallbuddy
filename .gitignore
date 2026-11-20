@@ -6,3 +6,5 @@ project.private.config.json
 .env
 .env.*
 !.env.example
+# 解剖组件的运行时数据（种子会在首次启动时重新生成）
+anatomy-web/data/

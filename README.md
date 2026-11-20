@@ -65,6 +65,14 @@ npm run verify
 
 包含：严格类型检查 → 编译 + 28 项服务层测试 → 数据导出 + JSON Schema/业务不变量校验 → 素材尺寸与透明度校验 → WXML 静态检查。
 
+### 方式 D：解剖战损人体（网页组件）
+
+```bash
+npm run anatomy      # → http://localhost:7788
+```
+
+双风格可动骨骼肌肉框架（**标准解剖**·按解剖学比例与结构绘制 / **Q 版骷髅**·与小程序角色同调性，可一键切换）+ 正/背、骨骼/肌肉/双层、关节动画与摔倒回放 + 群友受伤分布热力 + 外部记录注入 API + 大模型**流式**讲解/调侃（Ollama Cloud，key 只在服务端）。详见 [anatomy-web/README.md](anatomy-web/README.md)，回归用 `npm run anatomy:qa`（36 项，含双风格的无肉眼颜色采样断言）。
+
 其他脚本：
 
 ```bash
@@ -80,6 +88,10 @@ npm run check:wxml   # 无 DevTools 时的 WXML 静态检查
 ```text
 fallbuddy/
 ├── project.config.json        # 微信开发者工具项目配置
+├── anatomy-web/               # 基础组件 01：解剖战损人体（网页版）
+│   ├── server.mjs             # 静态托管 + 记录注入 API + LLM 代理（key 只在服务端）
+│   ├── public/                # 解剖数据 / 双风格 SVG 画法（标准+Q版）/ 关节动画 / 页面逻辑
+│   └── data/                  # 运行时记录（gitignore，种子自动生成）
 ├── miniprogram/               # 小程序根目录（云函数接入前全部本地运行）
 │   ├── app.{ts,json,wxss}
 │   ├── pages/

@@ -16,7 +16,9 @@
     "preview:qa": "npm run preview && node scripts/preview-qa.mjs",
     "preview:full": "npm run preview && node scripts/preview-full-shots.mjs",
     "shots": "npm run preview && node scripts/preview-shots.mjs",
-    "check:wxml": "node scripts/check-wxml.mjs"
+    "check:wxml": "node scripts/check-wxml.mjs",
+    "anatomy": "node anatomy-web/server.mjs",
+    "anatomy:qa": "node scripts/anatomy-qa.mjs"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^5.3.1",
