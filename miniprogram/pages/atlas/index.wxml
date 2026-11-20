@@ -33,7 +33,7 @@
   <view wx:if="{{error}}" class="empty card">
     <view class="empty__emoji">🧊</view>
     <view class="empty__title">{{error}}</view>
-    <view class="empty__text">摔友记 V0 是本地原型，你可以先在设置里重置演示数据。</view>
+    <view class="empty__text">有邀请时可从邀请链接进入圈子，也可以先在「我的经历」保存私人记录。</view>
   </view>
 
   <view wx:elif="{{loading && !atlas}}" class="loading card">正在把雪友们的战损拼起来…</view>
@@ -51,6 +51,15 @@
         </view>
       </view>
 
+      <view class="stage__bar">
+        <view class="seg">
+          <view class="seg__item {{appearanceMode === 'q' ? 'seg__item--on' : ''}}" data-mode="q" bindtap="onSwitchAppearance">Q 版</view>
+          <view class="seg__item {{appearanceMode === 'bones' ? 'seg__item--on' : ''}}" data-mode="bones" bindtap="onSwitchAppearance">骨骼</view>
+          <view class="seg__item {{appearanceMode === 'muscles' ? 'seg__item--on' : ''}}" data-mode="muscles" bindtap="onSwitchAppearance">浅层肌肉</view>
+        </view>
+        <label wx:if="{{appearanceMode !== 'q'}}" class="tiny">事故标记 <switch checked="{{showMarkers}}" bindchange="onToggleMarkers" /></label>
+      </view>
+
       <view class="stage__canvas">
         <view class="snow snow--a"></view>
         <view class="snow snow--b"></view>
@@ -60,16 +69,19 @@
             view="{{view}}"
             hotspots="{{atlas.hotspots}}"
             appearance="{{avatar}}"
+            appearance-mode="{{appearanceMode}}"
+            show-markers="{{showMarkers}}"
             bind:hotspot="onHotspot"
           />
         </view>
-        <view wx:if="{{atlas && atlas.storyCount === 0}}" class="stage__empty">
+        <view wx:if="{{atlas && atlas.storyCount === 0 && appearanceMode === 'q'}}" class="stage__empty">
           <view class="stage__empty-title">这个圈子还没有故事</view>
           <view class="stage__empty-text">第一批战损图鉴，等你来画</view>
           <view class="btn btn--primary" bindtap="onCreate">记录第一条</view>
         </view>
       </view>
-      <view class="stage__hint">点身体上的小骷髅头像，看 TA 的那次经历</view>
+      <view wx:if="{{showMarkers}}" class="stage__hint">点一个部位查看记录或新建经历</view>
+      <view wx:if="{{appearanceMode !== 'q'}}" class="stage__hint">解剖模型源自 Écorché · CC BY-SA 4.0</view>
       <view wx:if="{{hottest.length}}" class="topicline">
         <text class="topicline__label">话题部位</text>
         <text wx:for="{{hottest}}" wx:key="bodyPart" class="topicline__item">{{item.label}} {{item.count}}</text>
@@ -108,6 +120,7 @@
       <view class="section-title">{{sheetSpot ? sheetSpot.label : ''}}的故事</view>
       <view class="tiny muted">{{sheetStories.length}} 条</view>
     </view>
+    <button class="btn" bindtap="onCreateAtSpot">记录这个部位的事故</button>
     <scroll-view scroll-y class="sheet__body" style="height:{{sheetHeight}}rpx">
       <view class="sheet__list">
         <story-card wx:for="{{sheetStories}}" wx:key="id" story="{{item}}" bind:select="onSelectStory" />

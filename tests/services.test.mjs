@@ -393,7 +393,7 @@ test('赠礼：不传 toUserId 时由服务端解析真实作者', async () => {
       requestId: 'req_gift_anon',
     }),
   );
-  assert.equal(res.toUserId, 'usr_ma');
+  assert.equal(res.toUserId, 'anon_sty_back');
   const after = loadState().inventory.find((inv) => inv.ownerId === 'usr_ma' && inv.itemDefId === 'hot_cocoa')?.quantity ?? 0;
   assert.equal(after, before + 1);
 });
@@ -524,4 +524,82 @@ test('收件箱：全部已读覆盖未加载的分页事件', async () => {
 
   // 空参数仍然被拒绝
   expectErr(await mockApi.interaction.markRead({}), 'VALIDATION_FAILED');
+});
+
+test('事故闭环：续写私人草稿、幂等发布、纠正侧别、追加后续、改为私人', async () => {
+  const groupId = 'grp_snow';
+  const draftInput = publishEnumInput({ bodyParts: ['knee_l'], scenario: [], selfReportedCause: [] }, {
+    title: '', body: '', visibilityGroupIds: [],
+  });
+  const draft = expectOk(await mockApi.story.saveDraft({ input: draftInput, version: 0 }));
+  await asUser('usr_lin', async () => {
+    assert.equal(expectOk(await mockApi.story.getDraft()), null);
+  });
+  const resumed = expectOk(await mockApi.story.getDraft());
+  assert.deepEqual(resumed.input, draftInput);
+
+  const before = expectOk(await mockApi.group.getAtlas({ groupId })).storyCount;
+  const input = publishEnumInput({ bodyParts: ['knee_l'], happenedOn: '2026-01-12', userSummary: '左膝先落地' });
+  const submitted = { input, requestId: 'req_incident_flow', draftVersion: draft.version };
+  const [first, retry] = await Promise.all([mockApi.story.publish(submitted), mockApi.story.publish(submitted)]);
+  const { storyId, version } = expectOk(first);
+  assert.deepEqual(expectOk(retry), { storyId, version });
+  assert.equal(expectOk(await mockApi.story.getDraft()), null);
+  const original = expectOk(await mockApi.story.getDetail({ storyId }));
+  assert.equal(original.incident.happenedOn, '2026-01-12');
+  assert.equal(original.incident.userSummary, '左膝先落地');
+  await asUser('usr_lin', async () => {
+    expectOk(await mockApi.interaction.react({ storyId, actionId: 'hug', requestId: 'req_incident_hug' }));
+    expectErr(await mockApi.story.update({ storyId, version, input, requestId: 'req_forged_edit' }), 'UNAUTHORIZED');
+  });
+
+  const corrected = publishEnumInput({ ...input.incident, bodyParts: ['knee_r'], userSummary: '右膝先落地' });
+  const edit = { storyId, version, input: corrected, requestId: 'req_incident_correct' };
+  const revision = expectOk(await mockApi.story.update(edit));
+  assert.deepEqual(expectOk(await mockApi.story.update(edit)), revision);
+  expectErr(await mockApi.story.update({ ...edit, requestId: 'req_stale_incident' }), 'CONFLICT');
+  for (const view of ['front', 'back']) {
+    const atlas = expectOk(await mockApi.group.getAtlas({ groupId, view }));
+    assert.equal(atlas.storyCount, before + 1);
+    assert.ok(!atlas.hotspots.find((spot) => spot.id === 'knee_l').storyIds.includes(storyId));
+    assert.ok(atlas.hotspots.find((spot) => spot.id === 'knee_r').storyIds.includes(storyId));
+  }
+
+  const followUp = { storyId, type: 'return_to_sport', body: '一周后重新上雪。', requestId: 'req_incident_followup' };
+  const update = expectOk(await mockApi.story.appendUpdate(followUp));
+  assert.equal(expectOk(await mockApi.story.appendUpdate(followUp)).id, update.id);
+  await asUser('usr_lin', async () => {
+    const detail = expectOk(await mockApi.story.getDetail({ storyId, groupId }));
+    assert.equal(detail.incident.id, original.incident.id);
+    assert.equal(detail.reactions.find((reaction) => reaction.actionId === 'hug').count, 1);
+    assert.equal(detail.updates.length, 1);
+    assert.equal(detail.updates[0].body, followUp.body);
+    expectErr(await mockApi.story.withdrawUpdate({ storyId, updateId: update.id }), 'UNAUTHORIZED');
+  });
+  expectOk(await mockApi.story.update({
+    ...edit,
+    version: revision.version,
+    input: { ...corrected, story: { ...corrected.story, visibility: 'self' } },
+    requestId: 'req_incident_private',
+  }));
+  await asUser('usr_lin', async () => {
+    expectErr(await mockApi.story.getDetail({ storyId, groupId }), 'NOT_VISIBLE');
+    assert.equal(expectOk(await mockApi.group.getAtlas({ groupId })).storyCount, before);
+  });
+  expectOk(await mockApi.story.withdrawUpdate({ storyId, updateId: update.id }));
+  assert.deepEqual(expectOk(await mockApi.story.getDetail({ storyId })).updates, []);
+});
+
+test('事故表单校验日期与隐私字段，旧草稿版本无法消费新草稿', async () => {
+  const input = publishInput();
+  const draft = expectOk(await mockApi.story.saveDraft({ input, version: 0 }));
+  const second = expectOk(await mockApi.story.saveDraft({ input, version: draft.version }));
+  expectErr(await mockApi.story.publish({ input, draftVersion: draft.version, requestId: 'req_old_draft' }), 'CONFLICT');
+  assert.equal(expectOk(await mockApi.story.getDraft()).version, second.version);
+  expectErr(await mockApi.story.publish({
+    input: publishEnumInput({ happenedOn: '2026-02-31' }), requestId: 'req_bad_date',
+  }), 'VALIDATION_FAILED');
+  expectErr(await mockApi.story.publish({
+    input: publishEnumInput({ userSummary: '手机号 13800138000' }), requestId: 'req_sensitive_summary',
+  }), 'CONTENT_REJECTED');
 });

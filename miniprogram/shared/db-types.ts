@@ -8,6 +8,8 @@ import type {
   Membership,
   PublicUser,
   Story,
+  StoryDraft,
+  StoryReport,
   StoryUpdate,
   UserPreferences,
 } from './types';
@@ -66,6 +68,9 @@ export interface DbState {
   memberships: Membership[];
   incidents: Incident[];
   stories: Story[];
+  reports?: StoryReport[];
+  draftRevision?: number;
+  storyDrafts?: Record<string, StoryDraft>;
   storyUpdates: StoryUpdate[];
   inventory: InventoryItem[];
   ledger: LedgerEntry[];

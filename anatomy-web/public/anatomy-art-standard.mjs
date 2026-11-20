@@ -1,4 +1,4 @@
-// anatomy-art-standard.mjs —— 人体模型层 · 标准解剖画法
+// anatomy-art-standard.mjs —— 人体模型层 · 解剖示意画法
 // 目标是“插画风的解剖图”：比例按 7 头身，结构按解剖学——颅骨（颅顶/眶/鼻切迹/
 // 颧/齿/下颌）、颈椎、胸廓（9 对肋 + 胸骨柄/体/剑突）、真骨盆（髂骨翼/耻骨弓/
 // 闭孔/髋臼）、长骨带骨骺、腕骨-掌骨-指骨分节、跗骨-跖骨-趾骨。
@@ -358,7 +358,7 @@ export function getOverlays(view) {
   return view === 'front' ? FRONT_OVERLAYS : BACK_OVERLAYS;
 }
 
-export const STYLE_META = { id: 'standard', label: '标准解剖' };
+export const STYLE_META = { id: 'standard', label: '解剖示意' };
 
 /* ================= 动作（按本风格的肢体长度校准角度） ================= */
 

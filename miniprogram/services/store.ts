@@ -1,4 +1,5 @@
 import type { DbState } from '../shared/db-types';
+import { hashString } from '../shared/time';
 import { buildMockState } from '../shared/mock-build';
 
 const STORAGE_KEY = 'shaiyouji.v0.state';
@@ -40,15 +41,21 @@ export function loadState(): DbState {
   return resetState();
 }
 
-export function saveState(state: DbState): void {
+/** 写入失败时不会改变当前缓存中的事故记录。 */
+export function loadStateForWrite(): DbState {
+  return JSON.parse(JSON.stringify(loadState())) as DbState;
+}
+
+export function saveState(state: DbState, durable = false): void {
+  if (hasWxStorage()) {
+    try {
+      wx.setStorageSync(STORAGE_KEY, JSON.stringify({ ...state, seedVersion: SEED_VERSION }));
+    } catch (error) {
+      if (durable) throw error;
+    }
+  }
   cache = state;
   loaded = true;
-  if (!hasWxStorage()) return;
-  try {
-    wx.setStorageSync(STORAGE_KEY, JSON.stringify({ ...state, seedVersion: SEED_VERSION }));
-  } catch {
-    // 存储写入失败时保持内存态可继续使用
-  }
 }
 
 export function resetState(now: number = Date.now()): DbState {
@@ -62,3 +69,11 @@ export function hasPersistedState(): boolean {
 }
 
 export { SEED_VERSION };
+
+export function mintInviteToken(): string {
+  return `inv_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+}
+
+export function inviteTokenHash(token: string): string {
+  return hashString(token).toString(36);
+}

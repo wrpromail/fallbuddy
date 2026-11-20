@@ -15,6 +15,7 @@
     "protectiveItems": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"type": "string", "enum": ["helmet", "goggles", "hip_protector", "knee_pad", "wrist_guard", "gloves", "other"]}},
     "source": {"type": "string", "enum": ["manual", "ai_assisted"]},
     "venueId": {"type": ["string", "null"], "maxLength": 128},
-    "userSummary": {"type": "string", "maxLength": 500}
+    "userSummary": {"type": "string", "maxLength": 140},
+    "happenedOn": {"type": "string", "format": "date"}
   }
 }

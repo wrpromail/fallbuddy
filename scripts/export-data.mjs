@@ -27,6 +27,7 @@ const incidents = state.incidents.map((incident) => ({
   source: incident.source,
   venueId: incident.venueId,
   userSummary: incident.userSummary,
+  happenedOn: incident.happenedOn,
 }));
 
 const avatars = state.avatars.map((avatar) => ({

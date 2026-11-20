@@ -17,6 +17,7 @@ import type {
 export type ApiCode =
   | 'OK'
   | 'UNAUTHORIZED'
+  | 'UNAVAILABLE'
   | 'NOT_MEMBER'
   | 'NOT_VISIBLE'
   | 'RATE_LIMIT'
@@ -98,7 +99,7 @@ export interface Membership {
   groupId: string;
   userId: string;
   role: 'owner' | 'admin' | 'member';
-  status: 'active' | 'left';
+  status: 'active' | 'left' | 'pending';
   joinedAt: string;
 }
 
@@ -122,6 +123,7 @@ export interface Incident {
   source: 'manual' | 'ai_assisted';
   venueId: string | null;
   userSummary?: string;
+  happenedOn?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -151,6 +153,16 @@ export interface Story {
   updatedAt: string;
 }
 
+export interface StoryReport {
+  id: string;
+  storyId: string;
+  groupId: string;
+  reporterId: string;
+  reason: 'privacy' | 'abuse' | 'other';
+  status: 'pending' | 'dismissed' | 'hidden';
+  createdAt: string;
+}
+
 export interface StoryUpdate {
   id: string;
   storyId: string;
@@ -160,6 +172,7 @@ export interface StoryUpdate {
   visibilityGroupIds: string[];
   moderationStatus: ModerationStatus;
   createdAt: string;
+  withdrawnAt?: string;
 }
 
 /* -------------------------------------------------------------- 互动与道具 */
@@ -334,6 +347,7 @@ export interface CreateStoryInput {
     impactKind: ImpactKind;
     protectiveItems: ProtectiveItem[];
     userSummary?: string;
+    happenedOn?: string;
   };
   story: {
     title: string;
@@ -346,6 +360,12 @@ export interface CreateStoryInput {
     allowGifts: boolean;
     isAnonymous: boolean;
   };
+}
+
+export interface StoryDraft {
+  version: number;
+  input: CreateStoryInput;
+  updatedAt: string;
 }
 
 export interface GroupMemberView {

@@ -1,11 +1,12 @@
 import { loadState } from './services/store';
+import { CLOUD_ENV_ID } from './shared/cloud-config';
 
 App({
   onLaunch() {
-    // V0 数据源为本地 mock；首次启动会写入演示种子
-    loadState();
-  },
-  onShow() {
-    loadState();
+    if (CLOUD_ENV_ID) {
+      wx.cloud.init({ env: CLOUD_ENV_ID });
+    } else {
+      loadState();
+    }
   },
 });

@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "记录一次经历",
-  "navigationBarBackgroundColor": "#F2F6FF"
+  "navigationBarBackgroundColor": "#F2F6FF",
+  "usingComponents": {
+    "incident-map": "/components/incident-map/index"
+  }
 }

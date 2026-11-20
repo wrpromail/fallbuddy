@@ -77,6 +77,24 @@
       <view class="invite-note">「圈子」是应用内的受邀群体，不等于微信群全体成员。加入后才能看到圈内故事。</view>
     </view>
 
+    <view wx:if="{{joinRequests.length}}" class="panel card">
+      <view class="section-title">入圈申请</view>
+      <view wx:for="{{joinRequests}}" wx:key="id" class="member">
+        <view class="member__main">{{item.displayName}}</view>
+        <button class="btn" data-id="{{item.id}}" data-action="deny" bindtap="onReviewMember">拒绝</button>
+        <button class="btn btn--primary" data-id="{{item.id}}" data-action="approve" bindtap="onReviewMember">批准</button>
+      </view>
+    </view>
+
+    <view wx:if="{{reports.length}}" class="panel card">
+      <view class="section-title">待处理举报</view>
+      <view wx:for="{{reports}}" wx:key="id" class="member">
+        <view class="member__main" data-id="{{item.storyId}}" bindtap="onOpenReportedStory">{{item.reasonLabel}} · 查看故事</view>
+        <button class="btn" data-id="{{item.id}}" data-action="dismiss" bindtap="onResolveReport">关闭</button>
+        <button class="btn btn--primary" data-id="{{item.id}}" data-action="hide" bindtap="onResolveReport">隐藏</button>
+      </view>
+    </view>
+
     <view wx:if="{{!isOwner}}" class="leave" bindtap="onLeave">退出这个圈子</view>
   </block>
 </view>

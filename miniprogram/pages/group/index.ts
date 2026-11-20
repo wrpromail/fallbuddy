@@ -1,5 +1,5 @@
 import { api } from '../../services/api';
-import type { GroupMemberView, GroupSummary } from '../../shared/types';
+import type { GroupMemberView, GroupSummary, PublicUser, StoryReport } from '../../shared/types';
 
 interface GroupPageData {
   loading: boolean;
@@ -11,6 +11,9 @@ interface GroupPageData {
   invite: { token: string; sharePath: string; expiresAt: string } | null;
   inviteLoading: boolean;
   joining: boolean;
+  pendingApproval: boolean;
+  joinRequests: PublicUser[];
+  reports: (Pick<StoryReport, 'id' | 'storyId'> & { reasonLabel: string })[];
 }
 
 function roleLabel(role: string): string {
@@ -30,6 +33,9 @@ Page({
     invite: null,
     inviteLoading: false,
     joining: false,
+    pendingApproval: false,
+    joinRequests: [],
+    reports: [],
   } as GroupPageData,
 
   pendingGroupId: '',
@@ -53,7 +59,13 @@ Page({
       this.setData({ joining: false });
       if (res.ok) {
         this.pendingGroupId = res.data.groupId;
-        wx.showToast({ title: res.data.status === 'already_member' ? '你已经在圈子里了' : '加入成功', icon: 'none' });
+        const pendingApproval = res.data.status === 'pending';
+        this.setData({ pendingApproval });
+        if (pendingApproval) {
+          wx.showToast({ title: '申请已提交，等待圈主确认', icon: 'none' });
+        } else {
+          wx.showToast({ title: res.data.status === 'already_member' ? '你已经在圈子里了' : '加入成功', icon: 'none' });
+        }
       } else {
         wx.showToast({ title: res.message, icon: 'none' });
       }
@@ -72,10 +84,15 @@ Page({
     const groups = groupsRes.data;
     const group = groups.find((item) => item.id === this.pendingGroupId) ?? groups[0] ?? null;
     if (!group) {
-      this.setData({ loading: false, error: '你还没有加入任何圈子' });
+      this.setData({ loading: false, error: this.data.pendingApproval ? '等待圈主批准，下拉刷新查看结果' : '你还没有加入任何圈子' });
       return;
     }
-    const membersRes = await api.group.getMembers(group.id);
+    const canInvite = group.role === 'owner' || group.role === 'admin';
+    const [membersRes, requestsRes, reportsRes] = await Promise.all([
+      api.group.getMembers(group.id),
+      canInvite ? api.group.getJoinRequests(group.id) : null,
+      canInvite ? api.moderation.listReports(group.id) : null,
+    ]);
     const members = membersRes.ok
       ? membersRes.data.map((member) => ({ ...member, roleLabel: roleLabel(member.role) }))
       : [];
@@ -84,9 +101,45 @@ Page({
       group,
       members: members as GroupMemberView[],
       isOwner: group.role === 'owner',
-      canInvite: group.role === 'owner' || group.role === 'admin',
+      canInvite,
+      joinRequests: requestsRes?.ok ? requestsRes.data : [],
+      reports: reportsRes?.ok ? reportsRes.data.map((report) => ({
+        ...report,
+        reasonLabel: { privacy: '泄露个人信息', abuse: '骚扰或攻击', other: '其他' }[report.reason],
+      })) : [],
     });
     wx.setNavigationBarTitle({ title: group.name });
+  },
+
+  async onReviewMember(event: WechatMiniprogram.TouchEvent) {
+    const { group, canInvite } = this.data;
+    if (!group || !canInvite) return;
+    const { id, action } = event.currentTarget.dataset;
+    const result = await api.group.reviewMember({ groupId: group.id, userId: id, approve: action === 'approve' });
+    if (!result.ok) wx.showToast({ title: result.message, icon: 'none' });
+    await this.load();
+  },
+
+  onOpenReportedStory(event: WechatMiniprogram.TouchEvent) {
+    const group = this.data.group;
+    const { id } = event.currentTarget.dataset;
+    if (!group) return;
+    wx.navigateTo({ url: `/pages/story/detail?storyId=${id}&groupId=${group.id}` });
+  },
+
+  onResolveReport(event: WechatMiniprogram.TouchEvent) {
+    const { group, canInvite } = this.data;
+    const { id, action } = event.currentTarget.dataset;
+    if (!group || !canInvite || (action !== 'hide' && action !== 'dismiss')) return;
+    wx.showModal({
+      title: action === 'hide' ? '隐藏这条故事？' : '关闭这条举报？',
+      success: async ({ confirm }) => {
+        if (!confirm) return;
+        const result = await api.moderation.resolveReport({ groupId: group.id, reportId: id, decision: action });
+        if (!result.ok) wx.showToast({ title: result.message, icon: 'none' });
+        await this.load();
+      },
+    });
   },
 
   async onCreateInvite() {

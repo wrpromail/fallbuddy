@@ -189,7 +189,7 @@ async function persist() {
 
 function publicRecords() {
   return records.map(({ id, member, anonymous, regionId, severity, sport, note, happenedAt }) => ({
-    id, member, anonymous: !!anonymous, regionId, severity, sport: sport ?? null, note: note ?? null, happenedAt: happenedAt ?? null,
+    id, member: anonymous ? '匿名群友' : member, anonymous: !!anonymous, regionId, severity, sport: sport ?? null, note: note ?? null, happenedAt: happenedAt ?? null,
   }));
 }
 
@@ -369,7 +369,8 @@ const server = http.createServer(async (req, res) => {
     };
     records.unshift(rec);
     await persist();
-    return send(res, 201, { created: rec, ...recordsPayload() });
+    const payload = recordsPayload();
+    return send(res, 201, { created: payload.records.find((record) => record.id === rec.id), ...payload });
   }
   const delMatch = p.match(/^\/api\/records\/([A-Za-z0-9_]+)$/);
   if (delMatch && req.method === 'DELETE') {

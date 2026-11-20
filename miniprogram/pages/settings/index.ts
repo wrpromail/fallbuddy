@@ -1,4 +1,4 @@
-import { api } from '../../services/api';
+import { api, DATA_SOURCE } from '../../services/api';
 import { resetState } from '../../services/store';
 import type { UserPreferences } from '../../shared/types';
 
@@ -8,6 +8,7 @@ interface SettingsPageData {
   prefs: UserPreferences;
   appVersion: string;
   dataSource: string;
+  isCloud: boolean;
   reduceMotion: boolean;
 }
 
@@ -24,7 +25,8 @@ Page({
     saving: false,
     prefs: DEFAULT_PREFS,
     appVersion: '0.1.0',
-    dataSource: '本地 mock（不联网）',
+    dataSource: DATA_SOURCE === 'cloud' ? '微信云开发' : '本地演示数据',
+    isCloud: DATA_SOURCE === 'cloud',
     reduceMotion: false,
   } as SettingsPageData,
 
@@ -70,6 +72,7 @@ Page({
   },
 
   onReset() {
+    if (this.data.isCloud) return;
     wx.showModal({
       title: '重置本地演示数据？',
       content: '会清空你在这台设备上创建的故事、互动与换装，恢复到初始的 6 位雪友演示数据。',

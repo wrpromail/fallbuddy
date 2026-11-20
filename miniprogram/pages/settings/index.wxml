@@ -41,7 +41,7 @@
   </view>
 
   <view class="panel card">
-    <view class="panel__head"><view class="section-title">数据</view><view class="tiny muted">V0 只存在本机</view></view>
+    <view class="panel__head"><view class="section-title">数据</view></view>
     <view class="kv">
       <view class="kv__k">数据源</view>
       <view class="kv__v">{{dataSource}}</view>
@@ -50,11 +50,7 @@
       <view class="kv__k">版本</view>
       <view class="kv__v">V0 · {{appVersion}}</view>
     </view>
-    <view class="kv">
-      <view class="kv__k">云函数 / 录音 / AI</view>
-      <view class="kv__v">V1 再接入</view>
-    </view>
-    <view class="reset" bindtap="onReset">重置本地演示数据</view>
+    <view wx:if="{{!isCloud}}" class="reset" bindtap="onReset">重置本地演示数据</view>
   </view>
 
   <view class="panel card">
@@ -64,7 +60,7 @@
       <view class="bullet">不采集手机号、真实好友列表或微信群成员列表。</view>
       <view class="bullet">故事公开范围由作者逐个圈子确认，分享卡片不授予查看权限。</view>
       <view class="bullet">「圈子」是应用内受邀群体，不等于微信群全体成员。</view>
-      <view class="bullet">V0 未接内容安全与审核后台，正式发布前必须补齐。</view>
+
     </view>
     <view class="about" bindtap="onAbout">查看项目说明</view>
   </view>

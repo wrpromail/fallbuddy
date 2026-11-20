@@ -1,0 +1,18 @@
+<view class="incident-map">
+  <button class="btn btn--ghost" bindtap="toggle">
+    {{open ? '收起人体图' : (selectable ? '在人体图上选部位' : '在人体图上查看部位')}}
+  </button>
+  <block wx:if="{{open}}">
+    <view class="incident-map__controls">
+      <button class="btn {{mode === 'bones' ? 'btn--primary' : ''}}" data-mode="bones" bindtap="switchMode">骨骼</button>
+      <button class="btn {{mode === 'muscles' ? 'btn--primary' : ''}}" data-mode="muscles" bindtap="switchMode">浅层肌肉</button>
+      <button class="btn {{view === 'front' ? 'btn--primary' : ''}}" data-view="front" bindtap="switchView">正面</button>
+      <button class="btn {{view === 'back' ? 'btn--primary' : ''}}" data-view="back" bindtap="switchView">背面</button>
+    </view>
+    <view class="incident-map__figure">
+      <skeleton-map view="{{view}}" appearance-mode="{{mode}}" selected-parts="{{parts}}"
+        selection-only="{{!selectable}}" bind:hotspot="selectPart" />
+    </view>
+    <view class="muted tiny">左右按人体自身标记 · Écorché · CC BY-SA 4.0</view>
+  </block>
+</view>

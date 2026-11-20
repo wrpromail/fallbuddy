@@ -45,21 +45,33 @@ function checkEnumList(value: unknown, rules: ListRules): string | null {
   return null;
 }
 
-export function validateCreateStoryInput(input: CreateStoryInput): string | null {
+export function validateCreateStoryInput(input: CreateStoryInput, draft = false): string | null {
   if (!input || !input.incident || !input.story) return '内容不完整';
   const { incident, story } = input;
 
   if (typeof story.title !== 'string' || typeof story.body !== 'string') return '标题与正文不能为空';
   const title = story.title.trim();
   const body = story.body.trim();
-  if (!title || title.length > 24) return '标题需要 1–24 个字';
-  if (!body || body.length > 140) return '正文需要 1–140 个字';
+  if ((!draft && !title) || title.length > 24) return '标题需要 1–24 个字';
+  if ((!draft && !body) || body.length > 140) return '正文需要 1–140 个字';
+  if (incident.userSummary !== undefined && (typeof incident.userSummary !== 'string' || incident.userSummary.length > 140)) {
+    return '事故自述最多 140 个字';
+  }
+  if (incident.happenedOn !== undefined) {
+    if (typeof incident.happenedOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(incident.happenedOn)) {
+      return '发生日期无效';
+    }
+    const date = new Date(incident.happenedOn + 'T00:00:00Z');
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== incident.happenedOn) {
+      return '发生日期无效';
+    }
+  }
 
   if (!inEnum(SPORTS, incident.sport)) return '运动类型不可用';
 
   const scenarioError = checkEnumList(incident.scenario, {
     allowed: SCENARIOS,
-    min: 1,
+    min: draft ? 0 : 1,
     max: 3,
     invalid: '请选择 1–3 个发生背景',
     dup: '发生背景不能重复选择',
@@ -69,7 +81,7 @@ export function validateCreateStoryInput(input: CreateStoryInput): string | null
 
   const causeError = checkEnumList(incident.selfReportedCause, {
     allowed: CAUSES,
-    min: 1,
+    min: draft ? 0 : 1,
     max: 3,
     invalid: '请选择 1–3 个自述原因，或标记为「原因未知」',
     dup: '自述原因不能重复选择',
@@ -79,7 +91,7 @@ export function validateCreateStoryInput(input: CreateStoryInput): string | null
 
   const bodyPartError = checkEnumList(incident.bodyParts, {
     allowed: BODY_PARTS,
-    min: 1,
+    min: draft ? 0 : 1,
     max: 3,
     invalid: '请选择 1–3 个身体部位',
     dup: '身体部位不能重复选择',
@@ -102,6 +114,10 @@ export function validateCreateStoryInput(input: CreateStoryInput): string | null
   if (!inEnum(TONES, story.tone)) return '语气不可用';
   if (story.visibility !== undefined && story.visibility !== 'groups' && story.visibility !== 'self') {
     return '可见范围不可用';
+  }
+  const groups = story.visibilityGroupIds;
+  if (groups !== undefined && (!Array.isArray(groups) || groups.some((id) => typeof id !== 'string' || !id))) {
+    return '可见圈子无效';
   }
   if (
     typeof story.allowFunnyActions !== 'boolean' ||

@@ -18,7 +18,9 @@
     "shots": "npm run preview && node scripts/preview-shots.mjs",
     "check:wxml": "node scripts/check-wxml.mjs",
     "anatomy": "node anatomy-web/server.mjs",
-    "anatomy:qa": "node scripts/anatomy-qa.mjs"
+    "anatomy:qa": "node scripts/anatomy-qa.mjs",
+    "build:cloud": "npm run build:test && node scripts/build-cloud.mjs",
+    "test:cloud": "npm run build:cloud && node --test tests/cloud.qa.mjs"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^5.3.1",

@@ -15,6 +15,8 @@ interface AtlasPageData {
   groupIndex: number;
   group: GroupSummary | null;
   view: 'front' | 'back';
+  appearanceMode: 'q' | 'bones' | 'muscles';
+  showMarkers: boolean;
   period: 'week' | 'all';
   atlas: AtlasData | null;
   hottest: HottestBar[];
@@ -36,6 +38,8 @@ Page({
     groupIndex: 0,
     group: null,
     view: 'front',
+    appearanceMode: 'q',
+    showMarkers: true,
     period: 'all',
     atlas: null,
     hottest: [],
@@ -139,6 +143,16 @@ Page({
     this.refreshAtlas();
   },
 
+  onSwitchAppearance(event: WechatMiniprogram.TouchEvent) {
+    const { mode } = event.currentTarget.dataset;
+    if (mode !== 'q' && mode !== 'bones' && mode !== 'muscles') return;
+    this.setData({ appearanceMode: mode, showMarkers: mode === 'q' });
+  },
+
+  onToggleMarkers(event: WechatMiniprogram.SwitchChange) {
+    this.setData({ showMarkers: event.detail.value });
+  },
+
   onSwitchPeriod(event: WechatMiniprogram.TouchEvent) {
     const period = (event.currentTarget.dataset as { period: string }).period === 'week' ? 'week' : 'all';
     if (period === this.data.period) return;
@@ -152,7 +166,7 @@ Page({
     const spot = atlas.hotspots.find((item) => item.id === event.detail.id);
     const stories = atlas.stories.filter((story) => story.bodyParts.includes(event.detail.id as BodyPart));
     if (!spot || !stories.length) {
-      wx.showToast({ title: `${event.detail.label}还没有故事`, icon: 'none' });
+      this.openCreate(event.detail.id);
       return;
     }
     this.setData({
@@ -180,8 +194,17 @@ Page({
   },
 
   onCreate() {
-    const group = this.data.group;
-    wx.navigateTo({ url: `/pages/incident/create${group ? `?groupId=${group.id}` : ''}` });
+    this.openCreate();
+  },
+
+  onCreateAtSpot() {
+    const part = this.data.sheetSpot?.id;
+    this.setData({ sheetOpen: false });
+    this.openCreate(part);
+  },
+
+  openCreate(part?: string) {
+    wx.navigateTo({ url: `/pages/incident/create${part ? `?bodyPart=${encodeURIComponent(part)}` : ''}` });
   },
 
   onGroup() {

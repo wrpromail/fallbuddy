@@ -1,5 +1,8 @@
 {
   "navigationBarTitleText": "故事",
   "enablePullDownRefresh": false,
-  "navigationBarBackgroundColor": "#F2F6FF"
+  "navigationBarBackgroundColor": "#F2F6FF",
+  "usingComponents": {
+    "incident-map": "/components/incident-map/index"
+  }
 }

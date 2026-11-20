@@ -6,7 +6,9 @@
   "miniprogramRoot": "miniprogram/",
   "srcMiniprogramRoot": "miniprogram/",
   "setting": {
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "urlCheck": false,
     "es6": true,
     "enhance": true,
@@ -33,5 +35,6 @@
   "packOptions": {
     "ignore": [],
     "include": []
-  }
+  },
+  "cloudfunctionRoot": "cloudfunctions/"
 }

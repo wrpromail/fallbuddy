@@ -1,5 +1,8 @@
-<view class="map">
+<view class="map {{plate ? 'map--standard' : ''}}">
+  <image wx:if="{{plate}}" class="map__figure" src="{{plate}}" mode="scaleToFill"
+    aria-label="{{appearanceMode === 'bones' ? '成人骨骼图' : '成人浅层肌肉图'}}" />
   <avatar-rig
+    wx:else
     class="map__figure"
     view="{{view}}"
     mode="full"
@@ -8,10 +11,11 @@
     equipped="{{figEquipped}}"
     reduce-motion="{{reduceMotion}}"
   />
+  <block wx:if="{{showMarkers}}">
   <view
     wx:for="{{spots}}"
     wx:key="id"
-    class="spot {{item.count ? 'spot--active' : ''}}"
+    class="spot {{item.count ? 'spot--active' : ''}} {{item.selected ? 'spot--selected' : ''}}"
     style="left:{{item.left}}%;top:{{item.top}}%"
     data-id="{{item.id}}"
     data-label="{{item.label}}"
@@ -19,8 +23,9 @@
     aria-role="button"
     aria-label="{{item.label}}（{{item.count}} 条故事）"
   >
-    <view wx:if="{{item.sticker}}" class="spot__sticker">{{item.sticker}}</view>
-    <view wx:if="{{item.chips.length}}" class="stack">
+    <view wx:if="{{item.sticker && !plate}}" class="spot__sticker">{{item.sticker}}</view>
+    <view wx:if="{{plate && item.count}}" class="spot__count">{{item.count}}</view>
+    <view wx:elif="{{item.chips.length}}" class="stack">
       <view
         wx:for="{{item.chips}}"
         wx:for-item="chip"
@@ -40,4 +45,5 @@
     </view>
     <view wx:else class="dot"></view>
   </view>
+  </block>
 </view>

@@ -128,8 +128,12 @@
 
   <view class="stories">
     <view class="between">
-      <view class="section-title">我的故事</view>
+      <view class="section-title">我的经历</view>
       <view class="tiny muted">{{myStories.length}} 条</view>
+    </view>
+    <view class="between">
+      <button class="btn" bindtap="onNewStory">新建事故记录</button>
+      <button wx:if="{{hasDraft}}" class="btn" bindtap="onResumeDraft">继续写私人草稿</button>
     </view>
     <view class="stories__list">
       <story-card wx:for="{{myStories}}" wx:key="id" story="{{item}}" bind:select="onSelectStory" />

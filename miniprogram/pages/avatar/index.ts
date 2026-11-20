@@ -15,6 +15,7 @@ interface AvatarPageData {
   avatar: AvatarState | null;
   inventory: InventoryView[];
   myStories: AtlasStoryCard[];
+  hasDraft: boolean;
   expressions: { id: Expression; label: string; emoji: string; selected: boolean }[];
   palettes: { id: Palette; color: string; selected: boolean }[];
   outfits: GearOption[];
@@ -55,6 +56,7 @@ Page({
     avatar: null,
     inventory: [],
     myStories: [],
+    hasDraft: false,
     expressions: EXPRESSIONS.map((id) => ({ id, label: EXPRESSION_LABEL[id], emoji: EXPRESSION_EMOJI[id], selected: false })),
     palettes: PALETTES.map((id) => ({ id, color: PALETTE_COLOR[id], selected: false })),
     outfits: [],
@@ -79,10 +81,11 @@ Page({
 
   async load() {
     this.setData({ loading: true, error: '' });
-    const [avatarRes, invRes, storiesRes, weeklyRes] = await Promise.all([
+    const [avatarRes, invRes, storiesRes, draftRes, weeklyRes] = await Promise.all([
       api.avatar.getMine(),
       api.inventory.getMine(),
       api.story.listMine(),
+      api.story.getDraft(),
       api.inventory.getWeekly(),
     ]);
     if (!avatarRes.ok) {
@@ -102,6 +105,7 @@ Page({
       avatar,
       inventory: inventory.filter((item) => item.category !== 'cosmetic'),
       myStories: storiesRes.ok ? storiesRes.data : [],
+      hasDraft: draftRes.ok && !!draftRes.data,
       outfits,
       headgears,
       gogglesOn: !!avatar.equipped.goggles,
@@ -196,6 +200,14 @@ Page({
       wx.showToast({ title: '本周补给已到账', icon: 'success' });
     }
     this.load();
+  },
+
+  onNewStory() {
+    wx.navigateTo({ url: '/pages/incident/create' });
+  },
+
+  onResumeDraft() {
+    wx.navigateTo({ url: '/pages/incident/create?resume=1' });
   },
 
   onSelectStory(event: WechatMiniprogram.CustomEvent<{ storyId: string }>) {

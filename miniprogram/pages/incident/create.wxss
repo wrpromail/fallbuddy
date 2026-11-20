@@ -270,6 +270,8 @@
 
 .footer {
   position: fixed;
+  display: flex;
+  gap: 16rpx;
   left: 0;
   right: 0;
   bottom: 0;
@@ -279,7 +281,7 @@
 }
 
 .footer__btn {
-  width: 100%;
+  flex: 1;
   height: 92rpx;
   font-size: 30rpx;
 }

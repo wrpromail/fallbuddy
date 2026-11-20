@@ -24,7 +24,7 @@ import {
   type Tone,
 } from '../../shared/enums';
 import { sensitiveWarning } from '../../shared/moderation';
-import type { AvatarState, GroupSummary, UserPreferences } from '../../shared/types';
+import type { AvatarState, CreateStoryInput, GroupSummary, StoryDraft, UserPreferences } from '../../shared/types';
 
 interface Option<T extends string> {
   id: T;
@@ -50,6 +50,12 @@ interface GroupChip {
 
 interface CreatePageData {
   loading: boolean;
+  loadError: string;
+  editing: boolean;
+  draftAvailable: boolean;
+  savingDraft: boolean;
+  happenedOn: string;
+  userSummary: string;
   groups: GroupSummary[];
   groupChips: GroupChip[];
   myAvatar: AvatarState | null;
@@ -119,6 +125,12 @@ function toggle<T>(list: T[], value: T, max: number): { list: T[]; limited: bool
 Page({
   data: {
     loading: true,
+    loadError: '',
+    editing: false,
+    draftAvailable: false,
+    savingDraft: false,
+    happenedOn: '',
+    userSummary: '',
     groups: [],
     groupChips: [],
     myAvatar: null,
@@ -136,7 +148,7 @@ Page({
     ],
     scenarios: options(SCENARIOS, SCENARIO_LABEL),
     causes: options(CAUSES, CAUSE_LABEL),
-    parts: options(BODY_PARTS.filter((id) => id !== 'other'), BODY_PART_LABEL),
+    parts: options(BODY_PARTS, BODY_PART_LABEL),
     impacts: options(IMPACT_KINDS, IMPACT_LABEL).map((item) => ({ ...item, selected: item.id === 'near_miss' })),
     protections: options(PROTECTIVE_ITEMS, PROTECTIVE_LABEL),
     tones: options(TONES, TONE_LABEL).map((item) => ({ ...item, selected: item.id === 'humorous' })),
@@ -164,10 +176,15 @@ Page({
     canSubmit: false,
   } as CreatePageData,
 
-  pendingGroupId: '',
+  storyId: '',
+  version: 0,
+  draft: null as StoryDraft | null,
+  usingDraft: false,
+  lastSubmission: null as { signature: string; id: string } | null,
 
   onLoad(query: Record<string, string | undefined>) {
-    this.pendingGroupId = query.groupId ?? '';
+    this.storyId = query.storyId ?? '';
+    this.setData({ editing: !!this.storyId });
     if (query.bodyPart) {
       const part = query.bodyPart as BodyPart;
       if ((BODY_PARTS as readonly string[]).includes(part)) {
@@ -179,34 +196,89 @@ Page({
         });
       }
     }
-    this.load();
+    this.load(query.resume === '1');
   },
 
-  async load() {
-    const [groupsRes, meRes] = await Promise.all([api.group.listMine(), api.auth.ensureUser()]);
-    const groups = groupsRes.ok ? groupsRes.data : [];
-    const prefs: UserPreferences | null = meRes.ok ? meRes.data.preferences : null;
-    const avatar = meRes.ok ? meRes.data.avatar : null;
-    const pending = this.pendingGroupId;
-    const checkedIndex = pending ? groups.findIndex((group) => group.id === pending) : 0;
-    const groupChips: GroupChip[] = groups.map((group, index) => ({
-      id: group.id,
-      name: group.name,
-      memberCount: group.memberCount,
-      checked: index === Math.max(0, checkedIndex),
-    }));
+  async load(resume: boolean) {
+    const [groupsRes, meRes, draftRes, detailRes] = await Promise.all([
+      api.group.listMine(),
+      api.auth.ensureUser(),
+      this.storyId ? null : api.story.getDraft(),
+      this.storyId ? api.story.getDetail({ storyId: this.storyId }) : null,
+    ]);
+    if (!groupsRes.ok || !meRes.ok || (draftRes && !draftRes.ok) || (detailRes && !detailRes.ok)) {
+      this.setData({ loading: false, loadError: '无法加载记录，请返回后重试' });
+      return;
+    }
+    if (detailRes?.ok && (!detailRes.data.viewerIsAuthor || detailRes.data.story.publishStatus !== 'published')) {
+      this.setData({ loading: false, loadError: '这条记录当前不可编辑' });
+      return;
+    }
+    const groups = groupsRes.data;
+    const prefs: UserPreferences = meRes.data.preferences;
+    const avatar = meRes.data.avatar;
+    this.draft = draftRes?.ok ? draftRes.data : null;
     this.setData({
-      loading: false,
       groups,
-      groupChips,
+      groupChips: groups.map((group) => ({ id: group.id, name: group.name, memberCount: group.memberCount, checked: false })),
       myAvatar: avatar,
       avatarPalette: avatar?.palette ?? 'blue',
       avatarExpression: avatar?.expression ?? 'happy',
       avatarEquipped: avatar?.equipped ?? null,
-      isAnonymous: prefs?.anonymousByDefault ?? false,
-      // 方案 4.2 建议默认关闭；作者可在发布页手动打开
-      allowFunnyActions: false,
-      allowGifts: prefs?.allowGifts ?? true,
+      isAnonymous: prefs.anonymousByDefault,
+      allowGifts: prefs.allowGifts,
+      draftAvailable: !!this.draft,
+    });
+    if (detailRes?.ok) {
+      const { incident, story } = detailRes.data;
+      this.version = story.version;
+      this.applyInput({ incident, story });
+    } else if (resume && this.draft) {
+      this.usingDraft = true;
+      this.applyInput(this.draft.input);
+    }
+    this.setData({ loading: false });
+    this.refreshSubmitState();
+  },
+
+  applyInput({ incident, story }: CreateStoryInput) {
+    const { sport, scenario, selfReportedCause, bodyParts, impactKind, protectiveItems } = incident;
+    const { title, body, tone, visibilityGroupIds } = story;
+    const userSummary = incident.userSummary ?? '';
+    this.setData({
+      sport,
+      scenario,
+      cause: selfReportedCause,
+      bodyParts,
+      impactKind,
+      protectiveItems,
+      tone,
+      title,
+      body,
+      userSummary,
+      happenedOn: incident.happenedOn ?? '',
+      titleLen: title.length,
+      bodyLen: body.length,
+      sports: markSelected(this.data.sports, [sport]),
+      scenarios: markSelected(this.data.scenarios, scenario),
+      causes: markSelected(this.data.causes, selfReportedCause),
+      parts: markSelected(this.data.parts, bodyParts),
+      impacts: markSelected(this.data.impacts, [impactKind]),
+      protections: markSelected(this.data.protections, protectiveItems),
+      tones: markSelected(this.data.tones, [tone]),
+      selectedPartLabels: bodyParts.map((part) => BODY_PART_LABEL[part]),
+      presets: PRESETS[bodyParts[0]] ?? FALLBACK_PRESETS,
+      impactLabel: IMPACT_LABEL[impactKind],
+      toneLabel: TONE_LABEL[tone],
+      sensitive: sensitiveWarning([title, body, userSummary].join(' ')),
+      isAnonymous: story.isAnonymous,
+      allowFunnyActions: story.allowFunnyActions,
+      allowGifts: story.allowGifts,
+      selfOnly: story.visibility === 'self',
+      groupChips: this.data.groupChips.map((group) => ({
+        ...group,
+        checked: visibilityGroupIds.includes(group.id),
+      })),
     });
     this.refreshSubmitState();
   },
@@ -220,7 +292,7 @@ Page({
       scenario.length >= 1 &&
       cause.length >= 1 &&
       (selfOnly || groupChips.some((group) => group.checked));
-    this.setData({ canSubmit });
+    this.setData({ canSubmit: canSubmit && !this.data.loading && !this.data.loadError });
   },
 
   onSport(event: WechatMiniprogram.TouchEvent) {
@@ -266,21 +338,31 @@ Page({
       if (result.limited) return this.tooMany('原因最多选 3 个');
       this.setData({ cause: result.list, causes: markSelected(this.data.causes, result.list) });
     } else if (dataset.kind === 'bodyParts') {
-      const result = toggle(this.data.bodyParts, dataset.id as BodyPart, 3);
-      if (result.limited) return this.tooMany('身体部位最多选 3 个');
-      const first = result.list[0];
-      this.setData({
-        bodyParts: result.list,
-        parts: markSelected(this.data.parts, result.list),
-        selectedPartLabels: result.list.map((part) => BODY_PART_LABEL[part]),
-        presets: first ? (PRESETS[first] ?? FALLBACK_PRESETS) : FALLBACK_PRESETS,
-      });
+      this.toggleBodyPart(dataset.id as BodyPart);
     } else {
       const result = toggle(this.data.protectiveItems, dataset.id as ProtectiveItem, 7);
       if (result.limited) return this.tooMany('护具最多选 7 个');
       this.setData({ protectiveItems: result.list, protections: markSelected(this.data.protections, result.list) });
     }
     this.refreshSubmitState();
+  },
+
+  onSelectPart(event: WechatMiniprogram.CustomEvent<{ id: BodyPart }>) {
+    this.toggleBodyPart(event.detail.id);
+    this.refreshSubmitState();
+  },
+
+  toggleBodyPart(part: BodyPart) {
+    if (!BODY_PARTS.includes(part)) return;
+    const result = toggle(this.data.bodyParts, part, 3);
+    if (result.limited) return this.tooMany('身体部位最多选 3 个');
+    const first = result.list[0];
+    this.setData({
+      bodyParts: result.list,
+      parts: markSelected(this.data.parts, result.list),
+      selectedPartLabels: result.list.map((id) => BODY_PART_LABEL[id]),
+      presets: first ? (PRESETS[first] ?? FALLBACK_PRESETS) : FALLBACK_PRESETS,
+    });
   },
 
   tooMany(message: string) {
@@ -295,7 +377,7 @@ Page({
 
   onBodyInput(event: WechatMiniprogram.Input) {
     const body = event.detail.value;
-    this.setData({ body, bodyLen: body.length, sensitive: sensitiveWarning(body) });
+    this.setData({ body, bodyLen: body.length, sensitive: sensitiveWarning([body, this.data.userSummary].join(' ')) });
     this.refreshSubmitState();
   },
 
@@ -330,54 +412,128 @@ Page({
     this.setData({ allowGifts: event.detail.value });
   },
 
-  async onSubmit() {
-    if (this.data.submitting) return;
-    const { title, body, bodyParts, scenario, cause, groupChips } = this.data;
-    if (!title.trim()) return wx.showToast({ title: '先起个标题吧', icon: 'none' });
-    if (!body.trim()) return wx.showToast({ title: '写一句当时的经过', icon: 'none' });
-    if (!bodyParts.length) return wx.showToast({ title: '选一下身体部位', icon: 'none' });
-    if (!scenario.length) return wx.showToast({ title: '选一下发生背景', icon: 'none' });
-    if (!cause.length) return wx.showToast({ title: '选一下原因，或选「原因未知」', icon: 'none' });
-    const groupIds = this.data.selfOnly
-      ? []
-      : groupChips.filter((group) => group.checked).map((group) => group.id);
-    if (!this.data.selfOnly && !groupIds.length) {
-      return wx.showToast({ title: '至少选择一个可见圈子，或选择「仅自己可见」', icon: 'none' });
-    }
+  onHappenedOn(event: WechatMiniprogram.PickerChange) {
+    this.setData({ happenedOn: String(event.detail.value) });
+  },
 
-    this.setData({ submitting: true });
-    const res = await api.story.publish({
-      requestId: requestId(),
-      input: {
-        incident: {
-          sport: this.data.sport,
-          scenario,
-          selfReportedCause: cause,
-          bodyParts,
-          impactKind: this.data.impactKind,
-          protectiveItems: this.data.protectiveItems,
-          userSummary: body,
-        },
-        story: {
-          title: title.trim(),
-          body: body.trim(),
-          tone: this.data.tone,
-          visibility: this.data.selfOnly ? 'self' : 'groups',
-          visibilityGroupIds: groupIds,
-          allowFunnyActions: this.data.allowFunnyActions,
-          allowGifts: this.data.allowGifts,
-          isAnonymous: this.data.isAnonymous,
-        },
+  onClearDate() {
+    this.setData({ happenedOn: '' });
+  },
+
+  onSummaryInput(event: WechatMiniprogram.Input) {
+    const userSummary = event.detail.value;
+    this.setData({ userSummary, sensitive: sensitiveWarning([this.data.body, userSummary].join(' ')) });
+  },
+
+  formInput(): CreateStoryInput {
+    const data = this.data;
+    return {
+      incident: {
+        sport: data.sport,
+        scenario: data.scenario,
+        selfReportedCause: data.cause,
+        bodyParts: data.bodyParts,
+        impactKind: data.impactKind,
+        protectiveItems: data.protectiveItems,
+        userSummary: data.userSummary.trim() || undefined,
+        happenedOn: data.happenedOn || undefined,
+      },
+      story: {
+        title: data.title.trim(),
+        body: data.body.trim(),
+        tone: data.tone,
+        visibility: data.selfOnly ? 'self' : 'groups',
+        visibilityGroupIds: data.selfOnly ? [] : data.groupChips.filter((group) => group.checked).map((group) => group.id),
+        allowFunnyActions: data.allowFunnyActions,
+        allowGifts: data.allowGifts,
+        isAnonymous: data.isAnonymous,
+      },
+    };
+  },
+
+  onResumeDraft() {
+    if (!this.draft || this.data.savingDraft || this.data.submitting) return;
+    const draft = this.draft;
+    wx.showModal({
+      title: '继续写私人草稿',
+      content: '打开已保存的内容后，当前表单里尚未保存的修改会被替换。',
+      confirmText: '打开草稿',
+      success: ({ confirm }) => {
+        if (!confirm) return;
+        this.usingDraft = true;
+        this.applyInput(draft.input);
       },
     });
-    this.setData({ submitting: false });
-    if (!res.ok) {
-      wx.showToast({ title: res.message, icon: 'none' });
+  },
+
+  onSaveDraft() {
+    if (this.storyId || this.data.loading || this.data.loadError || this.data.submitting || this.data.savingDraft) return;
+    if (!this.draft || this.usingDraft) {
+      void this.saveDraft();
       return;
     }
-    wx.showToast({ title: '发布成功', icon: 'success' });
-    setTimeout(() => {
-      wx.redirectTo({ url: `/pages/story/detail?storyId=${res.data.storyId}${groupIds[0] ? `&groupId=${groupIds[0]}` : ''}` });
-    }, 500);
+    wx.showModal({
+      title: '替换已保存的草稿？',
+      content: '当前设备为你保留一份私人草稿。',
+      confirmText: '替换',
+      success: ({ confirm }) => {
+        if (confirm) void this.saveDraft();
+      },
+    });
+  },
+
+  async saveDraft() {
+    this.setData({ savingDraft: true });
+    try {
+      const res = await api.story.saveDraft({ input: this.formInput(), version: this.draft?.version ?? 0 });
+      if (!res.ok) {
+        wx.showToast({ title: res.message, icon: 'none' });
+        return;
+      }
+      this.draft = res.data;
+      this.usingDraft = true;
+      this.setData({ draftAvailable: true });
+      wx.showToast({ title: '已保存私人草稿', icon: 'success' });
+    } catch {
+      wx.showToast({ title: '草稿保存失败，请重试', icon: 'none' });
+    } finally {
+      this.setData({ savingDraft: false });
+    }
+  },
+
+  async onSubmit() {
+    if (!this.data.canSubmit || this.data.submitting || this.data.savingDraft) return;
+    const input = this.formInput();
+    const signature = JSON.stringify(input);
+    if (this.lastSubmission?.signature !== signature) this.lastSubmission = { signature, id: requestId() };
+    const id = this.lastSubmission.id;
+    this.setData({ submitting: true });
+    try {
+      const res = this.storyId
+        ? await api.story.update({ storyId: this.storyId, version: this.version, input, requestId: id })
+        : await api.story.publish({
+          input,
+          requestId: id,
+          draftVersion: this.usingDraft ? this.draft?.version : undefined,
+        });
+      if (!res.ok) {
+        if (res.code === 'CONFLICT') {
+          wx.showModal({ title: '记录有更新', content: res.message, showCancel: false });
+        } else {
+          wx.showToast({ title: res.message, icon: 'none' });
+        }
+        return;
+      }
+      wx.showToast({ title: this.storyId ? '已保存修改' : '已记录', icon: 'success' });
+      if (this.storyId) {
+        wx.navigateBack({ fail: () => wx.redirectTo({ url: `/pages/story/detail?storyId=${this.storyId}` }) });
+      } else {
+        wx.redirectTo({ url: `/pages/story/detail?storyId=${res.data.storyId}` });
+      }
+    } catch {
+      wx.showToast({ title: '暂时无法提交，请重试', icon: 'none' });
+    } finally {
+      this.setData({ submitting: false });
+    }
   },
 });

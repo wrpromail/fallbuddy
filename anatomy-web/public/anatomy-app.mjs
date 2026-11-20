@@ -109,8 +109,8 @@ function renderRegionCard() {
 
   const d = state.dist[id];
   $('#rgInjured').innerHTML = d?.count
-    ? d.members.map((m) => `<span class="chip member">${m.name} ${severityDots(m.severity)}</span>`).join('')
-    : '<span class="chip ok">这个部位全员完好 ✔</span>';
+    ? d.members.map((m) => `<span class="chip member">${escapeHtml(m.name)} ${severityDots(m.severity)}</span>`).join('')
+    : '<span class="chip ok">这个部位暂无演示记录</span>';
 
   $('#aiText').hidden = true;
 }
@@ -126,7 +126,7 @@ function renderBoard() {
       <span class="badge">${regionLabel}</span>
       ${severityDots(r.severity)}
       <span class="note">${escapeHtml(r.note ?? '')}</span>
-      <span class="date">${(r.happenedAt ?? '').slice(5)}</span>
+      <span class="date">${escapeHtml((r.happenedAt ?? '').slice(5))}</span>
       <button class="del" data-id="${r.id}" title="删除这条演示记录">✕</button>
     </li>`;
   }).join('');

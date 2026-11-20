@@ -5,6 +5,8 @@ import {
   EQUIP_SLOTS,
   EXPRESSIONS,
   PALETTES,
+  UPDATE_TYPES,
+  type UpdateType,
   type BodyPart,
   type Expression,
   type Palette,
@@ -13,7 +15,7 @@ import { addDays, dayKey, hashString, isThisWeek, relativeTime, weekKey } from '
 import { findSensitiveInfo } from '../../shared/moderation';
 import { validateCreateStoryInput } from '../../shared/validation';
 import { hotspotsFor, resolveRigLayers } from '../../shared/rig';
-import { loadState, saveState } from '../store';
+import { inviteTokenHash, loadState, loadStateForWrite, mintInviteToken, saveState } from '../store';
 import type { DbState, UserRecord } from '../../shared/db-types';
 import type {
   ActionId,
@@ -37,6 +39,8 @@ import type {
   ReactionSummary,
   Story,
   StoryDetail,
+  StoryDraft,
+  StoryReport,
   StoryUpdate,
   UserPreferences,
   WeeklyStatus,
@@ -347,6 +351,7 @@ async function getAtlas(params: {
     (story) =>
       story.publishStatus === 'published' &&
       story.moderationStatus === 'approved' &&
+      story.visibility !== 'self' &&
       story.visibilityGroupIds.includes(params.groupId) &&
       (period === 'all' || isThisWeek(story.createdAt)),
   );
@@ -360,17 +365,13 @@ async function getAtlas(params: {
     const incident = state.incidents.find((i) => i.id === story.incidentId);
     if (!incident) continue;
     authorCounts.set(story.authorId, (authorCounts.get(story.authorId) ?? 0) + 1);
-    const seenChip = new Set<string>();
-    for (const part of incident.bodyParts) {
+    for (const part of new Set(incident.bodyParts)) {
       partCounts.set(part, (partCounts.get(part) ?? 0) + 1);
       const bucket = byHotspot.get(part);
       if (!bucket) continue;
       bucket.stories.push(story.id);
-      if (!seenChip.has(story.authorId)) {
-        const chip = chipOf(state, story);
-        if (chip && !bucket.users.some((u) => u.userId === chip.userId)) bucket.users.push(chip);
-        seenChip.add(story.authorId);
-      }
+      const chip = chipOf(state, story);
+      if (chip && !bucket.users.some((u) => u.userId === chip.userId)) bucket.users.push(chip);
     }
   }
 
@@ -427,7 +428,8 @@ async function getMembers(groupId: string): Promise<ApiResponse<GroupMemberView[
       const user = userById(state, m.userId);
       const avatar = avatarOf(state, m.userId);
       const storyCount = state.stories.filter(
-        (s) => s.authorId === m.userId && s.publishStatus === 'published' && s.visibilityGroupIds.includes(groupId),
+        (s) => s.authorId === m.userId && s.publishStatus === 'published' && s.moderationStatus === 'approved' &&
+          s.visibility !== 'self' && s.visibilityGroupIds.includes(groupId),
       ).length;
       if (!user || !avatar) return null;
       return {
@@ -456,11 +458,12 @@ async function createInvite(params: {
   const role = membershipRole(state, params.groupId, state.currentUserId);
   if (!role) return fail('NOT_MEMBER', '你还不在这个圈子里', requestId);
   if (role !== 'owner' && role !== 'admin') return fail('UNAUTHORIZED', '只有圈主或管理员可以邀请', requestId);
-  const token = `inv_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+  const token = mintInviteToken();
   const ttl = params.ttlHours ?? 48;
+  if (!Number.isInteger(ttl) || ttl < 1 || ttl > 48) return fail('VALIDATION_FAILED', '邀请有效期应为 1–48 小时', requestId);
   const expiresAt = new Date(Date.now() + ttl * 60 * 60 * 1000).toISOString();
   state.invites.push({
-    tokenHash: hashString(token).toString(36),
+    tokenHash: inviteTokenHash(token),
     groupId: params.groupId,
     ownerId: state.currentUserId,
     expiresAt,
@@ -476,28 +479,65 @@ async function join(params: { inviteToken: string }): Promise<ApiResponse<{ grou
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
-  const hash = hashString(params.inviteToken).toString(36);
+  if (typeof params.inviteToken !== 'string' || !/^inv_[a-zA-Z0-9_-]{1,100}$/.test(params.inviteToken)) {
+    return fail('NOT_FOUND', '邀请链接无效或已撤销', requestId);
+  }
+  const hash = inviteTokenHash(params.inviteToken);
   const invite = state.invites.find((i) => i.tokenHash === hash && i.status === 'active');
   if (!invite) return fail('NOT_FOUND', '邀请链接无效或已撤销', requestId);
   if (Date.parse(invite.expiresAt) < Date.now()) return fail('NOT_FOUND', '邀请链接已过期', requestId);
   if (invite.uses >= invite.maxUses) return fail('NOT_FOUND', '邀请链接已达到使用上限', requestId);
   const existing = state.memberships.find((m) => m.groupId === invite.groupId && m.userId === state.currentUserId);
   if (existing && existing.status === 'active') return ok({ groupId: invite.groupId, status: 'already_member' }, requestId);
+  if (existing?.status === 'pending') return ok({ groupId: invite.groupId, status: 'pending' }, requestId);
+  const group = state.groups.find((item) => item.id === invite.groupId);
+  if (!group) return fail('NOT_FOUND', '圈子不存在', requestId);
+  const status = group.joinMode === 'approval' ? 'pending' : 'active';
   if (existing) {
-    existing.status = 'active';
+    existing.status = status;
     existing.joinedAt = new Date().toISOString();
   } else {
     state.memberships.push({
       groupId: invite.groupId,
       userId: state.currentUserId,
       role: 'member',
-      status: 'active',
+      status,
       joinedAt: new Date().toISOString(),
     });
   }
   invite.uses += 1;
   saveState(state);
-  return ok({ groupId: invite.groupId, status: 'joined' }, requestId);
+  return ok({ groupId: invite.groupId, status: status === 'active' ? 'joined' : 'pending' }, requestId);
+}
+
+function canManageGroup(state: DbState, groupId: string): boolean {
+  const role = membershipRole(state, groupId, state.currentUserId);
+  return role === 'owner' || role === 'admin';
+}
+
+async function getJoinRequests(groupId: string): Promise<ApiResponse<PublicUser[]>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadState();
+  if (!canManageGroup(state, groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以查看申请', requestId);
+  const users = state.users.filter((user) => state.memberships.some((membership) =>
+    membership.groupId === groupId && membership.userId === user.id && membership.status === 'pending'));
+  return ok(users.map((user) => toPublicUser(user, state.currentUserId)), requestId);
+}
+
+async function reviewMember(params: { groupId: string; userId: string; approve: boolean }): Promise<ApiResponse<{ approved: boolean }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadState();
+  if (!canManageGroup(state, params.groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以处理申请', requestId);
+  if (typeof params.approve !== 'boolean') return fail('VALIDATION_FAILED', '处理结果无效', requestId);
+  const pending = state.memberships.find((item) =>
+    item.groupId === params.groupId && item.userId === params.userId && item.status === 'pending');
+  if (!pending) return fail('NOT_FOUND', '申请已处理或不存在', requestId);
+
+  pending.status = params.approve ? 'active' : 'left';
+  saveState(state);
+  return ok({ approved: params.approve }, requestId);
 }
 
 async function leave(params: { groupId: string }): Promise<ApiResponse<{ status: string }>> {
@@ -547,6 +587,7 @@ async function getDetail(params: {
     .filter(
       (u) =>
         u.storyId === story.id &&
+        !u.withdrawnAt &&
         u.moderationStatus === 'approved' &&
         (viewerIsAuthor || (!!groupId && u.visibilityGroupIds.includes(groupId))),
     )
@@ -588,92 +629,224 @@ async function getDetail(params: {
   return ok(detail, requestId);
 }
 
-async function publish(params: {
-  input: CreateStoryInput;
-  requestId: string;
-}): Promise<ApiResponse<{ storyId: string; version: number }>> {
-  const { input } = params;
-  const requestId = params.requestId || nextRequestId();
+async function getDraft(): Promise<ApiResponse<StoryDraft | null>> {
+  const requestId = nextRequestId();
   await latency();
   const state = loadState();
-  const cachedResponse = cached<{ storyId: string; version: number }>(state, 'story.publish', requestId);
-  if (cachedResponse) return cachedResponse;
+  return ok(state.storyDrafts?.[state.currentUserId] ?? null, requestId);
+}
 
-  // 服务端字段校验：长度、枚举成员、去重、类型（规则见 shared/validation.ts，
-  // 与 schemas/incident.schema.json 对齐；V1 云函数必须沿用同一份）
+async function saveDraft(params: { input: CreateStoryInput; version: number }): Promise<ApiResponse<StoryDraft>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const invalid = validateCreateStoryInput(params.input, true);
+  if (invalid) return fail('VALIDATION_FAILED', invalid, requestId);
+
+  const drafts = (state.storyDrafts ??= {});
+  const currentVersion = drafts[state.currentUserId]?.version ?? 0;
+  if (params.version !== currentVersion) return fail('CONFLICT', '草稿已经更新，请重新打开查看', requestId);
+
+  const draft = {
+    input: JSON.parse(JSON.stringify(params.input)) as CreateStoryInput,
+    version: Math.max(currentVersion, state.draftRevision ?? 0) + 1,
+    updatedAt: new Date().toISOString(),
+  };
+  drafts[state.currentUserId] = draft;
+  state.draftRevision = draft.version;
+  saveState(state, true);
+  return ok(draft, requestId);
+}
+
+function validateStoryWrite(state: DbState, input: CreateStoryInput, requestId: string) {
   const invalid = validateCreateStoryInput(input);
   if (invalid) return fail('VALIDATION_FAILED', invalid, requestId);
-  const title = input.story.title.trim();
-  const body = input.story.body.trim();
-  const visibility: Story['visibility'] = input.story.visibility === 'self' ? 'self' : 'groups';
-  const visibilityGroupIds = visibility === 'self' ? [] : [...new Set(input.story.visibilityGroupIds ?? [])];
-  if (visibility === 'groups' && visibilityGroupIds.length < 1) {
-    return fail('VALIDATION_FAILED', '请至少选择一个可见圈子，或选择「仅自己可见」', requestId);
-  }
-  for (const groupId of visibilityGroupIds) {
-    if (!isActiveMember(state, groupId, state.currentUserId)) {
+  if (input.story.visibility !== 'self') {
+    const groupIds = input.story.visibilityGroupIds ?? [];
+    if (!groupIds.length) return fail('VALIDATION_FAILED', '请至少选择一个可见圈子，或选择「仅自己可见」', requestId);
+    if (groupIds.some((groupId) => !isActiveMember(state, groupId, state.currentUserId))) {
       return fail('NOT_MEMBER', '只能发布到你已加入的圈子', requestId);
     }
   }
-  if (findSensitiveInfo(`${title} ${body}`).length) {
+  if (findSensitiveInfo([input.story.title, input.story.body, input.incident.userSummary].filter(Boolean).join(' ')).length) {
     return fail('CONTENT_REJECTED', '内容里疑似包含手机号或证件号，请删除后再发布', requestId);
   }
+  return null;
+}
 
-  const storyId = `sty_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  const incidentId = `inc_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+function incidentFields(input: CreateStoryInput['incident']) {
+  return {
+    sport: input.sport,
+    scenario: [...input.scenario],
+    selfReportedCause: [...input.selfReportedCause],
+    bodyParts: [...input.bodyParts],
+    impactKind: input.impactKind,
+    protectiveItems: [...input.protectiveItems],
+    userSummary: input.userSummary?.trim() || undefined,
+    happenedOn: input.happenedOn,
+  };
+}
+
+function storyFields(input: CreateStoryInput['story']) {
+  const visibility: Story['visibility'] = input.visibility === 'self' ? 'self' : 'groups';
+  return {
+    title: input.title.trim(),
+    body: input.body.trim(),
+    tone: input.tone,
+    visibility,
+    visibilityGroupIds: visibility === 'self' ? [] : [...new Set(input.visibilityGroupIds ?? [])],
+    allowFunnyActions: input.allowFunnyActions,
+    allowGifts: input.allowGifts,
+    isAnonymous: input.isAnonymous,
+  };
+}
+
+async function publish(params: { input: CreateStoryInput; requestId: string; draftVersion?: number })
+  : Promise<ApiResponse<{ storyId: string; version: number }>> {
+  const { input } = params;
+  const requestId = params.requestId || nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const replay = cached<{ storyId: string; version: number }>(state, 'story.publish', requestId);
+  if (replay) return replay;
+  const invalid = validateStoryWrite(state, input, requestId);
+  if (invalid) return invalid;
+  const draft = state.storyDrafts?.[state.currentUserId];
+  if (params.draftVersion !== undefined && params.draftVersion !== (draft?.version ?? 0)) {
+    return fail('CONFLICT', '草稿已经更新，请重新打开查看', requestId);
+  }
+
+  const storyId = nextRequestId().replace('req_', 'sty_');
+  const incidentId = nextRequestId().replace('req_', 'inc_');
   const now = new Date().toISOString();
   state.incidents.push({
+    ...incidentFields(input.incident),
     id: incidentId,
     schemaVersion: 1,
     authorId: state.currentUserId,
-    sport: input.incident.sport,
-    scenario: input.incident.scenario,
-    selfReportedCause: input.incident.selfReportedCause,
-    bodyParts: input.incident.bodyParts,
-    impactKind: input.incident.impactKind,
-    protectiveItems: input.incident.protectiveItems,
     source: 'manual',
     venueId: null,
-    userSummary: body.slice(0, 60),
     createdAt: now,
     updatedAt: now,
   });
   state.stories.push({
+    ...storyFields(input.story),
     id: storyId,
     schemaVersion: 1,
     incidentId,
     authorId: state.currentUserId,
-    title,
-    body,
-    tone: input.story.tone,
-    visibility,
-    visibilityGroupIds,
-    allowFunnyActions: input.story.allowFunnyActions,
-    allowGifts: input.story.allowGifts,
-    isAnonymous: input.story.isAnonymous,
     moderationStatus: 'approved',
     publishStatus: 'published',
     version: 1,
     createdAt: now,
     updatedAt: now,
   });
+  if (params.draftVersion && state.storyDrafts) delete state.storyDrafts[state.currentUserId];
   const response = ok({ storyId, version: 1 }, requestId);
   remember(state, 'story.publish', requestId, response);
-  saveState(state);
+  saveState(state, true);
   return response;
+}
+
+async function updateStory(params: { storyId: string; version: number; input: CreateStoryInput; requestId: string })
+  : Promise<ApiResponse<{ storyId: string; version: number }>> {
+  const requestId = params.requestId || nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const story = state.stories.find((item) => item.id === params.storyId);
+  if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
+  if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能编辑自己的故事', requestId);
+  const replay = cached<{ storyId: string; version: number }>(state, 'story.update', requestId);
+  if (replay) return replay;
+  if (story.publishStatus !== 'published' || story.moderationStatus === 'hidden') {
+    return fail('NOT_VISIBLE', '这条故事当前不可编辑', requestId);
+  }
+  if (story.version !== params.version) {
+    return fail('CONFLICT', '另一个页面已经修改了这条记录，请保留本页文字后重新打开', requestId);
+  }
+  const invalid = validateStoryWrite(state, params.input, requestId);
+  if (invalid) return invalid;
+  const incident = state.incidents.find((item) => item.id === story.incidentId);
+  if (!incident) return fail('NOT_FOUND', '事故记录不存在', requestId);
+  const updatedAt = new Date().toISOString();
+  // 本地原型使用和发布相同的同步文字校验。云端审核结果由服务端决定。
+  Object.assign(incident, incidentFields(params.input.incident), { updatedAt });
+  Object.assign(story, storyFields(params.input.story), { updatedAt, version: story.version + 1 });
+  for (const update of state.storyUpdates) {
+    if (update.storyId !== story.id) continue;
+    update.visibilityGroupIds = update.visibilityGroupIds.filter((id) => story.visibilityGroupIds.includes(id));
+  }
+
+  const response = ok({ storyId: story.id, version: story.version }, requestId);
+  remember(state, 'story.update', requestId, response);
+  saveState(state, true);
+  return response;
+}
+
+async function appendUpdate(params: { storyId: string; type: UpdateType; body: string; requestId: string })
+  : Promise<ApiResponse<StoryUpdate>> {
+  const requestId = params.requestId || nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const story = state.stories.find((item) => item.id === params.storyId);
+  if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
+  if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能给自己的故事追加后续', requestId);
+  const replay = cached<StoryUpdate>(state, 'story.appendUpdate', requestId);
+  if (replay) return replay;
+  if (story.publishStatus !== 'published' || story.moderationStatus !== 'approved') {
+    return fail('NOT_VISIBLE', '这条故事当前不能追加后续', requestId);
+  }
+  const body = typeof params.body === 'string' ? params.body.trim() : '';
+  if (!UPDATE_TYPES.includes(params.type) || !body || body.length > 140) {
+    return fail('VALIDATION_FAILED', '请选择后续类型并填写 1–140 个字', requestId);
+  }
+  if (findSensitiveInfo(body).length) return fail('CONTENT_REJECTED', '正文包含疑似个人信息', requestId);
+  const now = Date.now();
+  const recent = state.storyUpdates.filter((update) =>
+    update.storyId === story.id && dayKey(Date.parse(update.createdAt)) === dayKey(now));
+  if (recent.length >= 3) return fail('RATE_LIMIT', '同一条故事每天最多追加 3 条后续', requestId);
+  const update: StoryUpdate = {
+    id: nextRequestId().replace('req_', 'upd_'),
+    storyId: story.id,
+    authorId: state.currentUserId,
+    type: params.type,
+    body,
+    visibilityGroupIds: story.visibility === 'self' ? [] : [...story.visibilityGroupIds],
+    moderationStatus: 'approved',
+    createdAt: new Date(now).toISOString(),
+  };
+  state.storyUpdates.push(update);
+  const response = ok(update, requestId);
+  remember(state, 'story.appendUpdate', requestId, response);
+  saveState(state, true);
+  return response;
+}
+
+async function withdrawUpdate(params: { storyId: string; updateId: string }): Promise<ApiResponse<{ withdrawnAt: string }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const story = state.stories.find((item) => item.id === params.storyId);
+  const update = state.storyUpdates.find((item) => item.id === params.updateId && item.storyId === story?.id);
+  if (!story || !update) return fail('NOT_FOUND', '这条后续不存在', requestId);
+  if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能撤回自己的后续', requestId);
+
+  update.withdrawnAt ??= new Date().toISOString();
+  saveState(state, true);
+  return ok({ withdrawnAt: update.withdrawnAt }, requestId);
 }
 
 async function withdraw(params: { storyId: string }): Promise<ApiResponse<{ status: string }>> {
   const requestId = nextRequestId();
   await latency();
-  const state = loadState();
+  const state = loadStateForWrite();
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
   if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能撤回自己的故事', requestId);
   story.publishStatus = 'withdrawn';
   story.updatedAt = new Date().toISOString();
   story.version += 1;
-  saveState(state);
+  saveState(state, true);
   return ok({ status: story.publishStatus }, requestId);
 }
 
@@ -686,6 +859,73 @@ async function listMyStories(): Promise<ApiResponse<AtlasStoryCard[]>> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((story) => storyCard(state, story));
   return ok(stories, requestId);
+}
+
+/* ------------------------------------------------------------------ 举报 */
+
+async function reportStory(params: { storyId: string; groupId: string; reason: StoryReport['reason']; requestId: string })
+  : Promise<ApiResponse<{ reportId: string }>> {
+  const requestId = params.requestId || nextRequestId();
+  await latency();
+  const state = loadState();
+  if (!['privacy', 'abuse', 'other'].includes(params.reason)) {
+    return fail('VALIDATION_FAILED', '请选择举报原因', requestId);
+  }
+  const story = state.stories.find((item) => item.id === params.storyId);
+  if (!story || story.visibility === 'self' || story.publishStatus !== 'published' ||
+    story.moderationStatus !== 'approved' || !story.visibilityGroupIds.includes(params.groupId) ||
+    !isActiveMember(state, params.groupId, state.currentUserId) || story.authorId === state.currentUserId) {
+    return fail('NOT_VISIBLE', '只能举报当前圈子内可见的其他成员故事', requestId);
+  }
+  const reports = (state.reports ??= []);
+  const existing = reports.find((report) => report.storyId === story.id && report.groupId === params.groupId &&
+    report.reporterId === state.currentUserId && dayKey(Date.parse(report.createdAt)) === dayKey());
+  if (existing) return ok({ reportId: existing.id }, requestId);
+  const report = {
+    id: nextRequestId().replace('req_', 'rpt_'),
+    storyId: story.id,
+    groupId: params.groupId,
+    reporterId: state.currentUserId,
+    reason: params.reason,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  } satisfies StoryReport;
+  reports.push(report);
+  saveState(state);
+  return ok({ reportId: report.id }, requestId);
+}
+
+async function listReports(groupId: string): Promise<ApiResponse<Pick<StoryReport, 'id' | 'storyId' | 'reason' | 'createdAt'>[]>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadState();
+  if (!canManageGroup(state, groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以查看举报', requestId);
+  const reports = (state.reports ?? []).filter((report) => report.groupId === groupId && report.status === 'pending');
+  return ok(reports.slice(0, 30).map(({ id, storyId, reason, createdAt }) => ({ id, storyId, reason, createdAt })), requestId);
+}
+
+async function resolveReport(params: { groupId: string; reportId: string; decision: 'dismiss' | 'hide' })
+  : Promise<ApiResponse<{ status: StoryReport['status'] }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadState();
+  if (!canManageGroup(state, params.groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以处理举报', requestId);
+  if (params.decision !== 'dismiss' && params.decision !== 'hide') return fail('VALIDATION_FAILED', '处理结果无效', requestId);
+  const report = state.reports?.find((item) => item.id === params.reportId && item.groupId === params.groupId);
+  if (!report || report.status !== 'pending') return fail('NOT_FOUND', '举报已处理或不存在', requestId);
+  if (params.decision === 'hide') {
+    const story = state.stories.find((item) => item.id === report.storyId);
+    if (!story || story.visibility !== 'groups' || !story.visibilityGroupIds.includes(report.groupId) ||
+      !story.visibilityGroupIds.every((id) => canManageGroup(state, id))) {
+      return fail('UNAUTHORIZED', '处理人需要管理这条故事当前分享的全部圈子', requestId);
+    }
+    story.moderationStatus = 'hidden';
+    story.version += 1;
+    story.updatedAt = new Date().toISOString();
+  }
+  report.status = params.decision === 'hide' ? 'hidden' : 'dismissed';
+  saveState(state);
+  return ok({ status: report.status }, requestId);
 }
 
 /* ------------------------------------------------------------------ Avatar */
@@ -831,16 +1071,19 @@ async function gift(params: {
   await latency();
   const state = loadState();
   const cachedResponse = cached<{ eventId: string; itemDefId: string; toUserId: string }>(state, 'inventory.gift', requestId);
-  if (cachedResponse) return cachedResponse;
-
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
+  if (cachedResponse?.ok) {
+    return ok({ ...cachedResponse.data, toUserId: publicAuthorId(story) }, requestId);
+  }
   const targetId = story.authorId;
   if (params.toUserId && params.toUserId !== targetId) {
     return fail('VALIDATION_FAILED', '只能送给故事作者', requestId);
   }
   if (story.visibility === 'self') return fail('INTERACTION_DISABLED', '仅自己可见的故事不能收礼', requestId);
-  if (story.publishStatus !== 'published') return fail('NOT_VISIBLE', '这条故事已撤回', requestId);
+  if (story.publishStatus !== 'published' || story.moderationStatus !== 'approved') {
+    return fail('NOT_VISIBLE', '这条故事当前不可见', requestId);
+  }
   if (!resolveStoryGroup(state, story)) {
     return fail('NOT_MEMBER', '你不在这个故事所属的圈子里', requestId);
   }
@@ -899,7 +1142,7 @@ async function gift(params: {
     eventId: event.id,
     createdAt: event.createdAt,
   });
-  const response = ok({ eventId: event.id, itemDefId: params.itemDefId, toUserId: targetId }, requestId);
+  const response = ok({ eventId: event.id, itemDefId: params.itemDefId, toUserId: publicAuthorId(story) }, requestId);
   remember(state, 'inventory.gift', requestId, response);
   saveState(state);
   return response;
@@ -922,7 +1165,9 @@ async function react(params: {
   if (!def || params.actionId === 'receive_gift') return fail('VALIDATION_FAILED', '未知的互动动作', requestId);
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
-  if (story.publishStatus !== 'published') return fail('NOT_VISIBLE', '这条故事已撤回', requestId);
+  if (story.publishStatus !== 'published' || story.moderationStatus !== 'approved') {
+    return fail('NOT_VISIBLE', '这条故事当前不可见', requestId);
+  }
   if (story.visibility === 'self') return fail('NOT_VISIBLE', '这条故事仅作者自己可见', requestId);
   if (story.authorId === state.currentUserId) return fail('VALIDATION_FAILED', '不能给自己的故事做互动', requestId);
   const groupId = resolveStoryGroup(state, story);
@@ -1038,7 +1283,15 @@ async function updateSettings(params: {
   await latency();
   const state = loadState();
   const user = me(state);
-  const next: UserPreferences = { ...user.preferences, ...params.preferences };
+  const changes = params.preferences;
+  if (!changes || typeof changes !== 'object') return fail('VALIDATION_FAILED', '偏好设置不合法', requestId);
+  const next = { ...user.preferences };
+  for (const key of ['allowFunnyActions', 'allowGifts', 'reduceMotion', 'anonymousByDefault'] as const) {
+    const value = changes[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'boolean') return fail('VALIDATION_FAILED', '偏好设置不合法', requestId);
+    next[key] = value;
+  }
   user.preferences = next;
   const avatar = avatarOf(state, user.id);
   if (avatar) {
@@ -1052,11 +1305,12 @@ async function updateSettings(params: {
 
 export const mockApi = {
   auth: { ensureUser },
-  group: { listMine, getAtlas, getMembers, createInvite, join, leave },
-  story: { getDetail, publish, withdraw, listMine: listMyStories },
+  group: { listMine, getAtlas, getMembers, createInvite, join, leave, getJoinRequests, reviewMember },
+  story: { getDetail, getDraft, saveDraft, publish, update: updateStory, appendUpdate, withdrawUpdate, withdraw, listMine: listMyStories },
   avatar: { getMine: getMyAvatar, updateAppearance },
   inventory: { getMine: getInventory, claimWeekly, getWeekly: getWeeklyStatus, gift },
   interaction: { react, getInbox, markRead },
+  moderation: { reportStory, listReports, resolveReport },
   settings: { get: getSettings, update: updateSettings },
 };
 
