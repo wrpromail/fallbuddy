@@ -107,8 +107,8 @@ Page({
 
   async onMarkAllRead() {
     if (!this.data.unreadCount) return;
-    const ids = this.data.events.map((event) => event.id);
-    const res = await api.interaction.markRead({ eventIds: ids });
+    // 由服务端把当前用户的全部未读标为已读（覆盖未加载的分页），客户端不再只交已加载的 id
+    const res = await api.interaction.markRead({ all: true });
     if (!res.ok) {
       wx.showToast({ title: res.message, icon: 'none' });
       return;

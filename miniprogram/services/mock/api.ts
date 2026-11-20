@@ -11,6 +11,7 @@ import {
 } from '../../shared/enums';
 import { addDays, dayKey, hashString, isThisWeek, relativeTime, weekKey } from '../../shared/time';
 import { findSensitiveInfo } from '../../shared/moderation';
+import { validateCreateStoryInput } from '../../shared/validation';
 import { hotspotsFor, resolveRigLayers } from '../../shared/rig';
 import { loadState, saveState } from '../store';
 import type { DbState, UserRecord } from '../../shared/db-types';
@@ -598,13 +599,12 @@ async function publish(params: {
   const cachedResponse = cached<{ storyId: string; version: number }>(state, 'story.publish', requestId);
   if (cachedResponse) return cachedResponse;
 
+  // 服务端字段校验：长度、枚举成员、去重、类型（规则见 shared/validation.ts，
+  // 与 schemas/incident.schema.json 对齐；V1 云函数必须沿用同一份）
+  const invalid = validateCreateStoryInput(input);
+  if (invalid) return fail('VALIDATION_FAILED', invalid, requestId);
   const title = input.story.title.trim();
   const body = input.story.body.trim();
-  if (!title || title.length > 24) return fail('VALIDATION_FAILED', '标题需要 1–24 个字', requestId);
-  if (!body || body.length > 140) return fail('VALIDATION_FAILED', '正文需要 1–140 个字', requestId);
-  if (input.incident.bodyParts.length < 1 || input.incident.bodyParts.length > 3) {
-    return fail('VALIDATION_FAILED', '请选择 1–3 个身体部位', requestId);
-  }
   const visibility: Story['visibility'] = input.story.visibility === 'self' ? 'self' : 'groups';
   const visibilityGroupIds = visibility === 'self' ? [] : [...new Set(input.story.visibilityGroupIds ?? [])];
   if (visibility === 'groups' && visibilityGroupIds.length < 1) {
@@ -617,12 +617,6 @@ async function publish(params: {
   }
   if (findSensitiveInfo(`${title} ${body}`).length) {
     return fail('CONTENT_REJECTED', '内容里疑似包含手机号或证件号，请删除后再发布', requestId);
-  }
-  if (input.incident.scenario.length < 1 || input.incident.scenario.length > 3) {
-    return fail('VALIDATION_FAILED', '请选择 1–3 个发生背景', requestId);
-  }
-  if (input.incident.selfReportedCause.length < 1 || input.incident.selfReportedCause.length > 3) {
-    return fail('VALIDATION_FAILED', '请选择 1–3 个自述原因，或标记为「原因未知」', requestId);
   }
 
   const storyId = `sty_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -996,20 +990,33 @@ async function getInbox(params: { cursor?: string; limit?: number }): Promise<
   );
 }
 
-async function markRead(params: { eventIds: string[] }): Promise<ApiResponse<{ updatedCount: number }>> {
+async function markRead(params: { eventIds?: string[]; all?: boolean }): Promise<ApiResponse<{ updatedCount: number }>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
   const now = new Date().toISOString();
   let updated = 0;
-  for (const notification of state.notifications) {
-    if (
-      notification.targetId === state.currentUserId &&
-      params.eventIds.includes(notification.eventId) &&
-      !notification.readAt
-    ) {
-      notification.readAt = now;
-      updated += 1;
+  if (params.all) {
+    // 全部已读由服务端按「当前用户」判定：客户端只加载了一页，
+    // 不能让它替服务端决定「全部」的范围（否则分页外的未读会被漏标）
+    for (const notification of state.notifications) {
+      if (notification.targetId === state.currentUserId && !notification.readAt) {
+        notification.readAt = now;
+        updated += 1;
+      }
+    }
+  } else {
+    const eventIds = params.eventIds ?? [];
+    if (!eventIds.length) return fail('VALIDATION_FAILED', '缺少要标记的事件', requestId);
+    for (const notification of state.notifications) {
+      if (
+        notification.targetId === state.currentUserId &&
+        eventIds.includes(notification.eventId) &&
+        !notification.readAt
+      ) {
+        notification.readAt = now;
+        updated += 1;
+      }
     }
   }
   if (updated) saveState(state);

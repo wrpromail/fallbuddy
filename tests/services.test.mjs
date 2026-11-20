@@ -62,6 +62,15 @@ function publishInput(overrides = {}) {
   };
 }
 
+/** 与 publishInput 同底，但允许覆盖 incident 字段（用于枚举校验用例） */
+function publishEnumInput(incidentOverrides = {}, storyOverrides = {}) {
+  const base = publishInput();
+  return {
+    incident: { ...base.incident, ...incidentOverrides },
+    story: { ...base.story, ...storyOverrides },
+  };
+}
+
 test.beforeEach(() => {
   resetState();
 });
@@ -444,4 +453,75 @@ test('图鉴：热点状态贴纸按最新故事生成，空热点为空', async
   const ankle = atlas.hotspots.find((spot) => spot.id === 'ankle_l');
   assert.equal(ankle.count, 0);
   assert.equal(ankle.sticker, '');
+});
+
+test('发布校验：服务端拒绝未知枚举值、重复项与非法类型', async () => {
+  const before = loadState().stories.length;
+  const badInputs = [
+    publishEnumInput({ sport: 'ski_triple' }),
+    publishEnumInput({ scenario: ['freefall'] }),
+    publishEnumInput({ scenario: ['turning', 'turning'] }),
+    publishEnumInput({ selfReportedCause: ['gravity'] }),
+    publishEnumInput({ bodyParts: ['left_pinky'] }),
+    publishEnumInput({ bodyParts: ['tailbone', 'tailbone'] }),
+    publishEnumInput({ bodyParts: ['tailbone', 'back', 'waist', 'head'] }),
+    publishEnumInput({ impactKind: 'broken_bone' }),
+    publishEnumInput({ protectiveItems: ['helmet', 'cape'] }),
+    publishEnumInput({}, { tone: 'sarcastic' }),
+    publishEnumInput({}, { visibility: 'public' }),
+    publishEnumInput({}, { allowFunnyActions: 'false' }),
+  ];
+  for (let i = 0; i < badInputs.length; i += 1) {
+    expectErr(
+      await mockApi.story.publish({ requestId: `req_enum_${i}`, input: badInputs[i] }),
+      'VALIDATION_FAILED',
+    );
+  }
+  // 被拒绝的发布不写入任何数据
+  assert.equal(loadState().stories.length, before);
+  assert.equal(loadState().incidents.length, 8);
+
+  // 合法输入仍然成功，确认校验器没有误伤正常发布
+  expectOk(await mockApi.story.publish({ requestId: 'req_enum_ok', input: publishEnumInput() }));
+  assert.equal(loadState().stories.length, before + 1);
+});
+
+test('收件箱：全部已读覆盖未加载的分页事件', async () => {
+  // 白盒构造 25 条未读（超过一页 20 条），验证「全部已读」不能只标记客户端已加载的列表
+  const state = loadState();
+  for (let i = 0; i < 25; i += 1) {
+    const event = {
+      id: `evt_page_${i}`,
+      storyId: 'sty_tailbone',
+      actorId: 'usr_lin',
+      targetId: state.currentUserId,
+      actionId: 'hug',
+      animationVersion: 1,
+      status: 'ok',
+      createdAt: new Date(Date.now() - i * 60000).toISOString(),
+    };
+    state.interactions.push(event);
+    state.notifications.push({
+      id: `ntf_evt_page_${i}`,
+      targetId: state.currentUserId,
+      eventId: event.id,
+      kind: 'interaction',
+      readAt: null,
+      createdAt: event.createdAt,
+    });
+  }
+  saveState(state);
+
+  const inbox = expectOk(await mockApi.interaction.getInbox({ limit: 20 }));
+  assert.equal(inbox.events.length, 20);
+  assert.ok(inbox.nextCursor);
+  assert.equal(inbox.unreadCount, 28); // 种子 3 条 + 新增 25 条
+
+  const res = expectOk(await mockApi.interaction.markRead({ all: true }));
+  assert.equal(res.updatedCount, 28);
+  const after = expectOk(await mockApi.interaction.getInbox({ limit: 20 }));
+  assert.equal(after.unreadCount, 0);
+
+  // 空参数仍然被拒绝
+  expectErr(await mockApi.interaction.markRead({}), 'VALIDATION_FAILED');
 });
