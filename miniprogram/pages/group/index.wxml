@@ -38,6 +38,7 @@
             <avatar-rig
               mode="chip"
               palette="{{item.palette}}"
+              head-shape="{{item.headShape}}"
               expression="{{item.expression}}"
               equipped="{{item.equipped}}"
             />

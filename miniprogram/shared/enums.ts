@@ -108,6 +108,9 @@ export const PALETTE_COLOR: Record<Palette, string> = {
   mint: '#5ED6B3',
 };
 
+export const HEAD_SHAPES = ['round', 'soft_square'] as const;
+export type HeadShape = (typeof HEAD_SHAPES)[number];
+
 export const EXPRESSIONS = ['happy', 'surprised', 'awkward', 'comfort', 'cool'] as const;
 export type Expression = (typeof EXPRESSIONS)[number];
 export const EXPRESSION_LABEL: Record<Expression, string> = {

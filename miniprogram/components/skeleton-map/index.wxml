@@ -7,6 +7,7 @@
     view="{{view}}"
     mode="full"
     palette="{{figPalette}}"
+    head-shape="{{figHeadShape}}"
     expression="{{figExpression}}"
     equipped="{{figEquipped}}"
     reduce-motion="{{reduceMotion}}"
@@ -37,6 +38,7 @@
           mode="chip"
           view="{{view}}"
           palette="{{chip.palette}}"
+          head-shape="{{chip.headShape}}"
           expression="{{chip.expression}}"
           equipped="{{chip.equipped}}"
         />

@@ -24,6 +24,7 @@ import {
   type Tone,
 } from '../../shared/enums';
 import { sensitiveWarning } from '../../shared/moderation';
+import { ANONYMOUS_APPEARANCE } from '../../shared/avatar';
 import type { AvatarState, CreateStoryInput, GroupSummary, StoryDraft, UserPreferences } from '../../shared/types';
 
 interface Option<T extends string> {
@@ -60,8 +61,10 @@ interface CreatePageData {
   groupChips: GroupChip[];
   myAvatar: AvatarState | null;
   avatarPalette: string;
+  avatarHeadShape: string;
   avatarExpression: string;
   avatarEquipped: unknown;
+  anonymousAppearance: typeof ANONYMOUS_APPEARANCE;
   sports: Option<Sport>[];
   scenarios: Option<Scenario>[];
   causes: Option<Cause>[];
@@ -135,8 +138,10 @@ Page({
     groupChips: [],
     myAvatar: null,
     avatarPalette: 'blue',
+    avatarHeadShape: 'round',
     avatarExpression: 'happy',
     avatarEquipped: null,
+    anonymousAppearance: ANONYMOUS_APPEARANCE,
     sports: [
       { id: 'ski_double', label: SPORT_LABEL.ski_double, emoji: SPORT_EMOJI.ski_double, selected: true },
       ...SPORTS.filter((id) => id !== 'ski_double').map((id) => ({
@@ -223,6 +228,7 @@ Page({
       groupChips: groups.map((group) => ({ id: group.id, name: group.name, memberCount: group.memberCount, checked: false })),
       myAvatar: avatar,
       avatarPalette: avatar?.palette ?? 'blue',
+      avatarHeadShape: avatar?.headShape ?? 'round',
       avatarExpression: avatar?.expression ?? 'happy',
       avatarEquipped: avatar?.equipped ?? null,
       isAnonymous: prefs.anonymousByDefault,

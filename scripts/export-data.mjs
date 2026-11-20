@@ -33,6 +33,7 @@ const incidents = state.incidents.map((incident) => ({
 const avatars = state.avatars.map((avatar) => ({
   rigVersion: avatar.rigVersion,
   palette: avatar.palette,
+  headShape: avatar.headShape ?? 'round',
   equipped: avatar.equipped,
   expression: avatar.expression,
   privacy: avatar.privacy,

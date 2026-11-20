@@ -1,6 +1,7 @@
 import type { DbState } from '../shared/db-types';
 import { hashString } from '../shared/time';
 import { buildMockState } from '../shared/mock-build';
+import { ensureAvatar } from '../shared/avatar';
 
 const STORAGE_KEY = 'shaiyouji.v0.state';
 const SEED_VERSION = 3;
@@ -34,8 +35,16 @@ export function loadState(): DbState {
   if (loaded && cache) return cache;
   const stored = readRaw();
   if (isValid(stored)) {
-    cache = stored;
-    loaded = true;
+    const now = new Date().toISOString();
+    let changed = false;
+    for (const user of stored.users) {
+      if (ensureAvatar(stored, user, now)) changed = true;
+    }
+    if (changed) saveState(stored);
+    else {
+      cache = stored;
+      loaded = true;
+    }
     return stored;
   }
   return resetState();

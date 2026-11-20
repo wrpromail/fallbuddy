@@ -1,3 +1,4 @@
+import { ANONYMOUS_APPEARANCE, EMPTY_GEAR, grantCosmetic } from '../../shared/avatar';
 import { ACTIONS, ACTION_MAP, ANIMATION_VERSION, MAX_GIFTS_PER_DAY, MAX_INTERACTIONS_PER_DAY } from '../../shared/actions';
 import { ITEM_DEFINITIONS, ITEM_MAP, WEEKLY_GRANT } from '../../shared/items';
 import {
@@ -5,6 +6,8 @@ import {
   EQUIP_SLOTS,
   EXPRESSIONS,
   PALETTES,
+  HEAD_SHAPES,
+  type HeadShape,
   UPDATE_TYPES,
   type UpdateType,
   type BodyPart,
@@ -197,6 +200,7 @@ function storyCard(state: DbState, story: Story): AtlasStoryCard {
   const avatar = avatarOf(state, story.authorId);
   const incident = state.incidents.find((i) => i.id === story.incidentId);
   const anonymous = story.isAnonymous;
+  const appearance = anonymous ? ANONYMOUS_APPEARANCE : avatar;
   return {
     id: story.id,
     title: story.title,
@@ -212,15 +216,10 @@ function storyCard(state: DbState, story: Story): AtlasStoryCard {
     allowGifts: story.allowGifts,
     publishStatus: story.publishStatus,
     createdAt: story.createdAt,
-    palette: avatar?.palette ?? 'blue',
-    expression: avatar?.expression ?? 'happy',
-    equipped: avatar?.equipped ?? {
-      headgear: null,
-      goggles: null,
-      outfit: null,
-      hip_protector: null,
-      boots: null,
-    },
+    palette: appearance?.palette ?? 'blue',
+    expression: appearance?.expression ?? 'happy',
+    headShape: appearance?.headShape ?? 'round',
+    equipped: appearance?.equipped ?? EMPTY_GEAR,
   };
 }
 
@@ -228,12 +227,14 @@ function chipOf(state: DbState, story: Story): AtlasUserChip | null {
   const author = userById(state, story.authorId);
   const avatar = avatarOf(state, story.authorId);
   if (!author || !avatar) return null;
+  const appearance = story.isAnonymous ? ANONYMOUS_APPEARANCE : avatar;
   return {
     userId: publicAuthorId(story),
     displayName: story.isAnonymous ? anonymousName() : author.displayName,
-    palette: avatar.palette,
-    expression: avatar.expression,
-    equipped: avatar.equipped,
+    palette: appearance.palette,
+    expression: appearance.expression,
+    equipped: appearance.equipped,
+    headShape: appearance.headShape,
     isAnonymous: story.isAnonymous,
   };
 }
@@ -439,11 +440,12 @@ async function getMembers(groupId: string): Promise<ApiResponse<GroupMemberView[
         palette: avatar.palette,
         expression: avatar.expression,
         equipped: avatar.equipped,
+        headShape: avatar.headShape,
         isMe: user.id === state.currentUserId,
         storyCount,
       } satisfies GroupMemberView;
     })
-    .filter((m): m is GroupMemberView => m !== null)
+    .filter((m) => m !== null)
     .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : a.displayName.localeCompare(b.displayName)));
   return ok(members, requestId);
 }
@@ -600,7 +602,7 @@ async function getDetail(params: {
     ? updates.map((update) => ({ ...update, authorId: maskedAuthorId }))
     : updates;
   const maskedAvatar: AvatarState = story.isAnonymous
-    ? { ...avatar, id: `avt_${maskedAuthorId}`, ownerId: maskedAuthorId }
+    ? { ...avatar, ...ANONYMOUS_APPEARANCE, id: `avt_${maskedAuthorId}`, ownerId: maskedAuthorId, version: 1, customized: false, privacy: { allowFunnyActions: false, allowGifts: true } }
     : avatar;
 
   const group = groupId ? groupSummary(state, groupId) : null;
@@ -611,7 +613,7 @@ async function getDetail(params: {
     author: {
       id: maskedAuthorId,
       displayName: story.isAnonymous ? anonymousName() : author.displayName,
-      palette: avatar.palette,
+      palette: maskedAvatar.palette,
       avatarId: story.isAnonymous ? `avt_${maskedAuthorId}` : author.avatarId,
       isMe: viewerIsAuthor,
     },
@@ -947,31 +949,42 @@ function ownedCosmetic(state: DbState, itemDefId: string, slot: string): boolean
 }
 
 async function updateAppearance(params: {
-  appearance: { palette: Palette; equipped: EquippedGear; expression: Expression };
+  appearance: { palette: Palette; equipped: EquippedGear; expression: Expression; headShape?: HeadShape };
   expectedVersion: number;
 }): Promise<ApiResponse<{ avatar: AvatarState }>> {
   const requestId = nextRequestId();
   await latency();
-  const state = loadState();
+  const state = loadStateForWrite();
   const avatar = avatarOf(state, state.currentUserId);
   if (!avatar) return fail('NOT_FOUND', '角色数据缺失', requestId);
-  if (avatar.version !== params.expectedVersion) {
-    return fail('CONFLICT', '角色已被更新，请刷新后再试', requestId);
+  if (avatar.version !== params?.expectedVersion) {
+    return fail('CONFLICT', '角色已被更新，请确认后再保存', requestId);
   }
-  if (!PALETTES.includes(params.appearance.palette)) return fail('VALIDATION_FAILED', '配色不可用', requestId);
-  if (!EXPRESSIONS.includes(params.appearance.expression)) return fail('VALIDATION_FAILED', '表情不可用', requestId);
+  const appearance = params.appearance;
+  if (!appearance?.equipped || Array.isArray(appearance.equipped) || typeof appearance.equipped !== 'object') {
+    return fail('VALIDATION_FAILED', '穿戴配置不完整', requestId);
+  }
+  const headShape = appearance.headShape === undefined ? avatar.headShape ?? 'round' : appearance.headShape;
+  if (!HEAD_SHAPES.includes(headShape)) return fail('VALIDATION_FAILED', '头型不可用', requestId);
+  if (!PALETTES.includes(appearance.palette)) return fail('VALIDATION_FAILED', '配色不可用', requestId);
+  if (!EXPRESSIONS.includes(appearance.expression)) return fail('VALIDATION_FAILED', '表情不可用', requestId);
+  const equipped = { ...EMPTY_GEAR };
   for (const slot of EQUIP_SLOTS) {
-    const value = params.appearance.equipped[slot];
-    if (!value) continue;
-    if (!ownedCosmetic(state, value, slot)) {
-      return fail('VALIDATION_FAILED', `还没有拥有这个装备：${value}`, requestId);
+    const value = appearance.equipped[slot];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'string' || !ownedCosmetic(state, value, slot)) {
+      return fail('VALIDATION_FAILED', '装备未拥有或与当前槽位不匹配', requestId);
     }
+    equipped[slot] = value;
   }
-  avatar.palette = params.appearance.palette;
-  avatar.equipped = { ...params.appearance.equipped };
-  avatar.expression = params.appearance.expression;
+  avatar.palette = appearance.palette;
+  avatar.equipped = equipped;
+  avatar.expression = appearance.expression;
+  avatar.headShape = headShape;
+  avatar.customized = true;
   avatar.version += 1;
-  saveState(state);
+  me(state).palette = avatar.palette;
+  saveState(state, true);
   return ok({ avatar }, requestId);
 }
 
@@ -987,6 +1000,19 @@ async function getInventory(): Promise<ApiResponse<InventoryView[]>> {
     .map((inv) => inventoryView(state, inv))
     .sort((a, b) => order[a.category] - order[b.category] || a.name.localeCompare(b.name));
   return ok(items, requestId);
+}
+
+async function claimCosmetic(params: { itemDefId: string }): Promise<ApiResponse<InventoryView>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const def = ITEM_MAP[params?.itemDefId];
+  if (def?.category !== 'cosmetic' || !def.slot || !def.permanent) {
+    return fail('VALIDATION_FAILED', '该物品不可作为外观领取', requestId);
+  }
+  if (grantCosmetic(state, state.currentUserId, def.id, new Date().toISOString())) saveState(state, true);
+  const item = state.inventory.find((entry) => entry.ownerId === state.currentUserId && entry.itemDefId === def.id);
+  return item ? ok(inventoryView(state, item), requestId) : fail('NOT_FOUND', '装备记录缺失', requestId);
 }
 
 async function claimWeekly(params: { requestId: string }): Promise<
@@ -1308,7 +1334,7 @@ export const mockApi = {
   group: { listMine, getAtlas, getMembers, createInvite, join, leave, getJoinRequests, reviewMember },
   story: { getDetail, getDraft, saveDraft, publish, update: updateStory, appendUpdate, withdrawUpdate, withdraw, listMine: listMyStories },
   avatar: { getMine: getMyAvatar, updateAppearance },
-  inventory: { getMine: getInventory, claimWeekly, getWeekly: getWeeklyStatus, gift },
+  inventory: { getMine: getInventory, claimCosmetic, claimWeekly, getWeekly: getWeeklyStatus, gift },
   interaction: { react, getInbox, markRead },
   moderation: { reportStory, listReports, resolveReport },
   settings: { get: getSettings, update: updateSettings },
@@ -1333,5 +1359,5 @@ export function actionDisabledReason(
 export { ACTIONS, ITEM_DEFINITIONS };
 
 export function rigPreviewLayers(view: 'front' | 'back', avatar: AvatarState) {
-  return resolveRigLayers(view, { palette: avatar.palette, equipped: avatar.equipped, expression: avatar.expression });
+  return resolveRigLayers(view, avatar);
 }

@@ -59,7 +59,7 @@ function storyFromFixture(story: FixtureStory, now: number): Story {
 }
 
 function cosmeticIds(): string[] {
-  return ITEM_DEFINITIONS.filter((item) => item.category === 'cosmetic').map((item) => item.id);
+  return ITEM_DEFINITIONS.filter((item) => item.category === 'cosmetic' && item.id !== 'snow_boots').map((item) => item.id);
 }
 
 const BASE_CONSUMABLES: Record<string, Record<string, number>> = {
@@ -87,6 +87,8 @@ export function buildMockState(now: number = Date.now()): DbState {
     id: `avt_${user.id}`,
     ownerId: user.id,
     rigVersion: 'skeleton-rig-v1',
+    headShape: 'round',
+    customized: user.id !== ME,
     palette: user.palette,
     equipped: { ...user.equipped },
     expression: user.expression,

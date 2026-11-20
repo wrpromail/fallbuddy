@@ -15,6 +15,7 @@
           <avatar-rig
             mode="chip"
             palette="{{detail.avatar.palette}}"
+            head-shape="{{detail.avatar.headShape}}"
             expression="{{detail.avatar.expression}}"
             equipped="{{detail.avatar.equipped}}"
           />
@@ -39,6 +40,7 @@
           id="author-rig"
           view="front"
           palette="{{detail.avatar.palette}}"
+          head-shape="{{detail.avatar.headShape}}"
           expression="{{detail.avatar.expression}}"
           equipped="{{detail.avatar.equipped}}"
           reduce-motion="{{reduceMotion}}"
@@ -48,6 +50,7 @@
         <avatar-rig
           view="front"
           palette="{{myAvatar.palette}}"
+          head-shape="{{myAvatar.headShape}}"
           expression="{{myAvatar.expression}}"
           equipped="{{myAvatar.equipped}}"
         />

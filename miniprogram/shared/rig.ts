@@ -13,7 +13,7 @@ export const DEFAULT_EQUIPPED: RigAppearance['equipped'] = {
   boots: null,
 };
 
-const CHIP_LAYER_IDS = ['head', 'headgear', 'goggles'];
+const CHIP_LAYER_IDS = ['head', 'face', 'headgear', 'goggles'];
 
 function pct(value: number): number {
   return Math.round(value * 10000) / 100;
@@ -30,6 +30,11 @@ function unionBox(boxes: LayerBox[]): LayerBox {
 function layerSource(layer: RigLayerDef, appearance: RigAppearance): string | null {
   if (layer.slot === 'expression') {
     return layer.variants?.[appearance.expression] ?? layer.variants?.happy ?? null;
+  }
+  if (layer.slot === 'palette') return layer.variants?.[appearance.palette] ?? layer.variants?.blue ?? null;
+  if (layer.slot === 'headShape') {
+    return layer.variants?.[`${appearance.headShape || 'round'}-${appearance.palette}`]
+      ?? layer.variants?.[`round-${appearance.palette}`] ?? layer.variants?.['round-blue'] ?? null;
   }
   if (layer.slot) {
     const value = appearance.equipped[layer.slot];
@@ -57,10 +62,12 @@ export function resolveRigLayers(
     active.push({ layer, src });
   }
   if (!active.length) return [];
-  const rawBox = mode === 'chip' ? unionBox(active.map((a) => a.layer.bbox)) : { x: 0, y: 0, w: RIG.canvas.width, h: RIG.canvas.height };
-  // chip 模式：以正方形为容器等比 contain，避免头像被拉伸
-  const side = Math.max(rawBox.w, rawBox.h);
-  const box = { x: rawBox.x - (side - rawBox.w) / 2, y: rawBox.y - (side - rawBox.h) / 2, w: side, h: side };
+  let box = { x: 0, y: 0, w: RIG.canvas.width, h: RIG.canvas.height };
+  if (mode === 'chip') {
+    const crop = unionBox(active.map(({ layer }) => layer.bbox));
+    const side = Math.max(crop.w, crop.h);
+    box = { x: crop.x - (side - crop.w) / 2, y: crop.y - (side - crop.h) / 2, w: side, h: side };
+  }
   return active.map(({ layer, src }) => ({
     id: layer.id,
     z: layer.z,
@@ -90,7 +97,7 @@ export function hotspotList(): RigHotspot[] {
 export function equipmentVariants(): Record<EquipSlot, string[]> {
   const result = { headgear: [], goggles: [], outfit: [], hip_protector: [], boots: [] } as Record<EquipSlot, string[]>;
   for (const layer of RIG.views.front) {
-    if (layer.slot && layer.slot !== 'expression' && layer.variants) {
+    if (layer.slot && layer.slot !== 'expression' && layer.slot !== 'palette' && layer.slot !== 'headShape' && layer.variants) {
       result[layer.slot] = Object.keys(layer.variants);
     }
   }
@@ -106,6 +113,7 @@ export function appearanceEquals(a: RigAppearance, b: RigAppearance): boolean {
   return (
     a.palette === b.palette &&
     a.expression === b.expression &&
+    (a.headShape ?? 'round') === (b.headShape ?? 'round') &&
     EQUIP_SLOTS.every((slot) => (a.equipped[slot] ?? null) === (b.equipped[slot] ?? null))
   );
 }

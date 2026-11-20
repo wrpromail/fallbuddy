@@ -132,3 +132,34 @@ test('云函数合同：审核拒绝的正文不入库，举报隐藏后旧详�
   assert.equal((await call('owner', 'interaction', 'react', { storyId, actionId: 'hug', requestId: 'hidden_hug' })).code, 'NOT_VISIBLE');
   assert.equal(expectOk(await call('owner', 'group', 'getAtlas', { groupId })).storyCount, 0);
 });
+
+test('云端角色首次装备只发一次，免费外观和并发保存独立于互动道具', async () => {
+  const { call, snapshot } = pilot();
+  await Promise.all([call('owner', 'avatar', 'getMine'), call('owner', 'inventory', 'getMine')]);
+  const avatar = expectOk(await call('owner', 'avatar', 'getMine'));
+  assert.equal(avatar.customized, false);
+  assert.equal(avatar.equipped.outfit, 'ski_blue');
+  assert.equal(avatar.equipped.hip_protector, 'basic_hip_protector');
+  assert.deepEqual(snapshot().inventory.map((item) => item.itemDefId).sort(), ['basic_hip_protector', 'ski_blue']);
+
+  const appearance = { palette: 'mint', headShape: 'soft_square', expression: 'cool',
+    equipped: { ...avatar.equipped, headgear: 'helmet_red', goggles: 'snow_goggles' } };
+  const params = { appearance, expectedVersion: avatar.version };
+  assert.equal((await call('owner', 'avatar', 'updateAppearance', params)).code, 'VALIDATION_FAILED');
+  assert.equal((await call('owner', 'inventory', 'claimCosmetic', { itemDefId: 'steel_hip_guard' })).code, 'VALIDATION_FAILED');
+  for (const itemDefId of ['helmet_red', 'snow_goggles']) {
+    const claims = await Promise.all([0, 1].map(() => call('owner', 'inventory', 'claimCosmetic', { itemDefId })));
+    assert.ok(claims.every((result) => expectOk(result).quantity === 1));
+  }
+  const results = await Promise.all([0, 1].map(() => call('owner', 'avatar', 'updateAppearance', params)));
+  assert.deepEqual(results.map((result) => result.code).sort(), ['CONFLICT', 'OK']);
+  const saved = expectOk(await call('owner', 'avatar', 'getMine'));
+  assert.deepEqual(saved.equipped, appearance.equipped);
+  assert.equal(saved.palette, 'mint');
+  assert.equal(saved.headShape, 'soft_square');
+
+  const other = expectOk(await call('other', 'avatar', 'getMine'));
+  assert.notEqual(other.id, saved.id);
+  assert.equal((await call('other', 'avatar', 'updateAppearance', { ...params, avatarId: saved.id })).code, 'VALIDATION_FAILED');
+  assert.deepEqual(expectOk(await call('owner', 'avatar', 'getMine')), saved);
+});

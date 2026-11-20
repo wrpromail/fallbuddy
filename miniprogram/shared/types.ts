@@ -3,6 +3,7 @@ import type {
   Cause,
   EquipSlot,
   Expression,
+  HeadShape,
   ImpactKind,
   Palette,
   ProtectiveItem,
@@ -75,9 +76,11 @@ export interface AvatarState {
   id: string;
   ownerId: string;
   rigVersion: 'skeleton-rig-v1';
+  customized?: boolean;
   palette: Palette;
   equipped: EquippedGear;
   expression: Expression;
+  headShape?: HeadShape;
   privacy: {
     allowFunnyActions: boolean;
     allowGifts: boolean;
@@ -260,6 +263,7 @@ export interface AtlasUserChip {
   displayName: string;
   palette: Palette;
   expression: Expression;
+  headShape?: HeadShape;
   equipped: EquippedGear;
   isAnonymous: boolean;
 }
@@ -291,6 +295,7 @@ export interface AtlasStoryCard {
   createdAt: string;
   palette: Palette;
   expression: Expression;
+  headShape?: HeadShape;
   equipped: EquippedGear;
 }
 
@@ -374,6 +379,7 @@ export interface GroupMemberView {
   role: Membership['role'];
   palette: Palette;
   expression: Expression;
+  headShape?: HeadShape;
   equipped: EquippedGear;
   isMe: boolean;
   storyCount: number;

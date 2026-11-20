@@ -12,9 +12,10 @@
       <avatar-rig
         wx:if="{{myAvatar}}"
         mode="chip"
-        palette="{{avatarPalette}}"
-        expression="{{avatarExpression}}"
-        equipped="{{avatarEquipped}}"
+        palette="{{isAnonymous ? anonymousAppearance.palette : avatarPalette}}"
+        head-shape="{{isAnonymous ? anonymousAppearance.headShape : avatarHeadShape}}"
+        expression="{{isAnonymous ? anonymousAppearance.expression : avatarExpression}}"
+        equipped="{{isAnonymous ? anonymousAppearance.equipped : avatarEquipped}}"
       />
     </view>
     <view class="preview__main">
@@ -188,7 +189,7 @@
     <view class="switch-row">
       <view>
         <view class="switch-row__name">匿名展示</view>
-        <view class="tiny muted">只隐藏昵称，后台仍绑定本人以便删除与举报处理</view>
+        <view class="tiny muted">圈友看到统一昵称和头像，后台保留作者关联以处理举报</view>
       </view>
       <switch checked="{{isAnonymous}}" color="#2F6FE0" bindchange="onAnonymous" />
     </view>

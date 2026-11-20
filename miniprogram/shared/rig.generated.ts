@@ -242,7 +242,13 @@ export const RIG_DATA = {
           "w": 204,
           "h": 306
         },
-        "src": "/assets/rigs/front/body.png"
+        "slot": "palette",
+        "variants": {
+          "blue": "/assets/rigs/front/body/blue.png",
+          "orange": "/assets/rigs/front/body/orange.png",
+          "purple": "/assets/rigs/front/body/purple.png",
+          "mint": "/assets/rigs/front/body/mint.png"
+        }
       },
       {
         "id": "outfit",
@@ -276,6 +282,20 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "boots",
+        "z": 26,
+        "bbox": {
+          "x": 88,
+          "y": 394,
+          "w": 144,
+          "h": 52
+        },
+        "slot": "boots",
+        "variants": {
+          "snow_boots": "/assets/rigs/front/boots/snow_boots.png"
+        }
+      },
+      {
         "id": "head",
         "z": 30,
         "bbox": {
@@ -284,13 +304,34 @@ export const RIG_DATA = {
           "w": 148,
           "h": 150
         },
+        "slot": "headShape",
+        "variants": {
+          "round-blue": "/assets/rigs/front/head/round-blue.png",
+          "round-orange": "/assets/rigs/front/head/round-orange.png",
+          "round-purple": "/assets/rigs/front/head/round-purple.png",
+          "round-mint": "/assets/rigs/front/head/round-mint.png",
+          "soft_square-blue": "/assets/rigs/front/head/soft_square-blue.png",
+          "soft_square-orange": "/assets/rigs/front/head/soft_square-orange.png",
+          "soft_square-purple": "/assets/rigs/front/head/soft_square-purple.png",
+          "soft_square-mint": "/assets/rigs/front/head/soft_square-mint.png"
+        }
+      },
+      {
+        "id": "face",
+        "z": 32,
+        "bbox": {
+          "x": 86,
+          "y": 42,
+          "w": 148,
+          "h": 150
+        },
         "slot": "expression",
         "variants": {
-          "happy": "/assets/rigs/front/head/happy.png",
-          "surprised": "/assets/rigs/front/head/surprised.png",
-          "awkward": "/assets/rigs/front/head/awkward.png",
-          "comfort": "/assets/rigs/front/head/comfort.png",
-          "cool": "/assets/rigs/front/head/cool.png"
+          "happy": "/assets/rigs/front/face/happy.png",
+          "surprised": "/assets/rigs/front/face/surprised.png",
+          "awkward": "/assets/rigs/front/face/awkward.png",
+          "comfort": "/assets/rigs/front/face/comfort.png",
+          "cool": "/assets/rigs/front/face/cool.png"
         }
       },
       {
@@ -344,7 +385,13 @@ export const RIG_DATA = {
           "w": 204,
           "h": 306
         },
-        "src": "/assets/rigs/back/body.png"
+        "slot": "palette",
+        "variants": {
+          "blue": "/assets/rigs/back/body/blue.png",
+          "orange": "/assets/rigs/back/body/orange.png",
+          "purple": "/assets/rigs/back/body/purple.png",
+          "mint": "/assets/rigs/back/body/mint.png"
+        }
       },
       {
         "id": "outfit",
@@ -378,6 +425,20 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "boots",
+        "z": 26,
+        "bbox": {
+          "x": 88,
+          "y": 394,
+          "w": 144,
+          "h": 52
+        },
+        "slot": "boots",
+        "variants": {
+          "snow_boots": "/assets/rigs/back/boots/snow_boots.png"
+        }
+      },
+      {
         "id": "head",
         "z": 30,
         "bbox": {
@@ -386,7 +447,17 @@ export const RIG_DATA = {
           "w": 148,
           "h": 150
         },
-        "src": "/assets/rigs/back/head.png"
+        "slot": "headShape",
+        "variants": {
+          "round-blue": "/assets/rigs/back/head/round-blue.png",
+          "round-orange": "/assets/rigs/back/head/round-orange.png",
+          "round-purple": "/assets/rigs/back/head/round-purple.png",
+          "round-mint": "/assets/rigs/back/head/round-mint.png",
+          "soft_square-blue": "/assets/rigs/back/head/soft_square-blue.png",
+          "soft_square-orange": "/assets/rigs/back/head/soft_square-orange.png",
+          "soft_square-purple": "/assets/rigs/back/head/soft_square-purple.png",
+          "soft_square-mint": "/assets/rigs/back/head/soft_square-mint.png"
+        }
       },
       {
         "id": "goggles",

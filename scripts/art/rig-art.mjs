@@ -35,6 +35,31 @@ export const C = {
 const SKULL_PATH =
   'M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z';
 
+const SQUARE_SKULL_PATH = 'M160,52 C196,52 218,76 220,108 L220,130 Q219,148 206,158 L200,174 Q195,188 178,188 H142 Q125,188 120,174 L114,158 Q101,148 100,130 L100,108 C102,76 124,52 160,52 Z';
+const BONE_TINTS = {
+  blue: ['#EDF5FF', '#C9DFFD', '#9CB9E0'],
+  orange: ['#FFE9CF', '#FFD0A1', '#DFAB78'],
+  purple: ['#F2E5FF', '#DEC7F6', '#BD9CDA'],
+  mint: ['#E0FFF2', '#B4F0DB', '#83CBB3'],
+};
+const HEAD_SHAPES = { round: SKULL_PATH, soft_square: SQUARE_SKULL_PATH };
+
+function tinted(content, palette) {
+  const [bone, shade, line] = BONE_TINTS[palette];
+  const replacements = { [C.bone]: bone, [C.boneShade]: shade, [C.boneLine]: line };
+  return content.replace(/#[0-9A-F]{6}/g, (color) => replacements[color] ?? color);
+}
+
+function variants(keys, draw) {
+  return Object.fromEntries(keys.map((key) => [key, { content: () => draw(key) }]));
+}
+
+function headVariants(draw) {
+  return Object.fromEntries(Object.entries(HEAD_SHAPES).flatMap(([shape, path]) =>
+    Object.keys(BONE_TINTS).map((palette) => [shape + '-' + palette, { content: () => tinted(draw(path), palette) }]),
+  ));
+}
+
 /* ---------------------------------------------------------------- helpers */
 
 const n = (v) => (Math.round(v * 10) / 10).toString();
@@ -75,6 +100,14 @@ function boot(x, y, flip = 1) {
     `<rect x="${n(left + 3)}" y="${n(y + 3)}" width="${w - 6}" height="${h - 9}" rx="11" fill="#4A3F66"/>` +
     `<path d="M${n(left + 8)},${n(y + h - 12)} L${n(left + w - 8)},${n(y + h - 12)}" stroke="${C.ink}" stroke-width="2.5" opacity="0.5"/>`
   );
+}
+
+function snowBoots(view) {
+  return [96, 170].map((x) => `
+    <path d="M${x + 10},422 L${x + 12},400 Q${x + 29},393 ${x + 43},401 L${x + 44},416 Q${x + 57},423 ${x + 54},436 Q${x + 52},440 ${x + 47},440 H${x + 10} Q${x},438 ${x},430 Q${x},425 ${x + 10},422 Z" fill="#345B94" stroke="${C.ink}" stroke-width="3"/>
+    <path d="M${x + 5},434 H${x + 49}" stroke="${C.ink}" stroke-width="4" stroke-linecap="round"/>
+    <path d="M${x + 14},408 H${x + 41} M${x + 12},416 H${x + 43}" stroke="${view === 'front' ? '#C9EAFF' : '#77A8D3'}" stroke-width="3" stroke-linecap="round"/>
+  `).join('');
 }
 
 /* ------------------------------------------------------------------ head */
@@ -118,11 +151,9 @@ function eyesComfort() {
 
 function eyesCool() {
   return `
-    <rect x="104" y="100" width="112" height="34" rx="13" fill="${C.ink}"/>
-    <path d="M114,124 L136,106" stroke="#7FB8FF" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
-    <path d="M158,124 L180,106" stroke="#7FB8FF" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
-    <path d="M104,108 L96,104 M216,108 L224,104" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/>
-    <path d="M128,152 Q160,160 192,148" stroke="${C.ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    <path d="M121,107 L150,111 M170,111 L199,105" stroke="${C.ink}" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M122,119 Q137,128 151,118 M169,118 Q183,126 198,117" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M146,155 Q161,159 177,151" stroke="${C.ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
 }
 
 function teeth(y = 154, w = 36, h = 18) {
@@ -133,37 +164,32 @@ function teeth(y = 154, w = 36, h = 18) {
     <line x1="${n(x + (w * 2) / 3)}" y1="${n(y + 2)}" x2="${n(x + (w * 2) / 3)}" y2="${n(y + h - 2)}" stroke="${C.ink}" stroke-width="1.8" opacity="0.5"/>`;
 }
 
-function skullBase(highlight = true) {
+function skullBase(path) {
   return `
-    <path d="${SKULL_PATH}" fill="${C.bone}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
-    ${
-      highlight
-        ? `<path d="M116,96 C118,72 134,60 152,57" stroke="#FFFFFF" stroke-width="8" opacity="0.5" stroke-linecap="round" fill="none"/>`
-        : ''
-    }
-    <path d="M160,136 L153,152 L167,152 Z" fill="${C.ink}"/>`;
+    <path d="${path}" fill="${C.bone}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M116,96 C118,72 134,60 152,57" stroke="#FFFFFF" stroke-width="8" opacity="0.5" stroke-linecap="round" fill="none"/>`;
 }
 
-function head(expression) {
-  const base = skullBase();
+function face(expression) {
+  const nose = `<path d="M160,136 L153,152 L167,152 Z" fill="${C.ink}"/>`;
   switch (expression) {
     case 'surprised':
-      return `${base}${eyesSurprised()}<ellipse cx="160" cy="160" rx="12" ry="11" fill="${C.ink}"/><rect x="152" y="152" width="16" height="7" rx="2.5" fill="${C.white}"/>`;
+      return `${nose}${eyesSurprised()}<ellipse cx="160" cy="160" rx="12" ry="11" fill="${C.ink}"/><rect x="152" y="152" width="16" height="7" rx="2.5" fill="${C.white}"/>`;
     case 'awkward':
-      return `${base}${eyesAwkward()}${teeth(155, 34, 17)}`;
+      return `${nose}${eyesAwkward()}${teeth(155, 34, 17)}`;
     case 'comfort':
-      return `${base}${eyesComfort()}<path d="M146,158 Q160,166 174,158" stroke="${C.ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+      return `${nose}${eyesComfort()}<path d="M146,158 Q160,166 174,158" stroke="${C.ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
     case 'cool':
-      return `${base}${eyesCool()}${teeth(158, 30, 15)}`;
+      return `${nose}${eyesCool()}${teeth(158, 30, 15)}`;
     case 'happy':
     default:
-      return `${base}${eyesHappy()}${teeth()}`;
+      return `${nose}${eyesHappy()}${teeth()}`;
   }
 }
 
-function headBack() {
+function headBack(path) {
   return `
-    <path d="${SKULL_PATH}" fill="${C.bone}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
+    <path d="${path}" fill="${C.bone}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
     <path d="M118,98 C120,72 136,58 154,56" stroke="#FFFFFF" stroke-width="8" opacity="0.42" stroke-linecap="round" fill="none"/>
     <path d="M126,132 Q160,152 194,132" stroke="${C.boneLine}" stroke-width="3" fill="none" stroke-linecap="round"/>
     <path d="M138,100 Q160,110 182,100" stroke="${C.boneLine}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.8"/>
@@ -397,7 +423,7 @@ function shadow() {
  */
 export const LAYERS = [
   { id: 'shadow', view: 'front', bbox: [58, 424, 204, 40], z: 0, content: () => shadow() },
-  { id: 'body', view: 'front', bbox: [58, 148, 204, 306], z: 10, content: () => bodyFront() },
+  { id: 'body', view: 'front', bbox: [58, 148, 204, 306], z: 10, slot: 'palette', variants: variants(Object.keys(BONE_TINTS), (palette) => tinted(bodyFront(), palette)) },
   {
     id: 'outfit',
     view: 'front',
@@ -421,20 +447,9 @@ export const LAYERS = [
       steel_hip_guard: { content: () => hipProtector() },
     },
   },
-  {
-    id: 'head',
-    view: 'front',
-    bbox: [86, 42, 148, 150],
-    z: 30,
-    slot: 'expression',
-    variants: {
-      happy: { content: () => head('happy') },
-      surprised: { content: () => head('surprised') },
-      awkward: { content: () => head('awkward') },
-      comfort: { content: () => head('comfort') },
-      cool: { content: () => head('cool') },
-    },
-  },
+  { id: 'head', view: 'front', bbox: [86, 42, 148, 150], z: 30, slot: 'headShape', variants: headVariants(skullBase) },
+  { id: 'face', view: 'front', bbox: [86, 42, 148, 150], z: 32, slot: 'expression',
+    variants: variants(['happy', 'surprised', 'awkward', 'comfort', 'cool'], face) },
   {
     id: 'goggles',
     view: 'front',
@@ -455,8 +470,12 @@ export const LAYERS = [
     },
   },
 
+  ...['front', 'back'].map((view) => ({
+    id: 'boots', view, bbox: [88, 394, 144, 52], z: 26, slot: 'boots',
+    variants: { snow_boots: { content: () => snowBoots(view) } },
+  })),
   { id: 'shadow', view: 'back', bbox: [58, 424, 204, 40], z: 0, content: () => shadow() },
-  { id: 'body', view: 'back', bbox: [58, 148, 204, 306], z: 10, content: () => bodyBack() },
+  { id: 'body', view: 'back', bbox: [58, 148, 204, 306], z: 10, slot: 'palette', variants: variants(Object.keys(BONE_TINTS), (palette) => tinted(bodyBack(), palette)) },
   {
     id: 'outfit',
     view: 'back',
@@ -480,7 +499,7 @@ export const LAYERS = [
       steel_hip_guard: { content: () => hipProtector() },
     },
   },
-  { id: 'head', view: 'back', bbox: [86, 42, 148, 150], z: 30, content: () => headBack() },
+  { id: 'head', view: 'back', bbox: [86, 42, 148, 150], z: 30, slot: 'headShape', variants: headVariants(headBack) },
   {
     id: 'goggles',
     view: 'back',
@@ -559,20 +578,15 @@ export const ANCHORS = {
 /** 按 z 顺序合成一个视图（equipment 决定装备变体；缺省装备时使用第一个变体） */
 export function figureContent(view, equipment = {}) {
   const parts = [];
+  const palette = equipment.palette ?? 'blue';
+  const appearance = { expression: equipment.expression ?? 'happy', palette, headShape: (equipment.headShape ?? 'round') + '-' + palette };
   for (const layer of LAYERS.filter((l) => l.view === view).sort((a, b) => a.z - b.z)) {
-    const slotValue = layer.slot ? equipment[layer.slot] : undefined;
-    if (layer.slot === 'expression') {
-      const key = slotValue && layer.variants[slotValue] ? slotValue : 'happy';
-      parts.push(layer.variants[key].content());
+    if (!layer.slot) {
+      parts.push(layer.content());
       continue;
     }
-    if (layer.slot && !slotValue) continue;
-    if (layer.variants) {
-      const key = slotValue && layer.variants[slotValue] ? slotValue : Object.keys(layer.variants)[0];
-      parts.push(layer.variants[key].content());
-    } else {
-      parts.push(layer.content());
-    }
+    const key = appearance[layer.slot] ?? equipment[layer.slot];
+    if (key && layer.variants[key]) parts.push(layer.variants[key].content());
   }
   return parts.join('');
 }

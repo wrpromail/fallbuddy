@@ -7,104 +7,79 @@
     <view class="icon-btn" bindtap="onSettings">⚙</view>
   </view>
 
-  <view class="stage card">
-    <view class="stage__figure">
-      <avatar-rig
-        wx:if="{{avatar}}"
-        view="front"
-        palette="{{avatar.palette}}"
-        expression="{{avatar.expression}}"
-        equipped="{{avatar.equipped}}"
-      />
-    </view>
-    <view wx:if="{{saving}}" class="stage__saving">保存中…</view>
+  <view wx:if="{{loading && !avatar}}" class="panel card">正在加载角色…</view>
+  <view wx:if="{{error}}" class="panel card">
+    <view>{{error}}</view>
+    <button class="btn btn--ghost" bindtap="load">重试</button>
   </view>
 
-  <view class="panel card">
-    <view class="panel__head">
-      <view class="section-title">表情</view>
-      <view class="tiny muted">会显示在故事图鉴上</view>
-    </view>
-    <view class="expressions">
-      <view
-        wx:for="{{expressions}}"
-        wx:key="id"
-        class="expression {{item.selected ? 'expression--on' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="onExpression"
-      >
-        <view class="expression__emoji">{{item.emoji}}</view>
-        <view class="expression__label">{{item.label}}</view>
+  <block wx:if="{{preview}}">
+    <view class="stage card {{draft ? 'stage--editing' : ''}}">
+      <view class="character-controls">
+        <button class="btn {{view === 'front' && mode === 'full' ? 'btn--primary' : 'btn--ghost'}}" data-id="front" bindtap="onPreview">正面</button>
+        <button class="btn {{view === 'back' ? 'btn--primary' : 'btn--ghost'}}" data-id="back" bindtap="onPreview">背面</button>
+        <button class="btn {{mode === 'chip' ? 'btn--primary' : 'btn--ghost'}}" data-id="chip" bindtap="onPreview">小头像</button>
       </view>
+      <view class="stage__figure {{mode === 'chip' ? 'stage__figure--chip' : ''}}">
+        <avatar-rig id="avatar-preview" view="{{view}}" mode="{{mode}}" palette="{{preview.palette}}"
+          head-shape="{{preview.headShape}}" expression="{{preview.expression}}" equipped="{{preview.equipped}}" reduce-motion="{{reduceMotion}}" />
+      </view>
+      <view wx:if="{{draft}}" class="character-controls">
+        <button wx:for="{{actions}}" wx:key="id" class="btn btn--ghost" data-id="{{item.id}}" bindtap="onPreviewAction">{{item.label}}</button>
+      </view>
+      <button wx:else class="btn btn--primary" bindtap="onEdit">{{avatar.customized === false ? '创建我的角色' : '编辑形象与穿搭'}}</button>
+      <view wx:if="{{notice && !draft}}" class="tiny muted">{{notice}}</view>
     </view>
-  </view>
 
-  <view class="panel card">
-    <view class="panel__head">
-      <view class="section-title">配色</view>
-      <view class="tiny muted">小头像的底色标签</view>
-    </view>
-    <view class="palettes">
-      <view
-        wx:for="{{palettes}}"
-        wx:key="id"
-        class="swatch {{item.selected ? 'swatch--on' : ''}}"
-        style="background:{{item.color}}"
-        data-id="{{item.id}}"
-        bindtap="onPalette"
-      ></view>
-    </view>
-  </view>
+    <block wx:if="{{draft}}">
+      <view class="panel card">
+        <view class="section-title">头型</view>
+        <view class="character-controls character-controls--left">
+          <button wx:for="{{headShapes}}" wx:key="id" class="btn {{draft.headShape === item.id ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="{{item.id}}" bindtap="onShape">{{item.label}}</button>
+        </view>
+        <view class="section-title">表情</view>
+        <view class="character-controls character-controls--left">
+          <button wx:for="{{expressions}}" wx:key="id" class="btn {{draft.expression === item.id ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="{{item.id}}" bindtap="onExpression">{{item.label}}</button>
+        </view>
+        <view class="section-title">角色主色</view>
+        <view class="character-controls character-controls--left">
+          <button wx:for="{{palettes}}" wx:key="id" class="btn {{draft.palette === item.id ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="{{item.id}}" bindtap="onPalette"><text class="color-dot" style="background:{{item.color}}"></text>{{item.label}}</button>
+        </view>
+      </view>
 
-  <view class="panel card">
-    <view class="panel__head">
-      <view class="section-title">雪服</view>
-      <view class="tiny muted">已拥有</view>
-    </view>
-    <view class="gear-list">
-      <view
-        wx:for="{{outfits}}"
-        wx:key="id"
-        class="gear {{item.selected ? 'gear--on' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="onOutfit"
-      >
-        <view class="gear__name">{{item.name}}</view>
-        <view class="gear__check">{{item.selected ? '已穿' : '换上'}}</view>
+      <view class="panel card">
+        <view class="section-title">衣橱</view>
+        <view class="character-controls character-controls--left">
+          <button wx:for="{{slots}}" wx:key="id" class="btn {{slot === item.id ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="{{item.id}}" bindtap="onSlot">{{item.label}}</button>
+        </view>
+        <button class="btn btn--ghost" data-id="" disabled="{{!selectedItem || saving}}" bindtap="onTryGear">脱下这个部位的装备</button>
+        <view wx:for="{{wardrobe}}" wx:key="id" class="wardrobe-item">
+          <image class="wardrobe-item__image" src="{{item.src}}" mode="aspectFit" />
+          <view class="wardrobe-item__text">
+            <view>{{item.name}}</view>
+            <view class="tiny muted">{{item.desc}}</view>
+            <view class="tiny muted">{{selectedItem === item.id ? (selectedOwned ? '穿戴中' : '试穿中') : (avatar.equipped[slot] === item.id ? '已保存穿戴' : (item.owned ? '已拥有' : '可免费领取'))}}</view>
+          </view>
+          <view class="wardrobe-item__actions">
+            <button class="btn btn--ghost" disabled="{{saving || selectedItem === item.id}}" data-id="{{item.id}}" bindtap="onTryGear">试穿</button>
+            <button wx:if="{{!item.owned}}" class="btn btn--ghost" disabled="{{claimingItem || saving}}" data-id="{{item.id}}" bindtap="onClaimGear">免费领取</button>
+          </view>
+        </view>
       </view>
-      <view wx:if="{{!outfits.length}}" class="tiny muted">还没有外观，先领取免费补给吧</view>
-    </view>
-  </view>
 
-  <view class="panel card">
-    <view class="panel__head">
-      <view class="section-title">头部与护具</view>
-      <view class="tiny muted">原创通用造型，无品牌元素</view>
-    </view>
-    <view class="chips">
-      <view
-        wx:for="{{headgears}}"
-        wx:key="id"
-        class="chip {{item.selected ? 'chip--on' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="onHeadgear"
-      >{{item.name}}</view>
-    </view>
-    <view class="toggle-row">
-      <view class="toggle-row__main">
-        <view class="toggle-row__name">雪镜</view>
-        <view class="tiny muted">半透明镜片，不挡表情</view>
+      <view class="editor-footer">
+        <view wx:if="{{notice}}" class="editor-footer__notice" aria-role="status">{{notice}}</view>
+        <view class="character-controls">
+          <button class="btn btn--ghost" disabled="{{saving || claimingItem}}" bindtap="onCancel">取消</button>
+          <button class="btn btn--primary" disabled="{{saving || claimingItem || loading}}" bindtap="onSave">{{saving ? '保存中…' : '保存角色'}}</button>
+        </view>
       </view>
-      <switch checked="{{gogglesOn}}" color="#2F6FE0" bindchange="onGoggles" />
-    </view>
-    <view class="toggle-row toggle-row--last">
-      <view class="toggle-row__main">
-        <view class="toggle-row__name">护臀</view>
-        <view class="tiny muted">尾椎的忠实伙伴</view>
-      </view>
-      <switch checked="{{hipOn}}" color="#2F6FE0" bindchange="onHip" />
-    </view>
-  </view>
+    </block>
+  </block>
 
   <view class="panel card">
     <view class="panel__head">
@@ -140,7 +115,7 @@
       <view wx:if="{{!myStories.length}}" class="empty card">
         <view class="empty__emoji">🫥</view>
         <view class="empty__title">还没有故事</view>
-        <view class="btn btn--primary" bindtap="onCreate">记录第一条</view>
+        <view class="btn btn--primary" bindtap="onNewStory">记录第一条</view>
       </view>
     </view>
   </view>

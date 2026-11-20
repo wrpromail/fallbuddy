@@ -52,7 +52,12 @@ for (const kind of ['atlas', 'avatar', 'inbox']) {
 }
 
 for (const item of ITEM_DEFINITIONS) {
-  if (item.category === 'cosmetic') continue;
+  if (item.category === 'cosmetic') {
+    const layer = RIG.views.front.find((entry) => entry.slot === item.slot);
+    const src = layer?.variants?.[item.id];
+    if (src !== `/assets/${item.assetKey}.png`) errors.push(`外观缩略图缺失或不匹配：${item.id}`);
+    continue;
+  }
   check(join(MP, 'assets', 'items', `${item.id}.png`), 96, 96, `item/${item.id}`);
 }
 

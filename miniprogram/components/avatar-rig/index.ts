@@ -1,6 +1,6 @@
 import { ACTION_MAP } from '../../shared/actions';
 import type { ActionId, EquippedGear } from '../../shared/types';
-import type { Expression, Palette } from '../../shared/enums';
+import type { Expression, HeadShape, Palette } from '../../shared/enums';
 import { DEFAULT_EQUIPPED, resolveRigLayers } from '../../shared/rig';
 import type { ResolvedLayer } from '../../shared/rig-types';
 
@@ -20,6 +20,7 @@ Component({
     view: { type: String, value: 'front' },
     mode: { type: String, value: 'full' },
     palette: { type: String, value: 'blue' },
+    headShape: { type: String, value: 'round' },
     expression: { type: String, value: 'happy' },
     equipped: { type: Object, value: null },
     action: { type: String, value: '' },
@@ -31,7 +32,7 @@ Component({
     emoji: '',
   } as RigData,
   observers: {
-    'view, mode, palette, expression, equipped': function () {
+    'view, mode, palette, headShape, expression, equipped': function () {
       this.rebuild();
     },
   },
@@ -52,6 +53,7 @@ Component({
       const layers = resolveRigLayers(
         view,
         {
+          headShape: this.data.headShape as HeadShape,
           palette: this.data.palette as Palette,
           expression: this.data.expression as Expression,
           equipped,
@@ -68,8 +70,9 @@ Component({
       const instance = this as unknown as RigInstance;
       if (instance._timer) clearTimeout(instance._timer);
       const reduce = this.data.reduceMotion;
+      const actionClass = def.id === 'receive_gift' ? 'is-gift' : `is-${def.id}`;
       this.setData({
-        cls: reduce ? 'is-static' : `is-${def.id}`,
+        cls: reduce ? 'is-static' : actionClass,
         emoji: reduce ? '🙂' : def.fallbackEmoji,
       });
       instance._timer = setTimeout(() => {

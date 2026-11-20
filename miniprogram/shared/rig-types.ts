@@ -1,4 +1,4 @@
-import type { BodyPart, EquipSlot, Expression, Palette } from './enums';
+import type { BodyPart, EquipSlot, Expression, HeadShape, Palette } from './enums';
 
 export interface LayerBox {
   x: number;
@@ -11,7 +11,7 @@ export interface RigLayerDef {
   id: string;
   z: number;
   bbox: LayerBox;
-  slot?: 'expression' | EquipSlot;
+  slot?: 'expression' | 'palette' | 'headShape' | EquipSlot;
   src?: string;
   variants?: Record<string, string>;
 }
@@ -44,6 +44,7 @@ export interface ResolvedLayer {
 
 export interface RigAppearance {
   palette: Palette;
+  headShape?: HeadShape;
   equipped: {
     headgear: string | null;
     goggles: string | null;

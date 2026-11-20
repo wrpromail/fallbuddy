@@ -114,6 +114,8 @@
     for (const layer of defs) {
       let src = null;
       if (layer.slot === 'expression') src = layer.variants[avatar.expression] || layer.variants.happy;
+      else if (layer.slot === 'palette') src = layer.variants[avatar.palette] || layer.variants.blue;
+      else if (layer.slot === 'headShape') src = layer.variants[`${avatar.headShape || 'round'}-${avatar.palette}`] || layer.variants['round-blue'];
       else if (layer.slot) {
         const value = avatar.equipped[layer.slot];
         if (!value) continue;
@@ -122,7 +124,7 @@
         src = layer.src;
       }
       if (!src) continue;
-      if (mode === 'chip' && ['head', 'headgear', 'goggles'].indexOf(layer.id) < 0) continue;
+      if (mode === 'chip' && ['head', 'face', 'headgear', 'goggles'].indexOf(layer.id) < 0) continue;
       active.push({ layer, src });
     }
     if (!active.length) return [];
@@ -166,6 +168,7 @@
   function chipHtml(chip, size) {
     const avatar = {
       palette: chip.palette,
+      headShape: chip.headShape,
       expression: chip.expression,
       equipped: chip.equipped,
     };

@@ -4,6 +4,7 @@
       <avatar-rig
         mode="chip"
         palette="{{story.palette}}"
+        head-shape="{{story.headShape}}"
         expression="{{story.expression}}"
         equipped="{{story.equipped}}"
       />

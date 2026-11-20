@@ -5,18 +5,16 @@
  *  2. 生成 miniprogram/shared/rig.generated.ts（图层裁剪框、站位、热点）
  *  3. 输出 build/review/*.png 供人工 / 视觉模型评审
  *
- * 依赖本机 Chrome（可用 CHROME_PATH 覆盖），无需 npm 图形依赖。
+ * 依赖本机 Chrome（可用 CHROME_PATH 覆盖）和 Python Pillow。
  */
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import puppeteer from 'puppeteer-core';
+import { execFileSync } from 'node:child_process';
 import { CANVAS, LAYERS, HOTSPOTS, ANCHORS, layerMap, svgFor, layerSrcPath, figureContent } from './art/rig-art.mjs';
 import { tabIcon, itemIcon } from './art/icons-art.mjs';
 
-const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, '..');
-const TMP = join(ROOT, 'build', 'svg');
 const REVIEW = join(ROOT, 'build', 'review');
 const ASSETS = join(ROOT, 'miniprogram', 'assets');
 const RIG_TS = join(ROOT, 'miniprogram', 'shared', 'rig.generated.ts');
@@ -24,27 +22,20 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 
 const SCALE = 2;
 
+let browser;
+
 async function render(svg, outFile) {
   const size = svg.match(/width="(\d+)" height="(\d+)"/);
   if (!size) throw new Error('svg size missing: ' + outFile);
-  const [w, h] = [Number(size[1]), Number(size[2])];
-  const svgFile = join(TMP, outFile.replace(/[\\/]/g, '__') + '.svg');
-  writeFileSync(svgFile, svg);
   mkdirSync(dirname(outFile), { recursive: true });
-  const profile = join(TMP, 'chrome-' + Math.random().toString(36).slice(2));
-  await run(CHROME, [
-    `--user-data-dir=${profile}`,
-    '--headless=new',
-    '--disable-gpu',
-    '--hide-scrollbars',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--force-device-scale-factor=1',
-    '--default-background-color=00000000',
-    `--window-size=${w},${h}`,
-    `--screenshot=${outFile}`,
-    `file://${svgFile}`,
-  ], { timeout: 30000 });
+  const page = await browser.newPage();
+  try {
+    await page.setViewport({ width: Number(size[1]), height: Number(size[2]), deviceScaleFactor: 1 });
+    await page.setContent(`<style>body { margin: 0 } svg { display: block }</style>${svg}`);
+    await page.screenshot({ path: outFile, omitBackground: true });
+  } finally {
+    await page.close();
+  }
 }
 
 async function pool(tasks, limit = 4) {
@@ -108,8 +99,6 @@ export const RIG_DATA = ${JSON.stringify(rigData, null, 2)} as const;
 }
 
 async function main() {
-  rmSync(TMP, { recursive: true, force: true });
-  mkdirSync(TMP, { recursive: true });
   mkdirSync(REVIEW, { recursive: true });
 
   const entries = [...layerMap().values()];
@@ -134,6 +123,19 @@ async function main() {
 
   await pool(jobs, 2);
 
+  // 纯色身体图层使用带透明度的 256 色 PNG，降低小程序包体。
+  const bodyFiles = entries.filter(({ layer }) => layer.id === 'body')
+    .map((entry) => join(ASSETS, layerSrcPath(entry).replace('/assets/', '')));
+  execFileSync('python3', ['-c', `
+import sys
+from PIL import Image
+
+for file in sys.argv[1:]:
+    with Image.open(file) as image:
+        indexed = image.convert('RGBA').quantize(colors=256, method=Image.Quantize.FASTOCTREE)
+    indexed.save(file, optimize=True)
+`, ...bodyFiles], { stdio: 'inherit' });
+
   writeFileSync(RIG_TS, rigTs());
 
   // 评审用合成图
@@ -150,7 +152,9 @@ async function main() {
   console.log(`rig config → ${RIG_TS}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+try {
+  browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
+  await main();
+} finally {
+  await browser?.close();
+}

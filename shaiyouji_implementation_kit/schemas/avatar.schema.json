@@ -8,6 +8,7 @@
   "properties": {
     "rigVersion": {"type": "string", "const": "skeleton-rig-v1"},
     "palette": {"type": "string", "enum": ["blue", "orange", "purple", "mint"]},
+    "headShape": {"type": "string", "enum": ["round", "soft_square"]},
     "equipped": {
       "type": "object",
       "additionalProperties": false,

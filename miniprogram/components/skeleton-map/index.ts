@@ -21,6 +21,7 @@ interface SpotView {
 
 interface MapAppearance {
   palette: string;
+  headShape?: string;
   expression: string;
   equipped: unknown;
 }
@@ -49,6 +50,7 @@ Component({
     spots: [] as (SpotView & { selected: boolean })[],
     plate: '',
     figPalette: 'blue',
+    figHeadShape: 'round',
     figExpression: 'happy',
     figEquipped: null as unknown,
   },
@@ -101,6 +103,7 @@ Component({
         spots,
         plate,
         figPalette: appearance?.palette ?? 'blue',
+        figHeadShape: appearance?.headShape ?? 'round',
         figExpression: appearance?.expression ?? 'happy',
         figEquipped: appearance?.equipped ?? null,
       });

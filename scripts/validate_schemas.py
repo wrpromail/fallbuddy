@@ -35,11 +35,11 @@ def check_png(rel: str, expected_w: int | None, expected_h: int | None, label: s
         errors.append(f"{label}: 缺少素材 {rel}")
         return
     with Image.open(path) as im:
-        if im.mode != "RGBA":
+        if im.mode != "RGBA" and not (im.mode == "P" and "transparency" in im.info):
             errors.append(f"{label}: {rel} 不是透明 PNG（mode={im.mode}）")
         if expected_w and im.size != (expected_w, expected_h):
             errors.append(f"{label}: {rel} 尺寸 {im.size} != {(expected_w, expected_h)}")
-        alpha = im.getchannel("A")
+        alpha = im.convert("RGBA").getchannel("A")
         lo, hi = alpha.getextrema()
         if hi == 0:
             errors.append(f"{label}: {rel} 完全透明")

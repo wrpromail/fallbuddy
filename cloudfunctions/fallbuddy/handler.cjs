@@ -1,4 +1,5 @@
 const { randomUUID } = require('node:crypto');
+const { ensureAvatar } = require('./runtime/shared/avatar.js');
 
 function bootstrap(state, openid, ownerOpenId) {
   let user = state.users.find((item) => item.openid === openid);
@@ -16,18 +17,9 @@ function bootstrap(state, openid, ownerOpenId) {
       createdAt: now,
     };
     state.users.push(user);
-    state.avatars.push({
-      id: user.avatarId,
-      ownerId: id,
-      rigVersion: 'skeleton-rig-v1',
-      palette: 'blue',
-      equipped: { headgear: null, goggles: null, outfit: null, hipProtector: null, boots: null },
-      expression: 'happy',
-      privacy: { allowFunnyActions: false, allowGifts: true },
-      version: 1,
-    });
     dirty = true;
   }
+  if (ensureAvatar(state, user, now)) dirty = true;
   if (!state.groups.length && openid === ownerOpenId) {
     state.groups.push({
       id: 'grp_pilot', name: '摔友记试用圈子', ownerId: user.id, joinMode: 'approval', createdAt: now,
