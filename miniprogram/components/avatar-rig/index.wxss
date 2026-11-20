@@ -1,0 +1,131 @@
+.rig {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 82%;
+}
+
+.rig--chip {
+  overflow: visible;
+}
+
+.rig__layer {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.rig__fx {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  transform: translateX(-50%);
+  font-size: 56rpx;
+  line-height: 1;
+  z-index: 60;
+  animation: rig-fx 1200ms ease-out forwards;
+}
+
+.rig.is-spin {
+  animation: rig-spin 900ms cubic-bezier(0.42, 0, 0.28, 1);
+}
+
+.rig.is-hug {
+  animation: rig-hug 1400ms cubic-bezier(0.42, 0, 0.28, 1);
+}
+
+.rig.is-cheer {
+  animation: rig-cheer 900ms ease-out;
+}
+
+.rig.is-gift {
+  animation: rig-gift 1300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rig.is-static {
+  animation: rig-static 1200ms ease-out;
+}
+
+@keyframes rig-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  55% {
+    transform: rotate(200deg) scale(0.94);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes rig-hug {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  30% {
+    transform: translateX(-8rpx) rotate(-3deg) scale(1.02);
+  }
+  60% {
+    transform: translateX(8rpx) rotate(3deg) scale(1.02);
+  }
+}
+
+@keyframes rig-cheer {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-16rpx) scale(1.03);
+  }
+  55% {
+    transform: translateY(0) scale(0.99);
+  }
+  75% {
+    transform: translateY(-8rpx) scale(1.02);
+  }
+}
+
+@keyframes rig-gift {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.94) translateY(10rpx);
+  }
+  65% {
+    transform: scale(1.06) translateY(-8rpx);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rig-static {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rig-fx {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20rpx) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -6rpx) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60rpx) scale(1);
+  }
+}

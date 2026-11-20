@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/shaiyouji/incident.schema.json",
+  "title": "Incident",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sport", "scenario", "selfReportedCause", "bodyParts", "impactKind", "source"],
+  "properties": {
+    "schemaVersion": {"type": "integer", "const": 1},
+    "sport": {"type": "string", "enum": ["ski_double", "ski_single", "inline_skate", "cycling", "ball_sport", "other"]},
+    "scenario": {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "enum": ["turning", "braking", "flat_ground", "lift", "queue", "collision", "other", "unknown"]}},
+    "selfReportedCause": {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "enum": ["edge_catch", "balance_loss", "too_fast", "obstacle", "contact_with_other", "unknown", "other"]}},
+    "bodyParts": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "enum": ["head", "shoulder_l", "shoulder_r", "wrist_l", "wrist_r", "back", "waist", "tailbone", "knee_l", "knee_r", "ankle_l", "ankle_r", "other"]}},
+    "impactKind": {"type": "string", "enum": ["near_miss", "minor_discomfort", "stopped_activity", "prefer_not_to_say"]},
+    "protectiveItems": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"type": "string", "enum": ["helmet", "goggles", "hip_protector", "knee_pad", "wrist_guard", "gloves", "other"]}},
+    "source": {"type": "string", "enum": ["manual", "ai_assisted"]},
+    "venueId": {"type": ["string", "null"], "maxLength": 128},
+    "userSummary": {"type": "string", "maxLength": 500}
+  }
+}

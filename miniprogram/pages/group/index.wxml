@@ -1,0 +1,82 @@
+<view class="page">
+  <view wx:if="{{joining}}" class="loading">正在加入圈子…</view>
+
+  <view wx:elif="{{loading}}" class="loading">正在打开圈子…</view>
+
+  <view wx:elif="{{error}}" class="empty card">
+    <view class="empty__emoji">🏔️</view>
+    <view class="empty__title">{{error}}</view>
+  </view>
+
+  <block wx:else>
+    <view class="hero card">
+      <view class="hero__row">
+        <view class="hero__name">{{group.name}}</view>
+        <view class="pill pill--blue">{{group.role === 'owner' ? '圈主' : group.role === 'admin' ? '管理员' : '成员'}}</view>
+      </view>
+      <view class="hero__meta">{{group.memberCount}} 位雪友 · {{group.joinMode === 'open' ? '自由加入' : '需要圈主确认'}}</view>
+      <view class="hero__stats">
+        <view class="mini">
+          <view class="mini__num">{{members.length}}</view>
+          <view class="mini__label">成员</view>
+        </view>
+        <view class="mini">
+          <view class="mini__num">{{members[0] ? members[0].storyCount : 0}}</view>
+          <view class="mini__label">圈主故事</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="panel card">
+      <view class="panel__head">
+        <view class="section-title">圈子成员</view>
+        <view class="tiny muted">按加入顺序</view>
+      </view>
+      <view class="members">
+        <view wx:for="{{members}}" wx:key="userId" class="member">
+          <view class="member__avatar">
+            <avatar-rig
+              mode="chip"
+              palette="{{item.palette}}"
+              expression="{{item.expression}}"
+              equipped="{{item.equipped}}"
+            />
+          </view>
+          <view class="member__main">
+            <view class="member__name">
+              {{item.displayName}}
+              <text wx:if="{{item.isMe}}" class="member__me">我</text>
+            </view>
+            <view class="member__meta">{{item.storyCount}} 条故事</view>
+          </view>
+          <view class="member__role">{{item.role === 'owner' ? '圈主' : item.role === 'admin' ? '管理员' : ''}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="panel card">
+      <view class="panel__head">
+        <view class="section-title">邀请雪友</view>
+        <view class="tiny muted">48 小时有效</view>
+      </view>
+      <view class="invite">
+        <button wx:if="{{canInvite}}" class="btn btn--primary" bindtap="onCreateInvite">
+          {{inviteLoading ? '生成中…' : '生成邀请'}}
+        </button>
+        <view wx:else class="tiny muted">只有圈主或管理员可以生成邀请。</view>
+      </view>
+      <view wx:if="{{invite}}" class="invite-box">
+        <view class="invite-box__label">邀请路径（复制后发给朋友）</view>
+        <view class="invite-box__value">{{invite.sharePath}}</view>
+        <view class="invite-box__actions">
+          <button class="btn btn--ghost" bindtap="onCopyInvite">复制路径</button>
+          <button class="btn btn--ghost" open-type="share">直接分享</button>
+        </view>
+        <view class="invite-box__note">链接只带邀请 token，不带任何账号凭证。对方点击后仍需确认加入。</view>
+      </view>
+      <view class="invite-note">「圈子」是应用内的受邀群体，不等于微信群全体成员。加入后才能看到圈内故事。</view>
+    </view>
+
+    <view wx:if="{{!isOwner}}" class="leave" bindtap="onLeave">退出这个圈子</view>
+  </block>
+</view>

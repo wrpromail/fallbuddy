@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="head">
+    <view>
+      <view class="head__title">消息</view>
+      <view class="head__sub">谁对你的故事抱了抱、转了圈、送了装备</view>
+    </view>
+    <view wx:if="{{unreadCount}}" class="btn btn--ghost mark" bindtap="onMarkAllRead">全部已读</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">正在收消息…</view>
+
+  <view wx:elif="{{error}}" class="empty card">
+    <view class="empty__emoji">📭</view>
+    <view class="empty__title">{{error}}</view>
+  </view>
+
+  <block wx:else>
+    <view wx:if="{{!events.length}}" class="empty card">
+      <view class="empty__emoji">📭</view>
+      <view class="empty__title">还没有互动</view>
+      <view class="empty__text">去图鉴给雪友的故事抱一下，互动会出现在对方的消息里。</view>
+      <view class="btn btn--primary" bindtap="goAtlas">去图鉴看看</view>
+    </view>
+
+    <view wx:else class="feed">
+      <view
+        wx:for="{{events}}"
+        wx:key="id"
+        class="event card {{item.read ? 'event--read' : ''}}"
+        data-index="{{index}}"
+        bindtap="onTapEvent"
+      >
+        <view class="event__emoji">{{item.emoji}}</view>
+        <view class="event__main">
+          <view class="event__text">
+            <text class="event__actor">{{item.actorName}}</text>
+            <text>{{item.text}}</text>
+          </view>
+          <view class="event__time">{{item.timeText}} · 点一下回放动画</view>
+        </view>
+        <image wx:if="{{item.itemIcon}}" src="{{item.itemIcon}}" mode="aspectFit" class="event__item" />
+        <view wx:if="{{!item.read}}" class="event__dot"></view>
+      </view>
+
+      <view wx:if="{{nextCursor}}" class="more" bindtap="onLoadMore">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    </view>
+
+    <view class="footnote">互动只是展示层效果，不会改变对方的角色配置；收到的装备需要本人确认才会穿上。</view>
+  </block>
+</view>

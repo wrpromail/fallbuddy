@@ -1,0 +1,37 @@
+{
+  "appid": "touristappid",
+  "projectname": "shaiyouji-miniapp",
+  "description": "摔友记 V0 本地原型",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "miniprogram/",
+  "srcMiniprogramRoot": "miniprogram/",
+  "setting": {
+    "useCompilerPlugins": ["typescript"],
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "ignoreUploadUnusedFiles": true,
+    "useIsolateContext": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "simulatorType": "wechat",
+  "simulatorPluginLibVersion": {},
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  }
+}

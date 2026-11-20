@@ -1,0 +1,42 @@
+<view class="map">
+  <avatar-rig
+    class="map__figure"
+    view="{{view}}"
+    mode="full"
+    palette="{{figPalette}}"
+    expression="{{figExpression}}"
+    equipped="{{figEquipped}}"
+    reduce-motion="{{reduceMotion}}"
+  />
+  <view
+    wx:for="{{spots}}"
+    wx:key="id"
+    class="spot {{item.count ? 'spot--active' : ''}}"
+    style="left:{{item.left}}%;top:{{item.top}}%"
+    data-id="{{item.id}}"
+    data-label="{{item.label}}"
+    bindtap="onTap"
+    aria-role="button"
+    aria-label="{{item.label}}（{{item.count}} 条故事）"
+  >
+    <view wx:if="{{item.chips.length}}" class="stack">
+      <view
+        wx:for="{{item.chips}}"
+        wx:for-item="chip"
+        wx:key="userId"
+        class="chip"
+        style="background:{{chip.bg}};border-color:{{chip.border}}"
+      >
+        <avatar-rig
+          mode="chip"
+          view="{{view}}"
+          palette="{{chip.palette}}"
+          expression="{{chip.expression}}"
+          equipped="{{chip.equipped}}"
+        />
+      </view>
+      <view wx:if="{{item.more}}" class="chip chip--more">+{{item.more}}</view>
+    </view>
+    <view wx:else class="dot"></view>
+  </view>
+</view>

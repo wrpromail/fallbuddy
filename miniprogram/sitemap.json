@@ -1,0 +1,9 @@
+{
+  "desc": "V0 本地原型，页面暂不被索引",
+  "rules": [
+    {
+      "action": "disallow",
+      "page": "*"
+    }
+  ]
+}

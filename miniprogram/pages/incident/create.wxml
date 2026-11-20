@@ -1,0 +1,207 @@
+<view class="page">
+  <view class="intro">
+    <view class="intro__title">记录一次经历</view>
+    <view class="intro__sub">标签 + 一句话，30 秒就能发；不用 AI 也完整可用。</view>
+  </view>
+
+  <view class="preview card">
+    <view class="preview__avatar">
+      <avatar-rig
+        wx:if="{{myAvatar}}"
+        mode="chip"
+        palette="{{avatarPalette}}"
+        expression="{{avatarExpression}}"
+        equipped="{{avatarEquipped}}"
+      />
+    </view>
+    <view class="preview__main">
+      <view class="preview__name">发布后会这样出现{{isAnonymous ? '（匿名展示）' : ''}}</view>
+      <view class="preview__tags">
+        <text wx:for="{{selectedPartLabels}}" wx:key="*this" class="pill pill--blue">{{item}}</text>
+        <text class="pill pill--accent">{{impactLabel}}</text>
+        <text wx:if="{{!selectedPartLabels.length}}" class="pill">还没选部位</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">运动</view><view class="tiny muted">单选</view></view>
+    <view class="chips">
+      <view
+        wx:for="{{sports}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onSport"
+      >
+        <text class="chip__emoji">{{item.emoji}}</text><text>{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">发生背景</view><view class="tiny muted">最多 3 个</view></view>
+    <view class="chips">
+      <view
+        wx:for="{{scenarios}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-kind="scenario"
+        data-id="{{item.id}}"
+        bindtap="onMulti"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">自述原因</view><view class="tiny muted">最多 3 个 · 不是责任认定</view></view>
+    <view class="chips">
+      <view
+        wx:for="{{causes}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-kind="cause"
+        data-id="{{item.id}}"
+        bindtap="onMulti"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">身体部位</view><view class="tiny muted">最多 3 个 · 用于热区统计</view></view>
+    <view class="chips chips--grid">
+      <view
+        wx:for="{{parts}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-kind="bodyParts"
+        data-id="{{item.id}}"
+        bindtap="onMulti"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">当时情况</view><view class="tiny muted">不构成伤情分级</view></view>
+    <view class="chips">
+      <view
+        wx:for="{{impacts}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onImpact"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">当时戴了</view><view class="tiny muted">可多选</view></view>
+    <view class="chips">
+      <view
+        wx:for="{{protections}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-kind="protections"
+        data-id="{{item.id}}"
+        bindtap="onMulti"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">标题</view><view class="tiny muted">{{titleLen}}/24</view></view>
+    <input
+      class="input"
+      value="{{title}}"
+      maxlength="24"
+      placeholder="比如：尾椎渡劫记"
+      placeholder-class="placeholder"
+      bindinput="onTitleInput"
+    />
+    <view class="presets">
+      <view wx:for="{{presets}}" wx:key="*this" class="preset" data-title="{{item}}" bindtap="onPreset">{{item}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">一句话经过</view><view class="tiny muted">{{bodyLen}}/140</view></view>
+    <textarea
+      class="textarea"
+      value="{{body}}"
+      maxlength="140"
+      auto-height
+      placeholder="发生了什么？比如：转弯时卡刃，坐了个屁股墩，护臀救了我。"
+      placeholder-class="placeholder"
+      bindinput="onBodyInput"
+    />
+    <view wx:if="{{sensitive}}" class="warn">{{sensitive}}</view>
+    <view class="hint">请去掉姓名、电话、证件号、详细住址等可识别信息。语音与 AI 整理会在 V1.1 提供。</view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">可见圈子</view><view class="tiny muted">逐个勾选，不会自动跨群</view></view>
+    <view class="groups">
+      <view
+        wx:for="{{groupChips}}"
+        wx:key="id"
+        class="group-row"
+        data-id="{{item.id}}"
+        bindtap="onToggleGroup"
+      >
+        <view class="checkbox {{item.checked ? 'checkbox--on' : ''}}">{{item.checked ? '✓' : ''}}</view>
+        <view class="group-row__main">
+          <view class="group-row__name">{{item.name}}</view>
+          <view class="tiny muted">{{item.memberCount}} 位雪友</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="section__head"><view class="section-title">互动设置</view><view class="tiny muted">随时可改</view></view>
+    <view class="switch-row">
+      <view>
+        <view class="switch-row__name">匿名展示</view>
+        <view class="tiny muted">只隐藏昵称，后台仍绑定本人以便删除与举报处理</view>
+      </view>
+      <switch checked="{{isAnonymous}}" color="#2F6FE0" bindchange="onAnonymous" />
+    </view>
+    <view class="switch-row">
+      <view>
+        <view class="switch-row__name">允许搞笑动作</view>
+        <view class="tiny muted">关闭后，别人不能对你使用「转圈」</view>
+      </view>
+      <switch checked="{{allowFunnyActions}}" color="#2F6FE0" bindchange="onFunny" />
+    </view>
+    <view class="switch-row">
+      <view>
+        <view class="switch-row__name">允许收礼物</view>
+        <view class="tiny muted">免费互动道具，无现金价值</view>
+      </view>
+      <switch checked="{{allowGifts}}" color="#2F6FE0" bindchange="onGifts" />
+    </view>
+    <view class="switch-row switch-row--last">
+      <view>
+        <view class="switch-row__name">语气</view>
+        <view class="tiny muted">{{toneLabel}}</view>
+      </view>
+      <view class="tones">
+        <view
+          wx:for="{{tones}}"
+          wx:key="id"
+          class="tone {{item.selected ? 'tone--on' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onTone"
+        >{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="disclaimer">发布即表示这是你本人的经历与描述。摔友记不提供诊断、治疗、康复或理赔结论。</view>
+
+  <view class="footer">
+    <button class="btn btn--primary footer__btn" disabled="{{!canSubmit || submitting}}" bindtap="onSubmit">
+      {{submitting ? '发布中…' : '发布到圈子'}}
+    </button>
+  </view>
+</view>

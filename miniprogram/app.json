@@ -1,0 +1,55 @@
+{
+  "pages": [
+    "pages/atlas/index",
+    "pages/avatar/index",
+    "pages/inbox/index",
+    "pages/story/detail",
+    "pages/incident/create",
+    "pages/group/index",
+    "pages/settings/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F2F6FF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "摔友记",
+    "backgroundColor": "#F2F6FF",
+    "backgroundTextStyle": "dark",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#98A2B8",
+    "selectedColor": "#2F6FE0",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/atlas/index",
+        "text": "图鉴",
+        "iconPath": "assets/tabbar/atlas-normal.png",
+        "selectedIconPath": "assets/tabbar/atlas-active.png"
+      },
+      {
+        "pagePath": "pages/avatar/index",
+        "text": "我的角色",
+        "iconPath": "assets/tabbar/avatar-normal.png",
+        "selectedIconPath": "assets/tabbar/avatar-active.png"
+      },
+      {
+        "pagePath": "pages/inbox/index",
+        "text": "消息",
+        "iconPath": "assets/tabbar/inbox-normal.png",
+        "selectedIconPath": "assets/tabbar/inbox-active.png"
+      }
+    ]
+  },
+  "usingComponents": {
+    "avatar-rig": "/components/avatar-rig/index",
+    "skeleton-map": "/components/skeleton-map/index",
+    "story-card": "/components/story-card/index",
+    "reaction-bar": "/components/reaction-bar/index",
+    "item-card": "/components/item-card/index"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

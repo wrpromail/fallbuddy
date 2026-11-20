@@ -1,0 +1,73 @@
+.map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.map__figure {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.spot {
+  position: absolute;
+  width: 72rpx;
+  height: 72rpx;
+  margin-left: -36rpx;
+  margin-top: -36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  z-index: 9;
+}
+
+.spot:active .chip {
+  transform: scale(0.92);
+}
+
+.dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  border: 2rpx dashed rgba(43, 35, 64, 0.28);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+}
+
+.chip {
+  width: 54rpx;
+  height: 54rpx;
+  padding: 2rpx;
+  border-radius: 50%;
+  border: 3rpx solid transparent;
+  background: #fff;
+  box-shadow: 0 4rpx 12rpx rgba(43, 35, 64, 0.16);
+  overflow: hidden;
+  transition: transform 120ms ease-out;
+}
+
+.chip + .chip {
+  margin-left: -8rpx;
+}
+
+.chip--more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2b2340;
+  border-color: #2b2340;
+}

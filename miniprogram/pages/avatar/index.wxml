@@ -1,0 +1,145 @@
+<view class="page">
+  <view class="head">
+    <view>
+      <view class="head__title">我的角色</view>
+      <view class="head__sub">换装、表情和配色都会同步到图鉴小头像</view>
+    </view>
+    <view class="icon-btn" bindtap="onSettings">⚙</view>
+  </view>
+
+  <view class="stage card">
+    <view class="stage__figure">
+      <avatar-rig
+        wx:if="{{avatar}}"
+        view="front"
+        palette="{{avatar.palette}}"
+        expression="{{avatar.expression}}"
+        equipped="{{avatar.equipped}}"
+      />
+    </view>
+    <view wx:if="{{saving}}" class="stage__saving">保存中…</view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head">
+      <view class="section-title">表情</view>
+      <view class="tiny muted">会显示在故事图鉴上</view>
+    </view>
+    <view class="expressions">
+      <view
+        wx:for="{{expressions}}"
+        wx:key="id"
+        class="expression {{item.selected ? 'expression--on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onExpression"
+      >
+        <view class="expression__emoji">{{item.emoji}}</view>
+        <view class="expression__label">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head">
+      <view class="section-title">配色</view>
+      <view class="tiny muted">小头像的底色标签</view>
+    </view>
+    <view class="palettes">
+      <view
+        wx:for="{{palettes}}"
+        wx:key="id"
+        class="swatch {{item.selected ? 'swatch--on' : ''}}"
+        style="background:{{item.color}}"
+        data-id="{{item.id}}"
+        bindtap="onPalette"
+      ></view>
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head">
+      <view class="section-title">雪服</view>
+      <view class="tiny muted">已拥有</view>
+    </view>
+    <view class="gear-list">
+      <view
+        wx:for="{{outfits}}"
+        wx:key="id"
+        class="gear {{item.selected ? 'gear--on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onOutfit"
+      >
+        <view class="gear__name">{{item.name}}</view>
+        <view class="gear__check">{{item.selected ? '已穿' : '换上'}}</view>
+      </view>
+      <view wx:if="{{!outfits.length}}" class="tiny muted">还没有外观，先领取免费补给吧</view>
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head">
+      <view class="section-title">头部与护具</view>
+      <view class="tiny muted">原创通用造型，无品牌元素</view>
+    </view>
+    <view class="chips">
+      <view
+        wx:for="{{headgears}}"
+        wx:key="id"
+        class="chip {{item.selected ? 'chip--on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onHeadgear"
+      >{{item.name}}</view>
+    </view>
+    <view class="toggle-row">
+      <view class="toggle-row__main">
+        <view class="toggle-row__name">雪镜</view>
+        <view class="tiny muted">半透明镜片，不挡表情</view>
+      </view>
+      <switch checked="{{gogglesOn}}" color="#2F6FE0" bindchange="onGoggles" />
+    </view>
+    <view class="toggle-row toggle-row--last">
+      <view class="toggle-row__main">
+        <view class="toggle-row__name">护臀</view>
+        <view class="tiny muted">尾椎的忠实伙伴</view>
+      </view>
+      <switch checked="{{hipOn}}" color="#2F6FE0" bindchange="onHip" />
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head">
+      <view class="section-title">背包</view>
+      <view class="tiny muted">{{weeklyClaimed ? '本周补给已领取' : '本周补给待领取'}}</view>
+    </view>
+    <view class="weekly">
+      <view class="weekly__text">
+        <view class="weekly__title">每周免费补给</view>
+        <view class="tiny muted">2 件随机互动道具 · 不需要分享，也没有现金价值</view>
+      </view>
+      <view
+        class="btn {{weeklyClaimed ? 'btn--ghost' : 'btn--primary'}}"
+        bindtap="onClaimWeekly"
+      >{{claiming ? '领取中…' : weeklyClaimed ? '已领取' : '领取'}}</view>
+    </view>
+    <view class="items">
+      <item-card wx:for="{{inventory}}" wx:key="itemDefId" item="{{item}}" />
+    </view>
+  </view>
+
+  <view class="stories">
+    <view class="between">
+      <view class="section-title">我的故事</view>
+      <view class="tiny muted">{{myStories.length}} 条</view>
+    </view>
+    <view class="stories__list">
+      <story-card wx:for="{{myStories}}" wx:key="id" story="{{item}}" bind:select="onSelectStory" />
+      <view wx:if="{{!myStories.length}}" class="empty card">
+        <view class="empty__emoji">🫥</view>
+        <view class="empty__title">还没有故事</view>
+        <view class="btn btn--primary" bindtap="onCreate">记录第一条</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footnote">角色资产为原创几何造型；不包含任何品牌 Logo 或官方联名暗示。</view>
+</view>

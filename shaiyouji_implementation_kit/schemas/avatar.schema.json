@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/shaiyouji/avatar.schema.json",
+  "title": "AvatarState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rigVersion", "palette", "equipped", "expression", "privacy"],
+  "properties": {
+    "rigVersion": {"type": "string", "const": "skeleton-rig-v1"},
+    "palette": {"type": "string", "enum": ["blue", "orange", "purple", "mint"]},
+    "equipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headgear": {"type": ["string", "null"], "maxLength": 64},
+        "goggles": {"type": ["string", "null"], "maxLength": 64},
+        "outfit": {"type": ["string", "null"], "maxLength": 64},
+        "hip_protector": {"type": ["string", "null"], "maxLength": 64},
+        "boots": {"type": ["string", "null"], "maxLength": 64}
+      }
+    },
+    "expression": {"type": "string", "enum": ["happy", "surprised", "awkward", "comfort", "cool"]},
+    "privacy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowFunnyActions", "allowGifts"],
+      "properties": {
+        "allowFunnyActions": {"type": "boolean"},
+        "allowGifts": {"type": "boolean"}
+      }
+    }
+  }
+}

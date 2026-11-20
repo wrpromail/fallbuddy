@@ -1,0 +1,12 @@
+<view class="item {{selected ? 'item--selected' : ''}} {{disabled ? 'item--disabled' : ''}}" bindtap="onTap">
+  <view class="item__icon">
+    <image wx:if="{{iconPath}}" src="{{iconPath}}" mode="aspectFit" class="item__image" />
+    <text wx:else class="item__emoji">{{item.icon}}</text>
+  </view>
+  <view class="item__main">
+    <view class="item__name">{{item.name}}</view>
+    <view class="item__meta">{{item.expiresText}}</view>
+  </view>
+  <view class="item__qty">×{{item.quantity}}</view>
+  <view wx:if="{{selected}}" class="item__check">✓</view>
+</view>

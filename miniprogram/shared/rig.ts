@@ -1,0 +1,111 @@
+import { RIG_DATA } from './rig.generated';
+import type { EquipSlot, Expression } from './enums';
+import type { LayerBox, ResolvedLayer, RigAppearance, RigDefinition, RigHotspot, RigLayerDef } from './rig-types';
+import { EQUIP_SLOTS } from './enums';
+
+export const RIG = RIG_DATA as unknown as RigDefinition;
+
+export const DEFAULT_EQUIPPED: RigAppearance['equipped'] = {
+  headgear: 'beanie_blue',
+  goggles: null,
+  outfit: 'ski_blue',
+  hip_protector: 'basic_hip_protector',
+  boots: null,
+};
+
+const CHIP_LAYER_IDS = ['head', 'headgear', 'goggles'];
+
+function pct(value: number): number {
+  return Math.round(value * 10000) / 100;
+}
+
+function unionBox(boxes: LayerBox[]): LayerBox {
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
+  const right = Math.max(...boxes.map((b) => b.x + b.w));
+  const bottom = Math.max(...boxes.map((b) => b.y + b.h));
+  return { x, y, w: right - x, h: bottom - y };
+}
+
+function layerSource(layer: RigLayerDef, appearance: RigAppearance): string | null {
+  if (layer.slot === 'expression') {
+    return layer.variants?.[appearance.expression] ?? layer.variants?.happy ?? null;
+  }
+  if (layer.slot) {
+    const value = appearance.equipped[layer.slot];
+    if (!value) return null;
+    return layer.variants?.[value] ?? null;
+  }
+  return layer.src ?? null;
+}
+
+/**
+ * 解析一个视图实际要渲染的图层。
+ * mode=full：整只角色；mode=chip：头像小徽章（只取头/帽/雪镜并按并集裁剪）。
+ */
+export function resolveRigLayers(
+  view: 'front' | 'back',
+  appearance: RigAppearance,
+  mode: 'full' | 'chip' = 'full',
+): ResolvedLayer[] {
+  const layers = RIG.views[view] ?? RIG.views.front;
+  const active: { layer: RigLayerDef; src: string }[] = [];
+  for (const layer of layers) {
+    const src = layerSource(layer, appearance);
+    if (!src) continue;
+    if (mode === 'chip' && !CHIP_LAYER_IDS.includes(layer.id)) continue;
+    active.push({ layer, src });
+  }
+  if (!active.length) return [];
+  const rawBox = mode === 'chip' ? unionBox(active.map((a) => a.layer.bbox)) : { x: 0, y: 0, w: RIG.canvas.width, h: RIG.canvas.height };
+  // chip 模式：以正方形为容器等比 contain，避免头像被拉伸
+  const side = Math.max(rawBox.w, rawBox.h);
+  const box = { x: rawBox.x - (side - rawBox.w) / 2, y: rawBox.y - (side - rawBox.h) / 2, w: side, h: side };
+  return active.map(({ layer, src }) => ({
+    id: layer.id,
+    z: layer.z,
+    src,
+    left: pct((layer.bbox.x - box.x) / box.w),
+    top: pct((layer.bbox.y - box.y) / box.h),
+    width: pct(layer.bbox.w / box.w),
+    height: pct(layer.bbox.h / box.h),
+  }));
+}
+
+export function hotspotsFor(view: 'front' | 'back'): RigHotspot[] {
+  return RIG.hotspots[view];
+}
+
+export function hotspotList(): RigHotspot[] {
+  const seen = new Map<string, RigHotspot>();
+  for (const view of ['front', 'back'] as const) {
+    for (const spot of RIG.hotspots[view]) {
+      if (!seen.has(spot.id)) seen.set(spot.id, spot);
+    }
+  }
+  return [...seen.values()];
+}
+
+/** 从 rig 变体里推导可选的装备项（供角色页展示，真实权限仍由库存决定） */
+export function equipmentVariants(): Record<EquipSlot, string[]> {
+  const result = { headgear: [], goggles: [], outfit: [], hip_protector: [], boots: [] } as Record<EquipSlot, string[]>;
+  for (const layer of RIG.views.front) {
+    if (layer.slot && layer.slot !== 'expression' && layer.variants) {
+      result[layer.slot] = Object.keys(layer.variants);
+    }
+  }
+  return result;
+}
+
+export function expressionVariants(): Expression[] {
+  const head = RIG.views.front.find((l) => l.slot === 'expression');
+  return (head?.variants ? Object.keys(head.variants) : ['happy']) as Expression[];
+}
+
+export function appearanceEquals(a: RigAppearance, b: RigAppearance): boolean {
+  return (
+    a.palette === b.palette &&
+    a.expression === b.expression &&
+    EQUIP_SLOTS.every((slot) => (a.equipped[slot] ?? null) === (b.equipped[slot] ?? null))
+  );
+}

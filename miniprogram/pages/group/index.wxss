@@ -1,0 +1,194 @@
+.page {
+  min-height: 100vh;
+  padding: 20rpx 28rpx 120rpx;
+  background:
+    radial-gradient(110% 45% at 100% 0%, rgba(255, 176, 120, 0.16), rgba(242, 246, 255, 0) 58%),
+    #f2f6ff;
+}
+
+.loading {
+  padding: 160rpx 0;
+  text-align: center;
+  color: #8a869f;
+}
+
+.empty {
+  margin-top: 40rpx;
+  padding: 60rpx 30rpx;
+  text-align: center;
+}
+
+.empty__emoji {
+  font-size: 72rpx;
+}
+
+.empty__title {
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.hero {
+  margin-top: 10rpx;
+  padding: 32rpx 28rpx;
+}
+
+.hero__row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.hero__name {
+  font-size: 42rpx;
+  font-weight: 800;
+  letter-spacing: -0.5rpx;
+}
+
+.hero__meta {
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: #7a7790;
+}
+
+.hero__stats {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.mini {
+  flex: 1;
+  background: #f7f9ff;
+  border-radius: 20rpx;
+  padding: 16rpx 20rpx;
+}
+
+.mini__num {
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.mini__label {
+  font-size: 20rpx;
+  color: #8a869f;
+}
+
+.panel {
+  margin-top: 18rpx;
+  padding: 26rpx;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 10rpx;
+}
+
+.member__avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #f1f4fd;
+  overflow: hidden;
+  flex: none;
+}
+
+.member__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.member__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.member__me {
+  font-size: 18rpx;
+  color: #2f6fe0;
+  background: rgba(76, 141, 255, 0.12);
+  border-radius: 999rpx;
+  padding: 1rpx 10rpx;
+}
+
+.member__meta {
+  font-size: 21rpx;
+  color: #8a869f;
+}
+
+.member__role {
+  font-size: 21rpx;
+  color: #c85f14;
+  flex: none;
+}
+
+.invite {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.invite-box {
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #f7f9ff;
+}
+
+.invite-box__label {
+  font-size: 21rpx;
+  color: #8a869f;
+}
+
+.invite-box__value {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  word-break: break-all;
+  color: #2b2340;
+}
+
+.invite-box__actions {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.invite-box__note {
+  margin-top: 12rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  color: #9a96ae;
+}
+
+.invite-note {
+  margin-top: 16rpx;
+  font-size: 21rpx;
+  line-height: 1.6;
+  color: #9a96ae;
+}
+
+.leave {
+  margin-top: 36rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #d93a3a;
+  text-decoration: underline;
+}

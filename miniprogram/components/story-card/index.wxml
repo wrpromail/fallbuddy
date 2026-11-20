@@ -1,0 +1,25 @@
+<view class="story-card {{dense ? 'story-card--dense' : ''}} {{view.withdrawn ? 'story-card--withdrawn' : ''}}" bindtap="onTap">
+  <view wx:if="{{showAuthor}}" class="story-card__head">
+    <view class="story-card__avatar">
+      <avatar-rig
+        mode="chip"
+        palette="{{story.palette}}"
+        expression="{{story.expression}}"
+        equipped="{{story.equipped}}"
+      />
+    </view>
+    <view class="story-card__who">
+      <view class="story-card__name">
+        {{story.authorName}}
+        <text wx:if="{{view.anonymous}}" class="story-card__badge">匿名</text>
+        <text wx:if="{{view.withdrawn}}" class="story-card__badge story-card__badge--grey">已撤回</text>
+      </view>
+      <view class="story-card__meta">{{view.timeText}} · {{view.sportEmoji}}</view>
+    </view>
+  </view>
+  <view class="story-card__title">{{story.title}}</view>
+  <view wx:if="{{!dense}}" class="story-card__tags">
+    <text class="tag tag--blue">{{view.impactLabel}}</text>
+    <text wx:for="{{view.parts}}" wx:key="*this" class="tag">{{item}}</text>
+  </view>
+</view>

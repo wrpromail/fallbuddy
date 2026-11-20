@@ -1,0 +1,11 @@
+<view class="rig rig--{{mode}} {{cls}}">
+  <image
+    wx:for="{{layers}}"
+    wx:key="id"
+    class="rig__layer"
+    src="{{item.src}}"
+    mode="aspectFit"
+    style="left:{{item.left}}%;top:{{item.top}}%;width:{{item.width}}%;height:{{item.height}}%;z-index:{{item.z}}"
+  />
+  <view wx:if="{{emoji}}" class="rig__fx">{{emoji}}</view>
+</view>

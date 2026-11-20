@@ -1,0 +1,56 @@
+.reactions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.reaction {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 16rpx 6rpx 12rpx;
+  background: #f7f9ff;
+  border-radius: 22rpx;
+  border: 1rpx solid #edf1fa;
+}
+
+.reaction--hover {
+  background: #eef3ff;
+}
+
+.reaction--disabled {
+  opacity: 0.42;
+}
+
+.reaction--gift {
+  background: rgba(47, 185, 143, 0.1);
+  border-color: rgba(47, 185, 143, 0.24);
+}
+
+.reaction__emoji {
+  font-size: 40rpx;
+  line-height: 1.1;
+}
+
+.reaction__name {
+  font-size: 20rpx;
+  color: #6b6784;
+}
+
+.reaction__count {
+  position: absolute;
+  top: 6rpx;
+  right: 10rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 6rpx;
+  border-radius: 999rpx;
+  background: #2b2340;
+  color: #fff;
+  font-size: 17rpx;
+  line-height: 28rpx;
+  text-align: center;
+}

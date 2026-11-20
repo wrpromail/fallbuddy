@@ -1,0 +1,2805 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>摔友记 V0 · 开发预览</title>
+<style>:root {
+  --bg: #f2f6ff;
+  --ink: #2b2340;
+  --sub: #6b6784;
+  --muted: #9a96ae;
+  --primary: #2f6fe0;
+  --primary-2: #4c8dff;
+  --accent: #ff8a3d;
+  --mint: #2fb98f;
+  --line: #eef1f8;
+  --card: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #dfe6f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  color: var(--ink);
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+body.full-mode {
+  align-items: flex-start;
+}
+
+body.full-mode .phone {
+  height: auto;
+  min-height: 864px;
+}
+
+body.full-mode .phone__screen {
+  height: auto;
+}
+
+body.full-mode #app {
+  flex: none;
+}
+
+body.full-mode .scroll {
+  overflow: visible;
+  padding-bottom: 30px;
+}
+
+body.full-mode .fab {
+  position: static;
+  margin: 16px 16px 12px auto;
+}
+
+body.full-mode .form-footer {
+  position: static;
+  margin-top: 10px;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 8px 10px;
+  box-shadow: 0 10px 30px rgba(43, 35, 64, 0.1);
+}
+
+.toolbar button {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--sub);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.toolbar button.on {
+  background: rgba(76, 141, 255, 0.12);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.toolbar .tag {
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  padding-left: 10px;
+  margin-left: 4px;
+}
+
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  border-radius: 46px;
+  background: #0f1020;
+  padding: 10px;
+  box-shadow: 0 40px 90px rgba(21, 24, 51, 0.34);
+  flex: none;
+}
+
+.phone__screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.statusbar {
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 22px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  flex: none;
+  color: var(--ink);
+}
+
+.statusbar__icons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statusbar__icons span {
+  display: inline-block;
+  width: 16px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  position: relative;
+}
+
+.statusbar__icons span::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+#app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: none;
+  flex-direction: column;
+}
+
+.screen.on {
+  display: flex;
+}
+
+.navbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  flex: none;
+  position: relative;
+}
+
+.navbar__back {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: var(--ink);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 14px 96px;
+  scrollbar-width: none;
+}
+
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: 0 8px 26px rgba(43, 35, 64, 0.06);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: #f1f4fd;
+  color: #5b5875;
+  white-space: nowrap;
+}
+
+.pill--blue {
+  background: rgba(76, 141, 255, 0.12);
+  color: var(--primary);
+}
+
+.pill--accent {
+  background: rgba(255, 138, 61, 0.12);
+  color: #c85f14;
+}
+
+.pill--mint {
+  background: rgba(47, 185, 143, 0.12);
+  color: #1f8f6b;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  background: #eef2ff;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #4c8dff, #2f6fe0);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(47, 111, 224, 0.28);
+}
+
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+  border: 1px solid #e4e9f6;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+}
+
+.btn--block {
+  width: 100%;
+  height: 46px;
+  font-size: 15px;
+}
+
+.muted {
+  color: var(--sub);
+}
+
+.tiny {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------------- atlas ---------------- */
+
+.hero {
+  padding: 4px 2px 0;
+}
+
+.hero__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hero__name {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.hero__meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.hero__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 14px rgba(43, 35, 64, 0.08);
+  font-size: 13px;
+  color: #4a4466;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats {
+  display: flex;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.stat--wide {
+  flex: 1.4;
+}
+
+.stat__num {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.stat__label {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.stat__value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-top: 1px;
+}
+
+.stage {
+  margin-top: 12px;
+  padding: 10px 10px 8px;
+  overflow: hidden;
+}
+
+.seg {
+  display: flex;
+  background: #f1f4fd;
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.seg button {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  color: var(--sub);
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.seg button.on {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(43, 35, 64, 0.1);
+}
+
+.stage__canvas {
+  position: relative;
+  margin-top: 6px;
+  border-radius: 14px;
+  background:
+    radial-gradient(80% 60% at 50% 30%, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #eef5ff 0%, #e3edff 72%, #dce9ff 100%);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.figure {
+  position: relative;
+  width: 210px;
+  height: 315px;
+  flex: none;
+}
+
+.rig {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rig--spin {
+  animation: rig-spin 900ms cubic-bezier(0.42, 0, 0.28, 1);
+}
+
+.rig--hug {
+  animation: rig-hug 1400ms cubic-bezier(0.42, 0, 0.28, 1);
+}
+
+.rig--cheer {
+  animation: rig-cheer 900ms ease-out;
+}
+
+.rig--gift {
+  animation: rig-gift 1300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rig-layer {
+  position: absolute;
+  display: block;
+}
+
+.rig-layer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hotspot {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  margin-top: -18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 8;
+}
+
+.hotspot .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px dashed rgba(43, 35, 64, 0.3);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stack .avatar-chip + .avatar-chip {
+  margin-left: -4px;
+}
+
+.avatar-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(43, 35, 64, 0.16);
+  flex: none;
+}
+
+.avatar-chip.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2b2340;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.stage__hint {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: #6b6784;
+}
+
+.fab {
+  position: absolute;
+  right: 16px;
+  bottom: 76px;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #4c8dff, #2f6fe0);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 12px 26px rgba(47, 111, 224, 0.34);
+  z-index: 20;
+  cursor: pointer;
+}
+
+.topicline {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef1f8;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.topicline__note {
+  color: #b0adc2;
+}
+
+.hotlist {
+  margin-top: 12px;
+  padding: 13px 14px;
+}
+
+.hotpills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hotpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(76, 141, 255, 0.08);
+  font-size: 10px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.bars {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar__label {
+  width: 58px;
+  font-size: 11px;
+  color: #4a4466;
+}
+
+.bar__track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: #eef1f8;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7fb0ff, #2f6fe0);
+}
+
+.bar__num {
+  width: 18px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.recent {
+  margin-top: 16px;
+}
+
+.recent__list,
+.stories__list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 13px;
+  box-shadow: 0 6px 18px rgba(43, 35, 64, 0.05);
+  cursor: pointer;
+}
+
+.story-card:active {
+  transform: scale(0.99);
+}
+
+.story-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.story-card__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1f4fd;
+  overflow: hidden;
+  flex: none;
+}
+
+.story-card__name {
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.story-card__badge {
+  font-size: 9px;
+  color: var(--primary);
+  background: rgba(76, 141, 255, 0.12);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-weight: 500;
+}
+
+.story-card__meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.story-card__title {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.story-card__tags {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  font-size: 10px;
+  color: var(--sub);
+  background: #f3f5fb;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.tag--blue {
+  color: var(--primary);
+  background: rgba(76, 141, 255, 0.12);
+}
+
+.tag--warm {
+  color: #c85f14;
+  background: rgba(255, 138, 61, 0.12);
+}
+
+.tag--mint {
+  color: #1f8f6b;
+  background: rgba(47, 185, 143, 0.12);
+}
+
+.footnote {
+  margin: 18px 6px 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------------- tabbar ---------------- */
+
+.tabbar {
+  height: 62px;
+  flex: none;
+  background: rgba(255, 255, 255, 0.96);
+  display: flex;
+  border-top: 1px solid #f0f2f8;
+  z-index: 30;
+}
+
+.tabbar button {
+  flex: 1;
+  padding-bottom: 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  color: #98a2b8;
+  cursor: pointer;
+}
+
+.tabbar button.on {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.tabbar .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.tabbar .icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.tabbar .icon .active {
+  display: none;
+}
+
+.tabbar button.on .icon .active {
+  display: block;
+}
+
+.tabbar button.on .icon .normal {
+  display: none;
+}
+
+/* ---------------- story ---------------- */
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.author__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f1f4fd;
+  overflow: hidden;
+  flex: none;
+}
+
+.author__name {
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.author__meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.story-stage {
+  position: relative;
+  margin-top: 10px;
+  height: 294px;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 55% at 50% 32%, #ffffff 0%, rgba(255, 255, 255, 0) 68%),
+    linear-gradient(180deg, #edf4ff 0%, #dfeaff 100%);
+}
+
+.story-stage__badge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  font-size: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #4a4466;
+  z-index: 4;
+}
+
+.story-stage__impact {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  font-size: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 138, 61, 0.16);
+  color: #c85f14;
+  font-weight: 800;
+  z-index: 4;
+}
+
+.story-stage__rig {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 196px;
+  height: 294px;
+  transform: translateX(-50%);
+}
+
+.story-stage__me {
+  position: absolute;
+  left: -6px;
+  bottom: -28px;
+  width: 150px;
+  height: 225px;
+  opacity: 0;
+  z-index: 3;
+}
+
+.story-stage.hug .story-stage__me {
+  animation: me-in 1400ms cubic-bezier(0.32, 0.72, 0.22, 1) both;
+}
+
+.story-stage.hug .story-stage__rig {
+  animation: author-shift 1400ms cubic-bezier(0.32, 0.72, 0.22, 1) both;
+}
+
+.fx {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  transform: translateX(-50%);
+  font-size: 46px;
+  z-index: 6;
+  animation: fx-float 1600ms ease-out both;
+}
+
+.story-body {
+  margin-top: 10px;
+  padding: 15px 14px;
+}
+
+.story-body__title {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.32;
+  letter-spacing: -0.3px;
+}
+
+.story-body__text {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.72;
+  color: #3b3554;
+  white-space: pre-wrap;
+}
+
+.story-body__note {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed #e8ecf7;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.timeline {
+  margin-top: 10px;
+  padding: 14px;
+}
+
+.update {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.update__rail {
+  width: 8px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 5px;
+}
+
+.update__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary-2);
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.14);
+}
+
+.update__type {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.update__time {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.update__text {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.reactions {
+  margin-top: 10px;
+  padding: 12px;
+}
+
+.reactions__grid {
+  display: flex;
+  gap: 6px;
+}
+
+.reaction {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 3px 6px;
+  border-radius: 11px;
+  border: 1px solid #edf1fa;
+  background: #f7f9ff;
+  font: inherit;
+  font-size: 10px;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.reaction:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.reaction--gift {
+  background: rgba(47, 185, 143, 0.1);
+  border-color: rgba(47, 185, 143, 0.24);
+}
+
+.reaction__emoji {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.reaction__count {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(43, 35, 64, 0.72);
+  color: #fff;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.reactions__note {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.link {
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------------- avatar ---------------- */
+
+.avatar-stage {
+  position: relative;
+  margin-top: 4px;
+  height: 330px;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 55% at 50% 30%, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #eef5ff 0%, #dfeaff 100%);
+}
+
+.avatar-stage__rig {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 210px;
+  height: 315px;
+  transform: translateX(-50%);
+}
+
+.panel {
+  margin-top: 10px;
+  padding: 14px;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.expressions {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.expression {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 2px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: #f6f8fd;
+  font: inherit;
+  font-size: 9px;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.expression.on {
+  background: rgba(76, 141, 255, 0.1);
+  border-color: var(--primary-2);
+  color: var(--primary);
+}
+
+.expression__emoji {
+  font-size: 19px;
+}
+
+.palettes {
+  display: flex;
+  gap: 9px;
+}
+
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(43, 35, 64, 0.16);
+  cursor: pointer;
+}
+
+.swatch.on {
+  box-shadow: 0 0 0 2px #2b2340, 0 6px 14px rgba(43, 35, 64, 0.2);
+}
+
+.gear-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gear {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f7f9ff;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.gear.on {
+  border-color: var(--primary-2);
+  background: rgba(76, 141, 255, 0.06);
+  font-weight: 700;
+}
+
+.gear__check {
+  font-size: 10px;
+  color: var(--primary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #f5f7fc;
+  font: inherit;
+  font-size: 12px;
+  color: #4a4466;
+  cursor: pointer;
+}
+
+.chip.on {
+  background: rgba(76, 141, 255, 0.1);
+  border-color: var(--primary-2);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.chip--grid {
+  flex: 1 1 calc(33.33% - 6px);
+  text-align: center;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 0;
+  margin-top: 9px;
+  border-top: 1px solid #f0f3fa;
+}
+
+.toggle-row__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e3e7f1;
+  border: none;
+  cursor: pointer;
+  transition: background 160ms ease;
+  flex: none;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease;
+}
+
+.switch.on {
+  background: var(--primary);
+}
+
+.switch.on::after {
+  transform: translateX(18px);
+}
+
+.weekly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: linear-gradient(120deg, rgba(255, 138, 61, 0.1), rgba(76, 141, 255, 0.08));
+  margin-top: 6px;
+}
+
+.items {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  background: #fafbff;
+  border: 1px solid transparent;
+}
+
+.item.on {
+  border-color: var(--accent);
+  background: #fff8f1;
+}
+
+.item__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px #eef1f8;
+  flex: none;
+}
+
+.item__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.item__name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.item__meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.item__qty {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+/* ---------------- form ---------------- */
+
+.form-intro__title {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.form-intro__sub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.field {
+  margin-top: 10px;
+  padding: 14px;
+}
+
+.field__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: none;
+  background: #f5f7fc;
+  border-radius: 9px;
+  padding: 10px 11px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #b0adc2;
+}
+
+.textarea {
+  min-height: 84px;
+  resize: none;
+  line-height: 1.65;
+}
+
+.presets {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.preset {
+  font-size: 11px;
+  color: var(--primary);
+  background: rgba(76, 141, 255, 0.08);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: #f7f9ff;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid #d7dcec;
+  background: #fff;
+  color: #fff;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  flex: none;
+}
+
+.checkbox.on {
+  background: var(--primary-2);
+  border-color: var(--primary-2);
+}
+
+.warn {
+  margin-top: 6px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: #fff3e0;
+  color: #b25c0e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.form-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 14px 16px;
+  background: linear-gradient(180deg, rgba(242, 246, 255, 0), #f2f6ff 38%);
+  z-index: 20;
+}
+
+/* ---------------- inbox ---------------- */
+
+.event {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 13px;
+  cursor: pointer;
+}
+
+.event.read {
+  opacity: 0.72;
+}
+
+.event__emoji {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: #f3f6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  flex: none;
+}
+
+.event__text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #3b3554;
+}
+
+.event__actor {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.event__time {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.event__dot {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff6b6b;
+}
+
+/* ---------------- sheet / toast ---------------- */
+
+.sheet-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 40, 0.38);
+  z-index: 40;
+  display: none;
+}
+
+.sheet-mask.on {
+  display: block;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 8px 14px 16px;
+  transform: translateY(110%);
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0.22, 1);
+  max-height: 66%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet.on {
+  transform: translateY(0);
+}
+
+.sheet__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: #e6eaf5;
+  margin: 2px auto 8px;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sheet__body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sheet__foot {
+  padding-top: 8px;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(20, 16, 40, 0.9);
+  color: #fff;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 200ms ease;
+  z-index: 60;
+  max-width: 80%;
+  text-align: center;
+}
+
+.toast.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------------- animations ---------------- */
+
+@keyframes rig-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  55% {
+    transform: rotate(200deg) scale(0.94);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes rig-hug {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  30% {
+    transform: translateX(-4px) rotate(-3deg) scale(1.02);
+  }
+  60% {
+    transform: translateX(4px) rotate(3deg) scale(1.02);
+  }
+}
+
+@keyframes rig-cheer {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-8px) scale(1.03);
+  }
+  55% {
+    transform: translateY(0) scale(0.99);
+  }
+  75% {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+@keyframes rig-gift {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.94) translateY(5px);
+  }
+  65% {
+    transform: scale(1.06) translateY(-4px);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes me-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-70px) scale(0.92);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(30px) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(23px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-60px) scale(0.96);
+  }
+}
+
+@keyframes author-shift {
+  0% {
+    transform: translateX(-50%);
+  }
+  40% {
+    transform: translateX(-38%);
+  }
+  70% {
+    transform: translateX(-38%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fx-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 15px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -5px) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, -35px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -55px) scale(0.96);
+  }
+}
+</style>
+</head>
+<body>
+  <div class="workspace">
+    <div class="toolbar">
+      <button data-screen="atlas" class="on">图鉴</button>
+      <button data-screen="story">故事</button>
+      <button data-screen="avatar">我的角色</button>
+      <button data-screen="create">发布</button>
+      <button data-screen="inbox">消息</button>
+      <span class="tag">开发预览 · 非小程序运行时</span>
+    </div>
+    <div class="phone">
+      <div class="phone__screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <div class="statusbar__icons"><span></span><span></span></div>
+        </div>
+        <div id="app"></div>
+        <div class="tabbar" id="tabbar">
+          <button data-screen="atlas"><span class="icon"></span><span>图鉴</span></button>
+          <button data-screen="avatar"><span class="icon"></span><span>我的角色</span></button>
+          <button data-screen="inbox"><span class="icon"></span><span>消息</span></button>
+        </div>
+        <div class="sheet-mask"></div>
+        <div class="sheet"></div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </div>
+  <script>window.__PREVIEW__ = {"rig":{"version":"skeleton-rig-v1","canvas":{"width":320,"height":480},"anchors":{"head":{"x":50,"y":23.5},"neck":{"x":50,"y":37.1},"chest":{"x":50,"y":48.3},"hip":{"x":50,"y":63.3},"hand_l":{"x":76.3,"y":61},"hand_r":{"x":23.8,"y":61},"knee_l":{"x":60.6,"y":77.5},"knee_r":{"x":39.4,"y":77.5},"foot_l":{"x":61.9,"y":88.3},"foot_r":{"x":38.1,"y":88.3},"ground":{"x":50,"y":92.5}},"hotspots":{"front":[{"id":"head","label":"头","x":160,"y":106,"r":50},{"id":"shoulder_l","label":"左肩","x":212,"y":192,"r":25},{"id":"shoulder_r","label":"右肩","x":108,"y":192,"r":25},{"id":"wrist_l","label":"左手腕","x":244,"y":292,"r":24},{"id":"wrist_r","label":"右手腕","x":76,"y":292,"r":24},{"id":"waist","label":"腰","x":160,"y":258,"r":23},{"id":"tailbone","label":"尾椎","x":160,"y":310,"r":22},{"id":"knee_l","label":"左膝","x":194,"y":372,"r":23},{"id":"knee_r","label":"右膝","x":126,"y":372,"r":23},{"id":"ankle_l","label":"左脚踝","x":198,"y":416,"r":21},{"id":"ankle_r","label":"右脚踝","x":122,"y":416,"r":21}],"back":[{"id":"head","label":"头","x":160,"y":106,"r":50},{"id":"shoulder_l","label":"左肩","x":212,"y":192,"r":25},{"id":"shoulder_r","label":"右肩","x":108,"y":192,"r":25},{"id":"wrist_l","label":"左手腕","x":244,"y":292,"r":24},{"id":"wrist_r","label":"右手腕","x":76,"y":292,"r":24},{"id":"back","label":"背","x":160,"y":224,"r":24},{"id":"waist","label":"腰","x":160,"y":278,"r":22},{"id":"tailbone","label":"尾椎","x":160,"y":326,"r":20},{"id":"knee_l","label":"左膝","x":194,"y":372,"r":23},{"id":"knee_r","label":"右膝","x":126,"y":372,"r":23},{"id":"ankle_l","label":"左脚踝","x":198,"y":416,"r":21},{"id":"ankle_r","label":"右脚踝","x":122,"y":416,"r":21}]},"views":{"front":[{"id":"shadow","z":0,"bbox":{"x":58,"y":424,"w":204,"h":40},"src":"/assets/rigs/front/shadow.png"},{"id":"body","z":10,"bbox":{"x":58,"y":148,"w":204,"h":306},"src":"/assets/rigs/front/body.png"},{"id":"outfit","z":20,"bbox":{"x":58,"y":170,"w":204,"h":140},"slot":"outfit","variants":{"ski_blue":"/assets/rigs/front/outfit/ski_blue.png","suit_orange":"/assets/rigs/front/outfit/suit_orange.png","vest_mint":"/assets/rigs/front/outfit/vest_mint.png"}},{"id":"hip_protector","z":24,"bbox":{"x":116,"y":280,"w":88,"h":62},"slot":"hip_protector","variants":{"basic_hip_protector":"/assets/rigs/front/hip_protector/basic_hip_protector.png","steel_hip_guard":"/assets/rigs/front/hip_protector/steel_hip_guard.png"}},{"id":"head","z":30,"bbox":{"x":86,"y":42,"w":148,"h":150},"slot":"expression","variants":{"happy":"/assets/rigs/front/head/happy.png","surprised":"/assets/rigs/front/head/surprised.png","awkward":"/assets/rigs/front/head/awkward.png","comfort":"/assets/rigs/front/head/comfort.png","cool":"/assets/rigs/front/head/cool.png"}},{"id":"goggles","z":34,"bbox":{"x":92,"y":96,"w":136,"h":52},"slot":"goggles","variants":{"snow_goggles":"/assets/rigs/front/goggles/snow_goggles.png"}},{"id":"headgear","z":40,"bbox":{"x":86,"y":10,"w":148,"h":100},"slot":"headgear","variants":{"beanie_blue":"/assets/rigs/front/headgear/beanie_blue.png","helmet_red":"/assets/rigs/front/headgear/helmet_red.png"}}],"back":[{"id":"shadow","z":0,"bbox":{"x":58,"y":424,"w":204,"h":40},"src":"/assets/rigs/back/shadow.png"},{"id":"body","z":10,"bbox":{"x":58,"y":148,"w":204,"h":306},"src":"/assets/rigs/back/body.png"},{"id":"outfit","z":20,"bbox":{"x":58,"y":170,"w":204,"h":140},"slot":"outfit","variants":{"ski_blue":"/assets/rigs/back/outfit/ski_blue.png","suit_orange":"/assets/rigs/back/outfit/suit_orange.png","vest_mint":"/assets/rigs/back/outfit/vest_mint.png"}},{"id":"hip_protector","z":24,"bbox":{"x":116,"y":280,"w":88,"h":62},"slot":"hip_protector","variants":{"basic_hip_protector":"/assets/rigs/back/hip_protector/basic_hip_protector.png","steel_hip_guard":"/assets/rigs/back/hip_protector/steel_hip_guard.png"}},{"id":"head","z":30,"bbox":{"x":86,"y":42,"w":148,"h":150},"src":"/assets/rigs/back/head.png"},{"id":"goggles","z":34,"bbox":{"x":92,"y":96,"w":136,"h":34},"slot":"goggles","variants":{"snow_goggles":"/assets/rigs/back/goggles/snow_goggles.png"}},{"id":"headgear","z":40,"bbox":{"x":86,"y":10,"w":148,"h":100},"slot":"headgear","variants":{"beanie_blue":"/assets/rigs/back/headgear/beanie_blue.png","helmet_red":"/assets/rigs/back/headgear/helmet_red.png"}}]}},"art":{"items":{"steel_hip_guard":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"96\" viewBox=\"0 0 96 96\" shape-rendering=\"geometricPrecision\">\n        \u003cpath d=\"M22,32 Q48,20 74,32 L78,58 Q48,86 18,58 Z\" fill=\"#B9C3D4\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n        \u003cpath d=\"M30,38 Q48,30 66,38\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"4\" opacity=\"0.6\" stroke-linecap=\"round\"/>\n        \u003ccircle cx=\"30\" cy=\"56\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"2\"/>\n        \u003ccircle cx=\"66\" cy=\"56\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"2\"/>\n        \u003cpath d=\"M48,44 L48,66 M40,52 L56,52\" stroke=\"#2B2340\" stroke-width=\"3\" opacity=\"0.5\"/>\n      \u003c/svg>","hot_cocoa":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"96\" viewBox=\"0 0 96 96\" shape-rendering=\"geometricPrecision\">\n        \u003cpath d=\"M30,38 L66,38 L62,72 C61,76 58,78 54,78 L42,78 C38,78 35,76 34,72 Z\" fill=\"#FFF3E0\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n        \u003cpath d=\"M66,46 C76,44 80,56 68,60\" fill=\"none\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n        \u003cpath d=\"M34,46 L62,46 L60,56 L36,56 Z\" fill=\"#C97B4A\" stroke=\"#2B2340\" stroke-width=\"3\"/>\n        \u003cpath d=\"M40,30 C38,24 43,21 41,15 M52,30 C50,24 55,21 53,15\" fill=\"none\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linecap=\"round\" opacity=\"0.7\"/>\n        \u003ccircle cx=\"48\" cy=\"34\" r=\"5\" fill=\"#FFFFFF\" opacity=\"0.85\"/>\n      \u003c/svg>","comfort_patch":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"96\" viewBox=\"0 0 96 96\" shape-rendering=\"geometricPrecision\">\n        \u003crect x=\"18\" y=\"40\" width=\"60\" height=\"26\" rx=\"9\" fill=\"#FFE2B8\" stroke=\"#2B2340\" stroke-width=\"4\" transform=\"rotate(-12 48 53)\"/>\n        \u003crect x=\"35\" y=\"22\" width=\"26\" height=\"60\" rx=\"9\" fill=\"#FFD3A1\" stroke=\"#2B2340\" stroke-width=\"4\" transform=\"rotate(-12 48 52)\"/>\n        \u003cpath d=\"M43,44 L53,44 M48,39 L48,49\" stroke=\"#2B2340\" stroke-width=\"3\" opacity=\"0.55\" transform=\"rotate(-12 48 44)\"/>\n      \u003c/svg>"},"/assets/rigs/front/shadow.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"40\" viewBox=\"58 424 204 40\" shape-rendering=\"geometricPrecision\">\n    \u003cellipse cx=\"160\" cy=\"446\" rx=\"88\" ry=\"13\" fill=\"#2B2340\" opacity=\"0.16\"/>\n    \u003cellipse cx=\"160\" cy=\"444\" rx=\"58\" ry=\"8\" fill=\"#2B2340\" opacity=\"0.12\"/>\n  \u003c/svg>","/assets/rigs/front/body.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"306\" viewBox=\"58 148 204 306\" shape-rendering=\"geometricPrecision\">\u003cline x1=\"176\" y1=\"314\" x2=\"194\" y2=\"372\" stroke=\"#2B2340\" stroke-width=\"20\" stroke-linecap=\"round\"/>\u003cline x1=\"176\" y1=\"314\" x2=\"194\" y2=\"372\" stroke=\"#F7F2E7\" stroke-width=\"14\" stroke-linecap=\"round\"/>\u003ccircle cx=\"194\" cy=\"372\" r=\"12.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"194\" cy=\"372\" r=\"9.5\" fill=\"#F7F2E7\"/>\u003cline x1=\"194\" y1=\"372\" x2=\"198\" y2=\"412\" stroke=\"#2B2340\" stroke-width=\"18\" stroke-linecap=\"round\"/>\u003cline x1=\"194\" y1=\"372\" x2=\"198\" y2=\"412\" stroke=\"#F7F2E7\" stroke-width=\"12\" stroke-linecap=\"round\"/>\u003ccircle cx=\"198\" cy=\"412\" r=\"10\" fill=\"#2B2340\"/>\u003ccircle cx=\"198\" cy=\"412\" r=\"7\" fill=\"#F7F2E7\"/>\u003crect x=\"170\" y=\"404\" width=\"54\" height=\"36\" rx=\"14\" fill=\"#2B2340\"/>\u003crect x=\"173\" y=\"407\" width=\"48\" height=\"27\" rx=\"11\" fill=\"#4A3F66\"/>\u003cpath d=\"M178,428 L216,428\" stroke=\"#2B2340\" stroke-width=\"2.5\" opacity=\"0.5\"/>\u003cline x1=\"144\" y1=\"314\" x2=\"126\" y2=\"372\" stroke=\"#2B2340\" stroke-width=\"20\" stroke-linecap=\"round\"/>\u003cline x1=\"144\" y1=\"314\" x2=\"126\" y2=\"372\" stroke=\"#F7F2E7\" stroke-width=\"14\" stroke-linecap=\"round\"/>\u003ccircle cx=\"126\" cy=\"372\" r=\"12.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"126\" cy=\"372\" r=\"9.5\" fill=\"#F7F2E7\"/>\u003cline x1=\"126\" y1=\"372\" x2=\"122\" y2=\"412\" stroke=\"#2B2340\" stroke-width=\"18\" stroke-linecap=\"round\"/>\u003cline x1=\"126\" y1=\"372\" x2=\"122\" y2=\"412\" stroke=\"#F7F2E7\" stroke-width=\"12\" stroke-linecap=\"round\"/>\u003ccircle cx=\"122\" cy=\"412\" r=\"10\" fill=\"#2B2340\"/>\u003ccircle cx=\"122\" cy=\"412\" r=\"7\" fill=\"#F7F2E7\"/>\u003crect x=\"96\" y=\"404\" width=\"54\" height=\"36\" rx=\"14\" fill=\"#2B2340\"/>\u003crect x=\"99\" y=\"407\" width=\"48\" height=\"27\" rx=\"11\" fill=\"#4A3F66\"/>\u003cpath d=\"M104,428 L142,428\" stroke=\"#2B2340\" stroke-width=\"2.5\" opacity=\"0.5\"/>\n    \u003cline x1=\"160\" y1=\"150\" x2=\"160\" y2=\"178\" stroke=\"#2B2340\" stroke-width=\"30\" stroke-linecap=\"round\"/>\u003cline x1=\"160\" y1=\"150\" x2=\"160\" y2=\"178\" stroke=\"#F7F2E7\" stroke-width=\"24\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M116,186 C124,171 196,171 204,186 L197,268 Q160,284 123,268 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M160,196 L160,270\" stroke=\"#D3C5A9\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M128,206 Q160,218 192,206\" stroke=\"#D3C5A9\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\u003cpath d=\"M129.5,226 Q160,237 190.5,226\" stroke=\"#D3C5A9\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\u003cpath d=\"M131,246 Q160,256 189,246\" stroke=\"#D3C5A9\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\u003cpath d=\"M132.5,264 Q160,273 187.5,264\" stroke=\"#D3C5A9\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M160,280 L160,294\" stroke=\"#D3C5A9\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M130,288 L190,288 L186,318 Q160,330 134,318 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M140,296 L180,296\" stroke=\"#D3C5A9\" stroke-width=\"2.4\" stroke-linecap=\"round\"/>\n  \n    \u003cline x1=\"208\" y1=\"194\" x2=\"234\" y2=\"244\" stroke=\"#2B2340\" stroke-width=\"21\" stroke-linecap=\"round\"/>\u003cline x1=\"208\" y1=\"194\" x2=\"234\" y2=\"244\" stroke=\"#F7F2E7\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"208\" cy=\"194\" r=\"13\" fill=\"#2B2340\"/>\u003ccircle cx=\"208\" cy=\"194\" r=\"10\" fill=\"#F7F2E7\"/>\n    \u003ccircle cx=\"234\" cy=\"244\" r=\"11.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"234\" cy=\"244\" r=\"8.5\" fill=\"#F7F2E7\"/>\n    \u003cline x1=\"234\" y1=\"244\" x2=\"241\" y2=\"286\" stroke=\"#2B2340\" stroke-width=\"19\" stroke-linecap=\"round\"/>\u003cline x1=\"234\" y1=\"244\" x2=\"241\" y2=\"286\" stroke=\"#F7F2E7\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"244\" cy=\"293\" r=\"16\" fill=\"#2B2340\"/>\u003ccircle cx=\"244\" cy=\"293\" r=\"13\" fill=\"#F7F2E7\"/>\u003cpath d=\"M239,295 L239,301 M244,296 L244,302 M249,295 L249,301\" stroke=\"#D3C5A9\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n    \u003cline x1=\"112\" y1=\"194\" x2=\"86\" y2=\"244\" stroke=\"#2B2340\" stroke-width=\"21\" stroke-linecap=\"round\"/>\u003cline x1=\"112\" y1=\"194\" x2=\"86\" y2=\"244\" stroke=\"#F7F2E7\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"112\" cy=\"194\" r=\"13\" fill=\"#2B2340\"/>\u003ccircle cx=\"112\" cy=\"194\" r=\"10\" fill=\"#F7F2E7\"/>\n    \u003ccircle cx=\"86\" cy=\"244\" r=\"11.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"86\" cy=\"244\" r=\"8.5\" fill=\"#F7F2E7\"/>\n    \u003cline x1=\"86\" y1=\"244\" x2=\"79\" y2=\"286\" stroke=\"#2B2340\" stroke-width=\"19\" stroke-linecap=\"round\"/>\u003cline x1=\"86\" y1=\"244\" x2=\"79\" y2=\"286\" stroke=\"#F7F2E7\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"76\" cy=\"293\" r=\"16\" fill=\"#2B2340\"/>\u003ccircle cx=\"76\" cy=\"293\" r=\"13\" fill=\"#F7F2E7\"/>\u003cpath d=\"M71,295 L71,301 M76,296 L76,302 M81,295 L81,301\" stroke=\"#D3C5A9\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/front/outfit/ski_blue.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#4C8DFF\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M118,186 C128,198 192,198 202,186\" fill=\"#2F6FE0\" stroke=\"#2B2340\" stroke-width=\"3\" stroke-linejoin=\"round\" opacity=\"0.9\"/>\n    \u003cpath d=\"M160,196 L160,288\" stroke=\"#A9C8FF\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"7 6\" opacity=\"0.9\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#2F6FE0\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \u003cpath d=\"M126,206 L134,206 M126,220 L132,220\" stroke=\"#A9C8FF\" stroke-width=\"3.4\" stroke-linecap=\"round\" opacity=\"0.85\"/>\n    \n      \u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#4C8DFF\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#4C8DFF\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M216,236 Q226,244 232,238\" stroke=\"#2F6FE0\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M104,236 Q94,244 88,238\" stroke=\"#2F6FE0\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/front/outfit/suit_orange.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#FFA14A\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M118,186 C128,198 192,198 202,186\" fill=\"#EF7A1F\" stroke=\"#2B2340\" stroke-width=\"3\" stroke-linejoin=\"round\" opacity=\"0.9\"/>\n    \u003cpath d=\"M160,196 L160,288\" stroke=\"#FFD3A1\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"7 6\" opacity=\"0.9\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#EF7A1F\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \u003cpath d=\"M126,206 L134,206 M126,220 L132,220\" stroke=\"#FFD3A1\" stroke-width=\"3.4\" stroke-linecap=\"round\" opacity=\"0.85\"/>\n    \n      \u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#FFA14A\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#FFA14A\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M216,236 Q226,244 232,238\" stroke=\"#EF7A1F\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M104,236 Q94,244 88,238\" stroke=\"#EF7A1F\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/front/outfit/vest_mint.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#5ED6B3\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M118,186 C128,198 192,198 202,186\" fill=\"#2FB98F\" stroke=\"#2B2340\" stroke-width=\"3\" stroke-linejoin=\"round\" opacity=\"0.9\"/>\n    \u003cpath d=\"M160,196 L160,288\" stroke=\"#BFF3E2\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"7 6\" opacity=\"0.9\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#2FB98F\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \u003cpath d=\"M126,206 L134,206 M126,220 L132,220\" stroke=\"#BFF3E2\" stroke-width=\"3.4\" stroke-linecap=\"round\" opacity=\"0.85\"/>\n    \n  \u003c/svg>","/assets/rigs/front/hip_protector/basic_hip_protector.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"88\" height=\"62\" viewBox=\"116 280 88 62\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M126,288 Q160,280 194,288 L198,316 Q160,338 122,316 Z\" fill=\"#B9C3D4\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M134,298 Q160,292 186,298\" stroke=\"#FFFFFF\" stroke-width=\"4\" fill=\"none\" opacity=\"0.55\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"136\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003ccircle cx=\"184\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003cpath d=\"M126,300 L112,290 M194,300 L208,290\" stroke=\"#2B2340\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"114\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n    \u003ccircle cx=\"206\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n  \u003c/svg>","/assets/rigs/front/hip_protector/steel_hip_guard.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"88\" height=\"62\" viewBox=\"116 280 88 62\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M126,288 Q160,280 194,288 L198,316 Q160,338 122,316 Z\" fill=\"#B9C3D4\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M134,298 Q160,292 186,298\" stroke=\"#FFFFFF\" stroke-width=\"4\" fill=\"none\" opacity=\"0.55\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"136\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003ccircle cx=\"184\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003cpath d=\"M126,300 L112,290 M194,300 L208,290\" stroke=\"#2B2340\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"114\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n    \u003ccircle cx=\"206\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n  \u003c/svg>","/assets/rigs/front/head/happy.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M116,96 C118,72 134,60 152,57\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.5\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M160,136 L153,152 L167,152 Z\" fill=\"#2B2340\"/>\n    \u003cpath d=\"M124,124 Q138,104 152,124\" stroke=\"#2B2340\" stroke-width=\"8\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M168,124 Q182,104 196,124\" stroke=\"#2B2340\" stroke-width=\"8\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cellipse cx=\"117\" cy=\"146\" rx=\"9\" ry=\"5\" fill=\"#FFA8B8\" opacity=\"0.65\"/>\n    \u003cellipse cx=\"203\" cy=\"146\" rx=\"9\" ry=\"5\" fill=\"#FFA8B8\" opacity=\"0.65\"/>\n    \u003crect x=\"142\" y=\"154\" width=\"36\" height=\"18\" rx=\"6\" fill=\"#FFFDF7\" stroke=\"#2B2340\" stroke-width=\"2.6\"/>\n    \u003cline x1=\"154\" y1=\"156\" x2=\"154\" y2=\"170\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\n    \u003cline x1=\"166\" y1=\"156\" x2=\"166\" y2=\"170\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\u003c/svg>","/assets/rigs/front/head/surprised.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M116,96 C118,72 134,60 152,57\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.5\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M160,136 L153,152 L167,152 Z\" fill=\"#2B2340\"/>\n    \u003cellipse cx=\"138\" cy=\"118\" rx=\"18\" ry=\"20\" fill=\"#2B2340\"/>\n    \u003cellipse cx=\"182\" cy=\"118\" rx=\"18\" ry=\"20\" fill=\"#2B2340\"/>\n    \u003ccircle cx=\"144\" cy=\"111\" r=\"5.4\" fill=\"#FFFDF7\" opacity=\"0.95\"/>\n    \u003ccircle cx=\"188\" cy=\"111\" r=\"5.4\" fill=\"#FFFDF7\" opacity=\"0.95\"/>\n    \u003cpath d=\"M112,92 Q124,84 136,92\" stroke=\"#2B2340\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M184,92 Q196,84 208,92\" stroke=\"#2B2340\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\u003cellipse cx=\"160\" cy=\"160\" rx=\"12\" ry=\"11\" fill=\"#2B2340\"/>\u003crect x=\"152\" y=\"152\" width=\"16\" height=\"7\" rx=\"2.5\" fill=\"#FFFDF7\"/>\u003c/svg>","/assets/rigs/front/head/awkward.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M116,96 C118,72 134,60 152,57\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.5\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M160,136 L153,152 L167,152 Z\" fill=\"#2B2340\"/>\n    \u003cellipse cx=\"138\" cy=\"120\" rx=\"14\" ry=\"15\" fill=\"#2B2340\"/>\n    \u003ccircle cx=\"143\" cy=\"115\" r=\"4\" fill=\"#FFFDF7\" opacity=\"0.9\"/>\n    \u003cellipse cx=\"182\" cy=\"120\" rx=\"16\" ry=\"7\" fill=\"#2B2340\"/>\n    \u003cpath d=\"M206,92 Q213,101 208,109 Q203,102 206,92 Z\" fill=\"#8FD3FF\" stroke=\"#2B2340\" stroke-width=\"2\"/>\n    \u003crect x=\"143\" y=\"155\" width=\"34\" height=\"17\" rx=\"6\" fill=\"#FFFDF7\" stroke=\"#2B2340\" stroke-width=\"2.6\"/>\n    \u003cline x1=\"154.3\" y1=\"157\" x2=\"154.3\" y2=\"170\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\n    \u003cline x1=\"165.7\" y1=\"157\" x2=\"165.7\" y2=\"170\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\u003c/svg>","/assets/rigs/front/head/comfort.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M116,96 C118,72 134,60 152,57\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.5\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M160,136 L153,152 L167,152 Z\" fill=\"#2B2340\"/>\n    \u003cpath d=\"M122,106 Q138,98 152,108\" stroke=\"#2B2340\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M168,108 Q182,98 198,106\" stroke=\"#2B2340\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cellipse cx=\"138\" cy=\"122\" rx=\"14\" ry=\"14\" fill=\"#2B2340\"/>\n    \u003cellipse cx=\"182\" cy=\"122\" rx=\"14\" ry=\"14\" fill=\"#2B2340\"/>\n    \u003ccircle cx=\"143\" cy=\"117\" r=\"4.6\" fill=\"#FFFDF7\" opacity=\"0.95\"/>\n    \u003ccircle cx=\"187\" cy=\"117\" r=\"4.6\" fill=\"#FFFDF7\" opacity=\"0.95\"/>\n    \u003cpath d=\"M208,128 Q216,140 208,148 Q200,140 208,128 Z\" fill=\"#8FD3FF\" stroke=\"#2B2340\" stroke-width=\"2\"/>\u003cpath d=\"M146,158 Q160,166 174,158\" stroke=\"#2B2340\" stroke-width=\"2.8\" fill=\"none\" stroke-linecap=\"round\"/>\u003c/svg>","/assets/rigs/front/head/cool.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M116,96 C118,72 134,60 152,57\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.5\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M160,136 L153,152 L167,152 Z\" fill=\"#2B2340\"/>\n    \u003crect x=\"104\" y=\"100\" width=\"112\" height=\"34\" rx=\"13\" fill=\"#2B2340\"/>\n    \u003cpath d=\"M114,124 L136,106\" stroke=\"#7FB8FF\" stroke-width=\"6\" stroke-linecap=\"round\" opacity=\"0.85\"/>\n    \u003cpath d=\"M158,124 L180,106\" stroke=\"#7FB8FF\" stroke-width=\"6\" stroke-linecap=\"round\" opacity=\"0.85\"/>\n    \u003cpath d=\"M104,108 L96,104 M216,108 L224,104\" stroke=\"#2B2340\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M128,152 Q160,160 192,148\" stroke=\"#2B2340\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003crect x=\"145\" y=\"158\" width=\"30\" height=\"15\" rx=\"6\" fill=\"#FFFDF7\" stroke=\"#2B2340\" stroke-width=\"2.6\"/>\n    \u003cline x1=\"155\" y1=\"160\" x2=\"155\" y2=\"171\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\n    \u003cline x1=\"165\" y1=\"160\" x2=\"165\" y2=\"171\" stroke=\"#2B2340\" stroke-width=\"1.8\" opacity=\"0.5\"/>\u003c/svg>","/assets/rigs/front/goggles/snow_goggles.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"136\" height=\"52\" viewBox=\"92 96 136 52\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M102,112 L218,112\" stroke=\"#4A3F66\" stroke-width=\"12\" stroke-linecap=\"round\"/>\n    \u003crect x=\"106\" y=\"100\" width=\"108\" height=\"38\" rx=\"15\" fill=\"#9BDCFF\" fill-opacity=\"0.6\" stroke=\"#2B2340\" stroke-width=\"4\"/>\n    \u003cpath d=\"M118,130 Q134,110 152,108\" stroke=\"#E9FAFF\" stroke-width=\"6\" fill=\"none\" stroke-linecap=\"round\" opacity=\"0.9\"/>\n    \u003cpath d=\"M160,104 L160,134\" stroke=\"#2B2340\" stroke-width=\"4\" opacity=\"0.7\"/>\n    \u003ccircle cx=\"104\" cy=\"106\" r=\"4\" fill=\"#2B2340\"/>\n    \u003ccircle cx=\"216\" cy=\"106\" r=\"4\" fill=\"#2B2340\"/>\n  \u003c/svg>","/assets/rigs/front/headgear/beanie_blue.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"100\" viewBox=\"86 10 148 100\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M96,100 C97,52 124,32 160,32 C196,32 223,52 224,100 C206,90 184,86 160,86 C136,86 114,90 96,100 Z\" fill=\"#7C8CFF\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M96,100 C114,90 136,86 160,86 C184,86 206,90 224,100 L224,108 C206,98 184,94 160,94 C136,94 114,98 96,108 Z\" fill=\"#5566E0\" stroke=\"#2B2340\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M112,86 C118,62 134,46 156,42\" stroke=\"#FFFFFF\" stroke-width=\"6\" fill=\"none\" opacity=\"0.45\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"160\" cy=\"26\" r=\"13\" fill=\"#FFD166\" stroke=\"#2B2340\" stroke-width=\"3\"/>\n    \u003cpath d=\"M154,20 Q160,26 166,20\" stroke=\"#2B2340\" stroke-width=\"2\" fill=\"none\" opacity=\"0.4\"/>\n  \u003c/svg>","/assets/rigs/front/headgear/helmet_red.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"100\" viewBox=\"86 10 148 100\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M98,104 C98,62 126,40 160,40 C194,40 222,62 222,104 L212,108 C190,96 130,96 108,108 Z\" fill=\"#FF6B6B\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M136,44 C146,72 146,94 142,104\" stroke=\"#FFF6EC\" stroke-width=\"7\" fill=\"none\" opacity=\"0.85\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M108,108 C130,96 190,96 212,108\" stroke=\"#E04545\" stroke-width=\"5\" fill=\"none\" opacity=\"0.8\"/>\n    \u003cpath d=\"M214,94 L234,90 L234,102 L210,106 Z\" fill=\"#E04545\" stroke=\"#2B2340\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    \u003ccircle cx=\"104\" cy=\"106\" r=\"5\" fill=\"#E04545\" stroke=\"#2B2340\" stroke-width=\"2.4\"/>\n    \u003ccircle cx=\"216\" cy=\"106\" r=\"5\" fill=\"#E04545\" stroke=\"#2B2340\" stroke-width=\"2.4\"/>\n  \u003c/svg>","/assets/rigs/back/shadow.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"40\" viewBox=\"58 424 204 40\" shape-rendering=\"geometricPrecision\">\n    \u003cellipse cx=\"160\" cy=\"446\" rx=\"88\" ry=\"13\" fill=\"#2B2340\" opacity=\"0.16\"/>\n    \u003cellipse cx=\"160\" cy=\"444\" rx=\"58\" ry=\"8\" fill=\"#2B2340\" opacity=\"0.12\"/>\n  \u003c/svg>","/assets/rigs/back/body.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"306\" viewBox=\"58 148 204 306\" shape-rendering=\"geometricPrecision\">\n    \u003cline x1=\"176\" y1=\"314\" x2=\"194\" y2=\"372\" stroke=\"#2B2340\" stroke-width=\"20\" stroke-linecap=\"round\"/>\u003cline x1=\"176\" y1=\"314\" x2=\"194\" y2=\"372\" stroke=\"#F7F2E7\" stroke-width=\"14\" stroke-linecap=\"round\"/>\u003ccircle cx=\"194\" cy=\"372\" r=\"12.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"194\" cy=\"372\" r=\"9.5\" fill=\"#F7F2E7\"/>\u003cline x1=\"194\" y1=\"372\" x2=\"198\" y2=\"412\" stroke=\"#2B2340\" stroke-width=\"18\" stroke-linecap=\"round\"/>\u003cline x1=\"194\" y1=\"372\" x2=\"198\" y2=\"412\" stroke=\"#F7F2E7\" stroke-width=\"12\" stroke-linecap=\"round\"/>\u003ccircle cx=\"198\" cy=\"412\" r=\"10\" fill=\"#2B2340\"/>\u003ccircle cx=\"198\" cy=\"412\" r=\"7\" fill=\"#F7F2E7\"/>\u003crect x=\"170\" y=\"404\" width=\"54\" height=\"36\" rx=\"14\" fill=\"#2B2340\"/>\u003crect x=\"173\" y=\"407\" width=\"48\" height=\"27\" rx=\"11\" fill=\"#4A3F66\"/>\u003cpath d=\"M178,428 L216,428\" stroke=\"#2B2340\" stroke-width=\"2.5\" opacity=\"0.5\"/>\u003cline x1=\"144\" y1=\"314\" x2=\"126\" y2=\"372\" stroke=\"#2B2340\" stroke-width=\"20\" stroke-linecap=\"round\"/>\u003cline x1=\"144\" y1=\"314\" x2=\"126\" y2=\"372\" stroke=\"#F7F2E7\" stroke-width=\"14\" stroke-linecap=\"round\"/>\u003ccircle cx=\"126\" cy=\"372\" r=\"12.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"126\" cy=\"372\" r=\"9.5\" fill=\"#F7F2E7\"/>\u003cline x1=\"126\" y1=\"372\" x2=\"122\" y2=\"412\" stroke=\"#2B2340\" stroke-width=\"18\" stroke-linecap=\"round\"/>\u003cline x1=\"126\" y1=\"372\" x2=\"122\" y2=\"412\" stroke=\"#F7F2E7\" stroke-width=\"12\" stroke-linecap=\"round\"/>\u003ccircle cx=\"122\" cy=\"412\" r=\"10\" fill=\"#2B2340\"/>\u003ccircle cx=\"122\" cy=\"412\" r=\"7\" fill=\"#F7F2E7\"/>\u003crect x=\"96\" y=\"404\" width=\"54\" height=\"36\" rx=\"14\" fill=\"#2B2340\"/>\u003crect x=\"99\" y=\"407\" width=\"48\" height=\"27\" rx=\"11\" fill=\"#4A3F66\"/>\u003cpath d=\"M104,428 L142,428\" stroke=\"#2B2340\" stroke-width=\"2.5\" opacity=\"0.5\"/>\n    \u003cline x1=\"160\" y1=\"150\" x2=\"160\" y2=\"178\" stroke=\"#2B2340\" stroke-width=\"30\" stroke-linecap=\"round\"/>\u003cline x1=\"160\" y1=\"150\" x2=\"160\" y2=\"178\" stroke=\"#F7F2E7\" stroke-width=\"24\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M116,186 C124,171 196,171 204,186 L197,268 Q160,284 123,268 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M128,196 Q148,214 142,252\" stroke=\"#D3C5A9\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M192,196 Q172,214 178,252\" stroke=\"#D3C5A9\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003crect x=\"151\" y=\"196\" width=\"18\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\u003crect x=\"151.4\" y=\"214\" width=\"17.2\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\u003crect x=\"151.8\" y=\"232\" width=\"16.4\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\u003crect x=\"152.2\" y=\"250\" width=\"15.6\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\u003crect x=\"152.6\" y=\"268\" width=\"14.8\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\u003crect x=\"153\" y=\"284\" width=\"14\" height=\"9\" rx=\"4\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"2.2\"/>\n    \u003cpath d=\"M130,288 L190,288 L186,318 Q160,330 134,318 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M148,296 L172,296 L160,310 Z\" fill=\"#E5DAC5\" stroke=\"#D3C5A9\" stroke-width=\"2\"/>\n    \u003cline x1=\"208\" y1=\"194\" x2=\"234\" y2=\"244\" stroke=\"#2B2340\" stroke-width=\"21\" stroke-linecap=\"round\"/>\u003cline x1=\"208\" y1=\"194\" x2=\"234\" y2=\"244\" stroke=\"#F7F2E7\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"208\" cy=\"194\" r=\"13\" fill=\"#2B2340\"/>\u003ccircle cx=\"208\" cy=\"194\" r=\"10\" fill=\"#F7F2E7\"/>\n    \u003ccircle cx=\"234\" cy=\"244\" r=\"11.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"234\" cy=\"244\" r=\"8.5\" fill=\"#F7F2E7\"/>\n    \u003cline x1=\"234\" y1=\"244\" x2=\"241\" y2=\"286\" stroke=\"#2B2340\" stroke-width=\"19\" stroke-linecap=\"round\"/>\u003cline x1=\"234\" y1=\"244\" x2=\"241\" y2=\"286\" stroke=\"#F7F2E7\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"244\" cy=\"293\" r=\"16\" fill=\"#2B2340\"/>\u003ccircle cx=\"244\" cy=\"293\" r=\"13\" fill=\"#F7F2E7\"/>\u003cpath d=\"M239,295 L239,301 M244,296 L244,302 M249,295 L249,301\" stroke=\"#D3C5A9\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n    \u003cline x1=\"112\" y1=\"194\" x2=\"86\" y2=\"244\" stroke=\"#2B2340\" stroke-width=\"21\" stroke-linecap=\"round\"/>\u003cline x1=\"112\" y1=\"194\" x2=\"86\" y2=\"244\" stroke=\"#F7F2E7\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"112\" cy=\"194\" r=\"13\" fill=\"#2B2340\"/>\u003ccircle cx=\"112\" cy=\"194\" r=\"10\" fill=\"#F7F2E7\"/>\n    \u003ccircle cx=\"86\" cy=\"244\" r=\"11.5\" fill=\"#2B2340\"/>\u003ccircle cx=\"86\" cy=\"244\" r=\"8.5\" fill=\"#F7F2E7\"/>\n    \u003cline x1=\"86\" y1=\"244\" x2=\"79\" y2=\"286\" stroke=\"#2B2340\" stroke-width=\"19\" stroke-linecap=\"round\"/>\u003cline x1=\"86\" y1=\"244\" x2=\"79\" y2=\"286\" stroke=\"#F7F2E7\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"76\" cy=\"293\" r=\"16\" fill=\"#2B2340\"/>\u003ccircle cx=\"76\" cy=\"293\" r=\"13\" fill=\"#F7F2E7\"/>\u003cpath d=\"M71,295 L71,301 M76,296 L76,302 M81,295 L81,301\" stroke=\"#D3C5A9\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/back/outfit/ski_blue.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#4C8DFF\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M126,186 C142,196 178,196 194,186\" fill=\"none\" stroke=\"#2F6FE0\" stroke-width=\"6\" opacity=\"0.6\"/>\n    \u003cpath d=\"M160,200 L160,288\" stroke=\"#2F6FE0\" stroke-width=\"3.6\" opacity=\"0.75\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M120,192 Q160,208 200,192\" stroke=\"#2F6FE0\" stroke-width=\"3.2\" fill=\"none\" opacity=\"0.7\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M126,202 Q140,214 136,248 Q124,240 122,206 Z\" fill=\"#2F6FE0\" opacity=\"0.18\"/>\n    \u003cpath d=\"M194,202 Q180,214 184,248 Q196,240 198,206 Z\" fill=\"#2F6FE0\" opacity=\"0.18\"/>\n    \u003cpath d=\"M130,268 L122,274 M190,268 L198,274\" stroke=\"#2F6FE0\" stroke-width=\"3\" opacity=\"0.45\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M138,222 Q160,232 182,222\" stroke=\"#A9C8FF\" stroke-width=\"4\" fill=\"none\" opacity=\"0.8\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#2F6FE0\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \n      \u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#4C8DFF\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#4C8DFF\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M216,236 Q226,244 232,238\" stroke=\"#2F6FE0\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M104,236 Q94,244 88,238\" stroke=\"#2F6FE0\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/back/outfit/suit_orange.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#FFA14A\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M126,186 C142,196 178,196 194,186\" fill=\"none\" stroke=\"#EF7A1F\" stroke-width=\"6\" opacity=\"0.6\"/>\n    \u003cpath d=\"M160,200 L160,288\" stroke=\"#EF7A1F\" stroke-width=\"3.6\" opacity=\"0.75\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M120,192 Q160,208 200,192\" stroke=\"#EF7A1F\" stroke-width=\"3.2\" fill=\"none\" opacity=\"0.7\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M126,202 Q140,214 136,248 Q124,240 122,206 Z\" fill=\"#EF7A1F\" opacity=\"0.18\"/>\n    \u003cpath d=\"M194,202 Q180,214 184,248 Q196,240 198,206 Z\" fill=\"#EF7A1F\" opacity=\"0.18\"/>\n    \u003cpath d=\"M130,268 L122,274 M190,268 L198,274\" stroke=\"#EF7A1F\" stroke-width=\"3\" opacity=\"0.45\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M138,222 Q160,232 182,222\" stroke=\"#FFD3A1\" stroke-width=\"4\" fill=\"none\" opacity=\"0.8\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#EF7A1F\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \n      \u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"205\" y1=\"192\" x2=\"232\" y2=\"242\" stroke=\"#FFA14A\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#2B2340\" stroke-width=\"28.4\" stroke-linecap=\"round\"/>\u003cline x1=\"115\" y1=\"192\" x2=\"88\" y2=\"242\" stroke=\"#FFA14A\" stroke-width=\"22\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M216,236 Q226,244 232,238\" stroke=\"#EF7A1F\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M104,236 Q94,244 88,238\" stroke=\"#EF7A1F\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/back/outfit/vest_mint.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"204\" height=\"140\" viewBox=\"58 170 204 140\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z\" fill=\"#5ED6B3\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M126,186 C142,196 178,196 194,186\" fill=\"none\" stroke=\"#2FB98F\" stroke-width=\"6\" opacity=\"0.6\"/>\n    \u003cpath d=\"M160,200 L160,288\" stroke=\"#2FB98F\" stroke-width=\"3.6\" opacity=\"0.75\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M120,192 Q160,208 200,192\" stroke=\"#2FB98F\" stroke-width=\"3.2\" fill=\"none\" opacity=\"0.7\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M126,202 Q140,214 136,248 Q124,240 122,206 Z\" fill=\"#2FB98F\" opacity=\"0.18\"/>\n    \u003cpath d=\"M194,202 Q180,214 184,248 Q196,240 198,206 Z\" fill=\"#2FB98F\" opacity=\"0.18\"/>\n    \u003cpath d=\"M130,268 L122,274 M190,268 L198,274\" stroke=\"#2FB98F\" stroke-width=\"3\" opacity=\"0.45\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M138,222 Q160,232 182,222\" stroke=\"#BFF3E2\" stroke-width=\"4\" fill=\"none\" opacity=\"0.8\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M112,262 C124,276 196,276 208,262\" stroke=\"#2FB98F\" stroke-width=\"6\" fill=\"none\" opacity=\"0.55\"/>\n    \n  \u003c/svg>","/assets/rigs/back/hip_protector/basic_hip_protector.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"88\" height=\"62\" viewBox=\"116 280 88 62\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M126,288 Q160,280 194,288 L198,316 Q160,338 122,316 Z\" fill=\"#B9C3D4\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M134,298 Q160,292 186,298\" stroke=\"#FFFFFF\" stroke-width=\"4\" fill=\"none\" opacity=\"0.55\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"136\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003ccircle cx=\"184\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003cpath d=\"M126,300 L112,290 M194,300 L208,290\" stroke=\"#2B2340\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"114\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n    \u003ccircle cx=\"206\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n  \u003c/svg>","/assets/rigs/back/hip_protector/steel_hip_guard.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"88\" height=\"62\" viewBox=\"116 280 88 62\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M126,288 Q160,280 194,288 L198,316 Q160,338 122,316 Z\" fill=\"#B9C3D4\" stroke=\"#2B2340\" stroke-width=\"3.4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M134,298 Q160,292 186,298\" stroke=\"#FFFFFF\" stroke-width=\"4\" fill=\"none\" opacity=\"0.55\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"136\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003ccircle cx=\"184\" cy=\"312\" r=\"3.4\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.8\"/>\n    \u003cpath d=\"M126,300 L112,290 M194,300 L208,290\" stroke=\"#2B2340\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"114\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n    \u003ccircle cx=\"206\" cy=\"291\" r=\"3.6\" fill=\"#8A96AC\" stroke=\"#2B2340\" stroke-width=\"1.6\"/>\n  \u003c/svg>","/assets/rigs/back/head.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"150\" viewBox=\"86 42 148 150\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M160,52 C194,52 220,78 220,113 C220,135 209,148 199,156 C195,174 181,188 160,188 C139,188 125,174 121,156 C111,148 100,135 100,113 C100,78 126,52 160,52 Z\" fill=\"#F7F2E7\" stroke=\"#2B2340\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M118,98 C120,72 136,58 154,56\" stroke=\"#FFFFFF\" stroke-width=\"8\" opacity=\"0.42\" stroke-linecap=\"round\" fill=\"none\"/>\n    \u003cpath d=\"M126,132 Q160,152 194,132\" stroke=\"#D3C5A9\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M138,100 Q160,110 182,100\" stroke=\"#D3C5A9\" stroke-width=\"2.4\" fill=\"none\" stroke-linecap=\"round\" opacity=\"0.8\"/>\n    \u003cpath d=\"M160,174 L160,188\" stroke=\"#D3C5A9\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/svg>","/assets/rigs/back/goggles/snow_goggles.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"136\" height=\"34\" viewBox=\"92 96 136 34\" shape-rendering=\"geometricPrecision\">\n      \u003cpath d=\"M100,110 L220,110\" stroke=\"#4A3F66\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n      \u003cpath d=\"M100,110 L220,110\" stroke=\"#2B2340\" stroke-width=\"2.4\" stroke-dasharray=\"4 5\" opacity=\"0.5\"/>\n      \u003crect x=\"146\" y=\"103\" width=\"28\" height=\"14\" rx=\"6\" fill=\"#2B2340\"/>\n    \u003c/svg>","/assets/rigs/back/headgear/beanie_blue.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"100\" viewBox=\"86 10 148 100\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M96,100 C97,52 124,32 160,32 C196,32 223,52 224,100 C206,90 184,86 160,86 C136,86 114,90 96,100 Z\" fill=\"#7C8CFF\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \n    \u003cpath d=\"M112,86 C118,62 134,46 156,42\" stroke=\"#FFFFFF\" stroke-width=\"6\" fill=\"none\" opacity=\"0.45\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"160\" cy=\"26\" r=\"13\" fill=\"#FFD166\" stroke=\"#2B2340\" stroke-width=\"3\"/>\n    \u003cpath d=\"M154,20 Q160,26 166,20\" stroke=\"#2B2340\" stroke-width=\"2\" fill=\"none\" opacity=\"0.4\"/>\n  \u003c/svg>","/assets/rigs/back/headgear/helmet_red.png":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"148\" height=\"100\" viewBox=\"86 10 148 100\" shape-rendering=\"geometricPrecision\">\n    \u003cpath d=\"M98,104 C98,62 126,40 160,40 C194,40 222,62 222,104 L212,108 C190,96 130,96 108,108 Z\" fill=\"#FF6B6B\" stroke=\"#2B2340\" stroke-width=\"3.6\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M136,44 C146,72 146,94 142,104\" stroke=\"#FFF6EC\" stroke-width=\"7\" fill=\"none\" opacity=\"0.85\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M108,108 C130,96 190,96 212,108\" stroke=\"#E04545\" stroke-width=\"5\" fill=\"none\" opacity=\"0.8\"/>\n    \n    \u003ccircle cx=\"104\" cy=\"106\" r=\"5\" fill=\"#E04545\" stroke=\"#2B2340\" stroke-width=\"2.4\"/>\n    \u003ccircle cx=\"216\" cy=\"106\" r=\"5\" fill=\"#E04545\" stroke=\"#2B2340\" stroke-width=\"2.4\"/>\n  \u003c/svg>"},"data":{"me":{"user":{"id":"usr_me","displayName":"小北","palette":"blue","avatarId":"avt_usr_me","isMe":true},"avatar":{"id":"avt_usr_me","ownerId":"usr_me","rigVersion":"skeleton-rig-v1","palette":"blue","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"expression":"happy","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"preferences":{"allowFunnyActions":true,"allowGifts":true,"reduceMotion":false,"anonymousByDefault":false}},"groups":[{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},{"id":"grp_skate","name":"陆地冲浪局","ownerId":"usr_me","joinMode":"open","createdAt":"2026-10-21T07:40:56.919Z","role":"owner","memberCount":3}],"atlases":{"grp_snow":{"front":{"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"view":"front","period":"all","hotspots":[{"id":"head","label":"头","count":1,"users":[{"userId":"usr_yu","displayName":"余可","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_head"]},{"id":"shoulder_l","label":"左肩","count":0,"users":[],"storyIds":[]},{"id":"shoulder_r","label":"右肩","count":0,"users":[],"storyIds":[]},{"id":"wrist_l","label":"左手腕","count":0,"users":[],"storyIds":[]},{"id":"wrist_r","label":"右手腕","count":0,"users":[],"storyIds":[]},{"id":"waist","label":"腰","count":1,"users":[{"userId":"usr_zhou","displayName":"周三石","palette":"blue","expression":"comfort","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_waist"]},{"id":"tailbone","label":"尾椎","count":2,"users":[{"userId":"usr_lin","displayName":"林小满","palette":"orange","expression":"cool","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false},{"userId":"usr_me","displayName":"小北","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_tailbone","sty_me_seat"]},{"id":"knee_l","label":"左膝","count":1,"users":[{"userId":"usr_tang","displayName":"唐不苦","palette":"purple","expression":"awkward","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_knee"]},{"id":"knee_r","label":"右膝","count":0,"users":[],"storyIds":[]},{"id":"ankle_l","label":"左脚踝","count":0,"users":[],"storyIds":[]},{"id":"ankle_r","label":"右脚踝","count":0,"users":[],"storyIds":[]}],"storyCount":5,"participantCount":5,"hottest":[{"bodyPart":"tailbone","label":"尾椎","count":2},{"bodyPart":"head","label":"头","count":1},{"bodyPart":"knee_l","label":"左膝","count":1}],"stories":[{"id":"sty_waist","title":"缆车排队时被雪板绊了一下","authorId":"usr_zhou","authorName":"周三石","isAnonymous":false,"sport":"ski_double","bodyParts":["waist"],"impactKind":"prefer_not_to_say","tone":"supportive","allowFunnyActions":false,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-19T11:40:56.919Z","palette":"blue","expression":"comfort","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_me_seat","title":"第一次雪地坐姿","authorId":"usr_me","authorName":"小北","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T11:40:56.919Z","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_head","title":"差一点就飞升","authorId":"usr_yu","authorName":"余可","isAnonymous":false,"sport":"ski_double","bodyParts":["head"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-16T13:40:56.919Z","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_knee","title":"共享单车教我做人的一天","authorId":"usr_tang","authorName":"唐不苦","isAnonymous":false,"sport":"cycling","bodyParts":["knee_l"],"impactKind":"stopped_activity","tone":"supportive","allowFunnyActions":false,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-15T17:40:56.919Z","palette":"purple","expression":"awkward","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_tailbone","title":"尾椎渡劫记","authorId":"usr_lin","authorName":"林小满","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"stopped_activity","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-15T07:40:56.919Z","palette":"orange","expression":"cool","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null}}]},"back":{"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"view":"back","period":"all","hotspots":[{"id":"head","label":"头","count":1,"users":[{"userId":"usr_yu","displayName":"余可","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_head"]},{"id":"shoulder_l","label":"左肩","count":0,"users":[],"storyIds":[]},{"id":"shoulder_r","label":"右肩","count":0,"users":[],"storyIds":[]},{"id":"wrist_l","label":"左手腕","count":0,"users":[],"storyIds":[]},{"id":"wrist_r","label":"右手腕","count":0,"users":[],"storyIds":[]},{"id":"back","label":"背","count":0,"users":[],"storyIds":[]},{"id":"waist","label":"腰","count":1,"users":[{"userId":"usr_zhou","displayName":"周三石","palette":"blue","expression":"comfort","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_waist"]},{"id":"tailbone","label":"尾椎","count":2,"users":[{"userId":"usr_lin","displayName":"林小满","palette":"orange","expression":"cool","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false},{"userId":"usr_me","displayName":"小北","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_tailbone","sty_me_seat"]},{"id":"knee_l","label":"左膝","count":1,"users":[{"userId":"usr_tang","displayName":"唐不苦","palette":"purple","expression":"awkward","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_knee"]},{"id":"knee_r","label":"右膝","count":0,"users":[],"storyIds":[]},{"id":"ankle_l","label":"左脚踝","count":0,"users":[],"storyIds":[]},{"id":"ankle_r","label":"右脚踝","count":0,"users":[],"storyIds":[]}],"storyCount":5,"participantCount":5,"hottest":[{"bodyPart":"tailbone","label":"尾椎","count":2},{"bodyPart":"head","label":"头","count":1},{"bodyPart":"knee_l","label":"左膝","count":1}],"stories":[{"id":"sty_waist","title":"缆车排队时被雪板绊了一下","authorId":"usr_zhou","authorName":"周三石","isAnonymous":false,"sport":"ski_double","bodyParts":["waist"],"impactKind":"prefer_not_to_say","tone":"supportive","allowFunnyActions":false,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-19T11:40:56.919Z","palette":"blue","expression":"comfort","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_me_seat","title":"第一次雪地坐姿","authorId":"usr_me","authorName":"小北","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T11:40:56.919Z","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_head","title":"差一点就飞升","authorId":"usr_yu","authorName":"余可","isAnonymous":false,"sport":"ski_double","bodyParts":["head"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-16T13:40:56.919Z","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_knee","title":"共享单车教我做人的一天","authorId":"usr_tang","authorName":"唐不苦","isAnonymous":false,"sport":"cycling","bodyParts":["knee_l"],"impactKind":"stopped_activity","tone":"supportive","allowFunnyActions":false,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-15T17:40:56.919Z","palette":"purple","expression":"awkward","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_tailbone","title":"尾椎渡劫记","authorId":"usr_lin","authorName":"林小满","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"stopped_activity","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-15T07:40:56.919Z","palette":"orange","expression":"cool","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null}}]}},"grp_skate":{"front":{"group":{"id":"grp_skate","name":"陆地冲浪局","ownerId":"usr_me","joinMode":"open","createdAt":"2026-10-21T07:40:56.919Z","role":"owner","memberCount":3},"view":"front","period":"all","hotspots":[{"id":"head","label":"头","count":0,"users":[],"storyIds":[]},{"id":"shoulder_l","label":"左肩","count":0,"users":[],"storyIds":[]},{"id":"shoulder_r","label":"右肩","count":0,"users":[],"storyIds":[]},{"id":"wrist_l","label":"左手腕","count":1,"users":[{"userId":"usr_ma","displayName":"马大哈","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_wrist"]},{"id":"wrist_r","label":"右手腕","count":0,"users":[],"storyIds":[]},{"id":"waist","label":"腰","count":0,"users":[],"storyIds":[]},{"id":"tailbone","label":"尾椎","count":1,"users":[{"userId":"usr_me","displayName":"小北","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_me_seat"]},{"id":"knee_l","label":"左膝","count":0,"users":[],"storyIds":[]},{"id":"knee_r","label":"右膝","count":0,"users":[],"storyIds":[]},{"id":"ankle_l","label":"左脚踝","count":0,"users":[],"storyIds":[]},{"id":"ankle_r","label":"右脚踝","count":0,"users":[],"storyIds":[]}],"storyCount":3,"participantCount":2,"hottest":[{"bodyPart":"back","label":"背","count":1},{"bodyPart":"tailbone","label":"尾椎","count":1},{"bodyPart":"wrist_l","label":"左手腕","count":1}],"stories":[{"id":"sty_me_seat","title":"第一次雪地坐姿","authorId":"usr_me","authorName":"小北","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T11:40:56.919Z","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_back","title":"篮球场上的空中转体两周半","authorId":"usr_ma","authorName":"匿名雪友","isAnonymous":true,"sport":"ball_sport","bodyParts":["back"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T05:40:56.919Z","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_wrist","title":"手腕说它今天不想上班","authorId":"usr_ma","authorName":"马大哈","isAnonymous":false,"sport":"inline_skate","bodyParts":["wrist_l"],"impactKind":"minor_discomfort","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-17T09:40:56.919Z","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}}]},"back":{"group":{"id":"grp_skate","name":"陆地冲浪局","ownerId":"usr_me","joinMode":"open","createdAt":"2026-10-21T07:40:56.919Z","role":"owner","memberCount":3},"view":"back","period":"all","hotspots":[{"id":"head","label":"头","count":0,"users":[],"storyIds":[]},{"id":"shoulder_l","label":"左肩","count":0,"users":[],"storyIds":[]},{"id":"shoulder_r","label":"右肩","count":0,"users":[],"storyIds":[]},{"id":"wrist_l","label":"左手腕","count":1,"users":[{"userId":"usr_ma","displayName":"马大哈","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_wrist"]},{"id":"wrist_r","label":"右手腕","count":0,"users":[],"storyIds":[]},{"id":"back","label":"背","count":1,"users":[{"userId":"usr_ma","displayName":"匿名雪友","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":true}],"storyIds":["sty_back"]},{"id":"waist","label":"腰","count":0,"users":[],"storyIds":[]},{"id":"tailbone","label":"尾椎","count":1,"users":[{"userId":"usr_me","displayName":"小北","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isAnonymous":false}],"storyIds":["sty_me_seat"]},{"id":"knee_l","label":"左膝","count":0,"users":[],"storyIds":[]},{"id":"knee_r","label":"右膝","count":0,"users":[],"storyIds":[]},{"id":"ankle_l","label":"左脚踝","count":0,"users":[],"storyIds":[]},{"id":"ankle_r","label":"右脚踝","count":0,"users":[],"storyIds":[]}],"storyCount":3,"participantCount":2,"hottest":[{"bodyPart":"back","label":"背","count":1},{"bodyPart":"tailbone","label":"尾椎","count":1},{"bodyPart":"wrist_l","label":"左手腕","count":1}],"stories":[{"id":"sty_me_seat","title":"第一次雪地坐姿","authorId":"usr_me","authorName":"小北","isAnonymous":false,"sport":"ski_double","bodyParts":["tailbone"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T11:40:56.919Z","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_back","title":"篮球场上的空中转体两周半","authorId":"usr_ma","authorName":"匿名雪友","isAnonymous":true,"sport":"ball_sport","bodyParts":["back"],"impactKind":"near_miss","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-18T05:40:56.919Z","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}},{"id":"sty_wrist","title":"手腕说它今天不想上班","authorId":"usr_ma","authorName":"马大哈","isAnonymous":false,"sport":"inline_skate","bodyParts":["wrist_l"],"impactKind":"minor_discomfort","tone":"humorous","allowFunnyActions":true,"allowGifts":true,"publishStatus":"published","createdAt":"2026-11-17T09:40:56.919Z","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null}}]}}},"details":{"sty_waist":{"story":{"id":"sty_waist","schemaVersion":1,"incidentId":"inc_sty_waist","authorId":"usr_zhou","title":"缆车排队时被雪板绊了一下","body":"排队上缆车的时候被后面滑过来的雪板绊了一下，膝盖着地。没大事，就是当时有点懵，想安静一会儿。","tone":"supportive","visibilityGroupIds":["grp_snow"],"allowFunnyActions":false,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-19T11:40:56.919Z","updatedAt":"2026-11-19T11:40:56.919Z"},"incident":{"id":"inc_sty_waist","schemaVersion":1,"authorId":"usr_zhou","sport":"ski_double","scenario":["lift","queue"],"selfReportedCause":["unknown"],"bodyParts":["waist"],"impactKind":"prefer_not_to_say","protectiveItems":["hip_protector"],"source":"manual","venueId":null,"userSummary":"排队上缆车的时候被后面滑过来的雪板绊了一下，膝盖着地。没大事，就是当时有点懵，想安静一会儿。","createdAt":"2026-11-19T11:40:56.919Z","updatedAt":"2026-11-19T11:40:56.919Z"},"author":{"id":"usr_zhou","displayName":"周三石","palette":"blue","avatarId":"avt_usr_zhou","isMe":false},"avatar":{"id":"avt_usr_zhou","ownerId":"usr_zhou","rigVersion":"skeleton-rig-v1","palette":"blue","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"expression":"comfort","privacy":{"allowFunnyActions":false,"allowGifts":true},"version":1},"updates":[],"reactions":[{"actionId":"hug","count":3,"mine":1},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"myReactions":[{"actionId":"hug","count":1,"mine":1},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":false,"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"canInteract":true},"sty_me_seat":{"story":{"id":"sty_me_seat","schemaVersion":1,"incidentId":"inc_sty_me_seat","authorId":"usr_me","title":"第一次雪地坐姿","body":"跟着视频学换刃，结果屁股先学会了刹车。护臀今天立大功，人没事，就是有点丢人。","tone":"humorous","visibilityGroupIds":["grp_snow","grp_skate"],"allowFunnyActions":true,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-18T11:40:56.919Z","updatedAt":"2026-11-18T11:40:56.919Z"},"incident":{"id":"inc_sty_me_seat","schemaVersion":1,"authorId":"usr_me","sport":"ski_double","scenario":["turning"],"selfReportedCause":["edge_catch"],"bodyParts":["tailbone"],"impactKind":"near_miss","protectiveItems":["hip_protector"],"source":"manual","venueId":null,"userSummary":"跟着视频学换刃，结果屁股先学会了刹车。护臀今天立大功，人没事，就是有点丢人。","createdAt":"2026-11-18T11:40:56.919Z","updatedAt":"2026-11-18T11:40:56.919Z"},"author":{"id":"usr_me","displayName":"小北","palette":"blue","avatarId":"avt_usr_me","isMe":true},"avatar":{"id":"avt_usr_me","ownerId":"usr_me","rigVersion":"skeleton-rig-v1","palette":"blue","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"expression":"happy","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"updates":[],"reactions":[{"actionId":"hug","count":1,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":1,"mine":0}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":true,"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"canInteract":true},"sty_head":{"story":{"id":"sty_head","schemaVersion":1,"incidentId":"inc_sty_head","authorId":"usr_yu","title":"差一点就飞升","body":"下坡想刹车，速度没收住，直接从雪堆上飞过去。头盔磕了一下，人没事，心跳到嗓子眼。","tone":"humorous","visibilityGroupIds":["grp_snow"],"allowFunnyActions":true,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-16T13:40:56.919Z","updatedAt":"2026-11-16T13:40:56.919Z"},"incident":{"id":"inc_sty_head","schemaVersion":1,"authorId":"usr_yu","sport":"ski_double","scenario":["braking"],"selfReportedCause":["too_fast"],"bodyParts":["head"],"impactKind":"near_miss","protectiveItems":["helmet"],"source":"manual","venueId":null,"userSummary":"下坡想刹车，速度没收住，直接从雪堆上飞过去。头盔磕了一下，人没事，心跳到嗓子眼。","createdAt":"2026-11-16T13:40:56.919Z","updatedAt":"2026-11-16T13:40:56.919Z"},"author":{"id":"usr_yu","displayName":"余可","palette":"mint","avatarId":"avt_usr_yu","isMe":false},"avatar":{"id":"avt_usr_yu","ownerId":"usr_yu","rigVersion":"skeleton-rig-v1","palette":"mint","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"expression":"surprised","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"updates":[],"reactions":[{"actionId":"hug","count":1,"mine":1},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":1,"mine":0}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":true,"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"canInteract":true},"sty_knee":{"story":{"id":"sty_knee","schemaVersion":1,"incidentId":"inc_sty_knee","authorId":"usr_tang","title":"共享单车教我做人的一天","body":"路口躲一只突然窜出来的猫，车把一歪就摔了。膝盖磕青了一块，当天就没再骑。感谢护膝，也感谢那只猫没受伤。","tone":"supportive","visibilityGroupIds":["grp_snow"],"allowFunnyActions":false,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-15T17:40:56.919Z","updatedAt":"2026-11-15T17:40:56.919Z"},"incident":{"id":"inc_sty_knee","schemaVersion":1,"authorId":"usr_tang","sport":"cycling","scenario":["flat_ground"],"selfReportedCause":["obstacle"],"bodyParts":["knee_l"],"impactKind":"stopped_activity","protectiveItems":["knee_pad"],"source":"manual","venueId":null,"userSummary":"路口躲一只突然窜出来的猫，车把一歪就摔了。膝盖磕青了一块，当天就没再骑。感谢护膝，也感谢那只猫没受伤。","createdAt":"2026-11-15T17:40:56.919Z","updatedAt":"2026-11-15T17:40:56.919Z"},"author":{"id":"usr_tang","displayName":"唐不苦","palette":"purple","avatarId":"avt_usr_tang","isMe":false},"avatar":{"id":"avt_usr_tang","ownerId":"usr_tang","rigVersion":"skeleton-rig-v1","palette":"purple","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"expression":"awkward","privacy":{"allowFunnyActions":false,"allowGifts":true},"version":1},"updates":[{"id":"upd_sty_knee_follow_up","storyId":"sty_knee","authorId":"usr_tang","type":"follow_up","body":"冰敷了两天，走路基本正常，周末先休息不骑车了。","visibilityGroupIds":["grp_snow"],"moderationStatus":"approved","createdAt":"2026-11-17T19:40:56.919Z"}],"reactions":[{"actionId":"hug","count":2,"mine":1},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":false,"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"canInteract":true},"sty_tailbone":{"story":{"id":"sty_tailbone","schemaVersion":1,"incidentId":"inc_sty_tailbone","authorId":"usr_lin","title":"尾椎渡劫记","body":"左转的时候板刃突然卡住，我原地表演了一个屁股先落地的标准动作。缓了两分钟才爬起来，后来提前下山去吃热可可了。","tone":"humorous","visibilityGroupIds":["grp_snow"],"allowFunnyActions":true,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-15T07:40:56.919Z","updatedAt":"2026-11-15T07:40:56.919Z"},"incident":{"id":"inc_sty_tailbone","schemaVersion":1,"authorId":"usr_lin","sport":"ski_double","scenario":["turning"],"selfReportedCause":["edge_catch"],"bodyParts":["tailbone"],"impactKind":"stopped_activity","protectiveItems":["hip_protector"],"source":"manual","venueId":null,"userSummary":"左转的时候板刃突然卡住，我原地表演了一个屁股先落地的标准动作。缓了两分钟才爬起来，后来提前下山去吃热可可了。","createdAt":"2026-11-15T07:40:56.919Z","updatedAt":"2026-11-15T07:40:56.919Z"},"author":{"id":"usr_lin","displayName":"林小满","palette":"orange","avatarId":"avt_usr_lin","isMe":false},"avatar":{"id":"avt_usr_lin","ownerId":"usr_lin","rigVersion":"skeleton-rig-v1","palette":"orange","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"expression":"cool","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"updates":[{"id":"upd_sty_tailbone_clinic_experience","storyId":"sty_tailbone","authorId":"usr_lin","type":"clinic_experience","body":"后续：去拍了片子，医生让我回家冰敷休息，别急着再上雪。","visibilityGroupIds":["grp_snow"],"moderationStatus":"approved","createdAt":"2026-11-16T07:40:56.919Z"},{"id":"upd_sty_tailbone_return_to_sport","storyId":"sty_tailbone","authorId":"usr_lin","type":"return_to_sport","body":"已经能正常走路啦，下周准备重新上雪，先从魔毯开始。","visibilityGroupIds":["grp_snow"],"moderationStatus":"approved","createdAt":"2026-11-19T05:40:56.919Z"}],"reactions":[{"actionId":"hug","count":3,"mine":1},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":1,"mine":0}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":true,"group":{"id":"grp_snow","name":"周末雪场小分队","ownerId":"usr_lin","joinMode":"approval","createdAt":"2026-10-16T07:40:56.919Z","role":"member","memberCount":5},"canInteract":true},"sty_back":{"story":{"id":"sty_back","schemaVersion":1,"incidentId":"inc_sty_back","authorId":"usr_ma","title":"篮球场上的空中转体两周半","body":"抢篮板落地踩到别人的脚，背先着地。缓了半分钟，被队友笑称空中转体两周半，其实我一点都不想转。","tone":"humorous","visibilityGroupIds":["grp_skate"],"allowFunnyActions":true,"allowGifts":true,"isAnonymous":true,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-18T05:40:56.919Z","updatedAt":"2026-11-18T05:40:56.919Z"},"incident":{"id":"inc_sty_back","schemaVersion":1,"authorId":"usr_ma","sport":"ball_sport","scenario":["other"],"selfReportedCause":["contact_with_other"],"bodyParts":["back"],"impactKind":"near_miss","protectiveItems":["other"],"source":"manual","venueId":null,"userSummary":"抢篮板落地踩到别人的脚，背先着地。缓了半分钟，被队友笑称空中转体两周半，其实我一点都不想转。","createdAt":"2026-11-18T05:40:56.919Z","updatedAt":"2026-11-18T05:40:56.919Z"},"author":{"id":"usr_ma","displayName":"匿名雪友","palette":"orange","avatarId":"avt_usr_ma","isMe":false},"avatar":{"id":"avt_usr_ma","ownerId":"usr_ma","rigVersion":"skeleton-rig-v1","palette":"orange","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"expression":"happy","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"updates":[],"reactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":1,"mine":1}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":true,"group":{"id":"grp_skate","name":"陆地冲浪局","ownerId":"usr_me","joinMode":"open","createdAt":"2026-10-21T07:40:56.919Z","role":"owner","memberCount":3},"canInteract":true},"sty_wrist":{"story":{"id":"sty_wrist","schemaVersion":1,"incidentId":"inc_sty_wrist","authorId":"usr_ma","title":"手腕说它今天不想上班","body":"轮滑场看到一个小坡就想试试，结果重心一飘，手先着地。护腕真的救命，回家还能继续打游戏。","tone":"humorous","visibilityGroupIds":["grp_skate"],"allowFunnyActions":true,"allowGifts":true,"isAnonymous":false,"moderationStatus":"approved","publishStatus":"published","version":1,"createdAt":"2026-11-17T09:40:56.919Z","updatedAt":"2026-11-17T09:40:56.919Z"},"incident":{"id":"inc_sty_wrist","schemaVersion":1,"authorId":"usr_ma","sport":"inline_skate","scenario":["flat_ground"],"selfReportedCause":["balance_loss"],"bodyParts":["wrist_l"],"impactKind":"minor_discomfort","protectiveItems":["wrist_guard"],"source":"manual","venueId":null,"userSummary":"轮滑场看到一个小坡就想试试，结果重心一飘，手先着地。护腕真的救命，回家还能继续打游戏。","createdAt":"2026-11-17T09:40:56.919Z","updatedAt":"2026-11-17T09:40:56.919Z"},"author":{"id":"usr_ma","displayName":"马大哈","palette":"orange","avatarId":"avt_usr_ma","isMe":false},"avatar":{"id":"avt_usr_ma","ownerId":"usr_ma","rigVersion":"skeleton-rig-v1","palette":"orange","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"expression":"happy","privacy":{"allowFunnyActions":true,"allowGifts":true},"version":1},"updates":[],"reactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":2,"mine":1}],"myReactions":[{"actionId":"hug","count":0,"mine":0},{"actionId":"spin","count":0,"mine":0},{"actionId":"cheer","count":0,"mine":0}],"giftable":true,"canSpin":true,"group":{"id":"grp_skate","name":"陆地冲浪局","ownerId":"usr_me","joinMode":"open","createdAt":"2026-10-21T07:40:56.919Z","role":"owner","memberCount":3},"canInteract":true}},"members":{"grp_snow":[{"userId":"usr_lin","displayName":"林小满","role":"owner","palette":"orange","expression":"cool","equipped":{"headgear":"helmet_red","goggles":"snow_goggles","outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":1},{"userId":"usr_yu","displayName":"余可","role":"member","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":1},{"userId":"usr_zhou","displayName":"周三石","role":"member","palette":"blue","expression":"comfort","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"suit_orange","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":1},{"userId":"usr_tang","displayName":"唐不苦","role":"member","palette":"purple","expression":"awkward","equipped":{"headgear":"helmet_red","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":1},{"userId":"usr_me","displayName":"小北","role":"member","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isMe":true,"storyCount":1}],"grp_skate":[{"userId":"usr_me","displayName":"小北","role":"owner","palette":"blue","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"ski_blue","hip_protector":"basic_hip_protector","boots":null},"isMe":true,"storyCount":1},{"userId":"usr_yu","displayName":"余可","role":"member","palette":"mint","expression":"surprised","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":0},{"userId":"usr_ma","displayName":"马大哈","role":"member","palette":"orange","expression":"happy","equipped":{"headgear":"beanie_blue","goggles":null,"outfit":"vest_mint","hip_protector":"basic_hip_protector","boots":null},"isMe":false,"storyCount":2}]},"inbox":{"events":[{"id":"evt_sty_me_seat_hug_usr_lin","storyId":"sty_me_seat","actorId":"usr_lin","targetId":"usr_me","actionId":"hug","animationVersion":1,"status":"ok","createdAt":"2026-11-20T04:37:56.919Z","actorName":"林小满","storyTitle":"第一次雪地坐姿","read":false},{"id":"evt_sty_me_seat_cheer_usr_yu","storyId":"sty_me_seat","actorId":"usr_yu","targetId":"usr_me","actionId":"cheer","animationVersion":1,"status":"ok","createdAt":"2026-11-19T11:34:56.919Z","actorName":"余可","storyTitle":"第一次雪地坐姿","read":false},{"id":"evt_sty_me_seat_gift_usr_zhou","storyId":"sty_me_seat","actorId":"usr_zhou","targetId":"usr_me","actionId":"receive_gift","itemDefId":"hot_cocoa","animationVersion":1,"status":"ok","createdAt":"2026-11-19T07:40:56.919Z","actorName":"周三石","storyTitle":"第一次雪地坐姿","read":false}],"nextCursor":null,"unreadCount":3},"inventory":[{"id":"inv_usr_me_snow_goggles","ownerId":"usr_me","itemDefId":"snow_goggles","quantity":1,"expiresAt":null,"version":1,"name":"半透明雪镜","category":"cosmetic","icon":"🥽","expiresText":"永久","equipped":false},{"id":"inv_usr_me_ski_blue","ownerId":"usr_me","itemDefId":"ski_blue","quantity":1,"expiresAt":null,"version":1,"name":"基础蓝雪服","category":"cosmetic","icon":"🧥","expiresText":"永久","equipped":true},{"id":"inv_usr_me_basic_hip_protector","ownerId":"usr_me","itemDefId":"basic_hip_protector","quantity":1,"expiresAt":null,"version":1,"name":"新手护臀","category":"cosmetic","icon":"🛡️","expiresText":"永久","equipped":true},{"id":"inv_usr_me_helmet_red","ownerId":"usr_me","itemDefId":"helmet_red","quantity":1,"expiresAt":null,"version":1,"name":"番茄红头盔","category":"cosmetic","icon":"⛑️","expiresText":"永久","equipped":false},{"id":"inv_usr_me_suit_orange","ownerId":"usr_me","itemDefId":"suit_orange","quantity":1,"expiresAt":null,"version":1,"name":"落日橙连体服","category":"cosmetic","icon":"🧥","expiresText":"永久","equipped":false},{"id":"inv_usr_me_beanie_blue","ownerId":"usr_me","itemDefId":"beanie_blue","quantity":1,"expiresAt":null,"version":1,"name":"蓝毛线帽","category":"cosmetic","icon":"🧢","expiresText":"永久","equipped":true},{"id":"inv_usr_me_vest_mint","ownerId":"usr_me","itemDefId":"vest_mint","quantity":1,"expiresAt":null,"version":1,"name":"薄荷小马甲","category":"cosmetic","icon":"🎽","expiresText":"永久","equipped":false},{"id":"inv_usr_me_comfort_patch","ownerId":"usr_me","itemDefId":"comfort_patch","quantity":1,"expiresAt":"2026-12-04T07:40:56.919Z","version":1,"name":"友谊创可贴","category":"consumable","icon":"/assets/items/comfort_patch.png","expiresText":"刚刚后过期","equipped":false},{"id":"inv_usr_me_steel_hip_guard","ownerId":"usr_me","itemDefId":"steel_hip_guard","quantity":2,"expiresAt":"2026-12-20T07:40:56.919Z","version":1,"name":"祖传钢铁护臀","category":"consumable","icon":"/assets/items/steel_hip_guard.png","expiresText":"刚刚后过期","equipped":false},{"id":"inv_usr_me_hot_cocoa","ownerId":"usr_me","itemDefId":"hot_cocoa","quantity":2,"expiresAt":"2026-12-04T07:40:56.919Z","version":1,"name":"续命热可可","category":"consumable","icon":"/assets/items/hot_cocoa.png","expiresText":"刚刚后过期","equipped":false}],"weekly":{"weekKey":"2026-W47","claimed":false,"grantId":null,"items":[]},"actions":[{"id":"hug","name":"抱抱","assetKey":"actions/hug-v1","durationMs":1400,"requiresFunnyConsent":false,"requiresGift":false,"maxPerActorPerStoryPerDay":3,"fallbackEmoji":"🫂"},{"id":"spin","name":"转圈","assetKey":"actions/spin-v1","durationMs":900,"requiresFunnyConsent":true,"requiresGift":false,"maxPerActorPerStoryPerDay":3,"fallbackEmoji":"😵‍💫"},{"id":"cheer","name":"鼓掌","assetKey":"actions/cheer-v1","durationMs":900,"requiresFunnyConsent":false,"requiresGift":false,"maxPerActorPerStoryPerDay":3,"fallbackEmoji":"👏"},{"id":"receive_gift","name":"收装备","assetKey":"actions/receive-gift-v1","durationMs":1300,"requiresFunnyConsent":false,"requiresGift":true,"maxPerActorPerStoryPerDay":3,"fallbackEmoji":"🎁"}],"items":[{"id":"ski_blue","name":"基础蓝雪服","category":"cosmetic","assetKey":"rigs/front/outfit_ski_blue","transferable":false,"permanent":true,"maxStack":1,"slot":"outfit","icon":"🧥","description":"首次创建角色即拥有的原创雪服。"},{"id":"suit_orange","name":"落日橙连体服","category":"cosmetic","assetKey":"rigs/front/outfit_suit_orange","transferable":false,"permanent":true,"maxStack":1,"slot":"outfit","icon":"🧥","description":"在雪场一眼就能被搭子找到。"},{"id":"vest_mint","name":"薄荷小马甲","category":"cosmetic","assetKey":"rigs/front/outfit_vest_mint","transferable":false,"permanent":true,"maxStack":1,"slot":"outfit","icon":"🎽","description":"轻薄马甲，适合陆地冲浪局。"},{"id":"beanie_blue","name":"蓝毛线帽","category":"cosmetic","assetKey":"rigs/front/headgear_beanie_blue","transferable":false,"permanent":true,"maxStack":1,"slot":"headgear","icon":"🧢","description":"带小绒球的原创毛线帽。"},{"id":"helmet_red","name":"番茄红头盔","category":"cosmetic","assetKey":"rigs/front/headgear_helmet_red","transferable":false,"permanent":true,"maxStack":1,"slot":"headgear","icon":"⛑️","description":"护具救场奖的常驻嘉宾。"},{"id":"snow_goggles","name":"半透明雪镜","category":"cosmetic","assetKey":"rigs/front/goggles_snow_goggles","transferable":false,"permanent":true,"maxStack":1,"slot":"goggles","icon":"🥽","description":"镜片是半透明的，表情不会被挡住。"},{"id":"basic_hip_protector","name":"新手护臀","category":"cosmetic","assetKey":"rigs/front/hip_protector_basic_hip_protector","transferable":false,"permanent":true,"maxStack":1,"slot":"hip_protector","icon":"🛡️","description":"尾椎的忠实伙伴，首次创建角色即拥有。"},{"id":"steel_hip_guard","name":"祖传钢铁护臀","category":"consumable","assetKey":"items/steel_hip_guard","transferable":true,"permanent":false,"ttlDays":30,"maxStack":8,"icon":"🛡️","description":"可赠送的互动道具：收到的人也值得一次体面的落地。"},{"id":"hot_cocoa","name":"续命热可可","category":"consumable","assetKey":"items/hot_cocoa","transferable":true,"permanent":false,"ttlDays":14,"maxStack":8,"icon":"☕","description":"雪场休息区的温暖问候。"},{"id":"comfort_patch","name":"友谊创可贴","category":"consumable","assetKey":"items/comfort_patch","transferable":true,"permanent":false,"ttlDays":14,"maxStack":8,"icon":"🩹","description":"不代表医疗建议，只代表有人在。"}],"labels":{"sport":{"ski_double":"双板滑雪","ski_single":"单板滑雪","inline_skate":"轮滑","cycling":"骑行","ball_sport":"球类","other":"其他运动"},"sportEmoji":{"ski_double":"🎿","ski_single":"🏂","inline_skate":"🛼","cycling":"🚲","ball_sport":"🏀","other":"🏃"},"impact":{"near_miss":"虚惊一场","minor_discomfort":"轻微不适","stopped_activity":"当天停止运动","prefer_not_to_say":"本人选择不描述"},"scenario":{"turning":"转弯","braking":"刹车","flat_ground":"平地滑行","lift":"缆车","queue":"排队","collision":"碰撞","other":"其他","unknown":"说不清"},"cause":{"edge_catch":"卡刃","balance_loss":"重心失控","too_fast":"速度太快","obstacle":"没注意障碍","contact_with_other":"和别人碰了一下","unknown":"原因未知","other":"其他"},"protective":{"helmet":"头盔","goggles":"雪镜","hip_protector":"护臀","knee_pad":"护膝","wrist_guard":"护腕","gloves":"手套","other":"其他护具"},"bodyPart":{"head":"头","shoulder_l":"左肩","shoulder_r":"右肩","wrist_l":"左手腕","wrist_r":"右手腕","back":"背","waist":"腰","tailbone":"尾椎","knee_l":"左膝","knee_r":"右膝","ankle_l":"左脚踝","ankle_r":"右脚踝","other":"其他"},"tone":{"humorous":"轻松调侃","supportive":"求安慰","neutral":"平实记录"},"update":{"follow_up":"后续更新","insurance_experience":"保险亲历","clinic_experience":"就医亲历","equipment_reflection":"装备复盘","return_to_sport":"回归运动","other":"其他"},"sportList":[{"id":"ski_double","label":"双板滑雪"},{"id":"ski_single","label":"单板滑雪"},{"id":"inline_skate","label":"轮滑"},{"id":"cycling","label":"骑行"},{"id":"ball_sport","label":"球类"},{"id":"other","label":"其他运动"}],"sports":[{"id":"ski_double","label":"双板滑雪","emoji":"🎿"},{"id":"ski_single","label":"单板滑雪","emoji":"🏂"},{"id":"inline_skate","label":"轮滑","emoji":"🛼"},{"id":"cycling","label":"骑行","emoji":"🚲"},{"id":"ball_sport","label":"球类","emoji":"🏀"},{"id":"other","label":"其他运动","emoji":"🏃"}],"scenarios":[{"id":"turning","label":"转弯"},{"id":"braking","label":"刹车"},{"id":"flat_ground","label":"平地滑行"},{"id":"lift","label":"缆车"},{"id":"queue","label":"排队"},{"id":"collision","label":"碰撞"},{"id":"other","label":"其他"},{"id":"unknown","label":"说不清"}],"causes":[{"id":"edge_catch","label":"卡刃"},{"id":"balance_loss","label":"重心失控"},{"id":"too_fast","label":"速度太快"},{"id":"obstacle","label":"没注意障碍"},{"id":"contact_with_other","label":"和别人碰了一下"},{"id":"unknown","label":"原因未知"},{"id":"other","label":"其他"}],"impacts":[{"id":"near_miss","label":"虚惊一场"},{"id":"minor_discomfort","label":"轻微不适"},{"id":"stopped_activity","label":"当天停止运动"},{"id":"prefer_not_to_say","label":"本人选择不描述"}],"protectives":[{"id":"helmet","label":"头盔"},{"id":"goggles","label":"雪镜"},{"id":"hip_protector","label":"护臀"},{"id":"knee_pad","label":"护膝"},{"id":"wrist_guard","label":"护腕"},{"id":"gloves","label":"手套"},{"id":"other","label":"其他护具"}],"bodyParts":[{"id":"head","label":"头"},{"id":"shoulder_l","label":"左肩"},{"id":"shoulder_r","label":"右肩"},{"id":"wrist_l","label":"左手腕"},{"id":"wrist_r","label":"右手腕"},{"id":"back","label":"背"},{"id":"waist","label":"腰"},{"id":"tailbone","label":"尾椎"},{"id":"knee_l","label":"左膝"},{"id":"knee_r","label":"右膝"},{"id":"ankle_l","label":"左脚踝"},{"id":"ankle_r","label":"右脚踝"}],"expressions":[{"id":"happy","label":"开心","emoji":"😊"},{"id":"surprised","label":"惊了","emoji":"😮"},{"id":"awkward","label":"尴尬","emoji":"😅"},{"id":"comfort","label":"求安慰","emoji":"🥺"},{"id":"cool","label":"酷","emoji":"😎"}],"palettes":[{"id":"blue","color":"#4C8DFF"},{"id":"orange","color":"#FFA14A"},{"id":"purple","color":"#9B7BFF"},{"id":"mint","color":"#5ED6B3"}]}},"tabbar":{"atlas":{"normal":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003cpath d=\"M40.5,14 C54,14 64,24 64,37 C64,45 60,51 55,55 C53,62 47,67 40.5,67 C34,67 28,62 26,55 C21,51 17,45 17,37 C17,24 27,14 40.5,14 Z\" stroke=\"#98A2B8\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#98A2B8\" fill-opacity=\"0.12\"/>\n          \u003cellipse cx=\"32.5\" cy=\"38\" rx=\"5.4\" ry=\"6\" fill=\"#98A2B8\"/>\n          \u003cellipse cx=\"48.5\" cy=\"38\" rx=\"5.4\" ry=\"6\" fill=\"#98A2B8\"/>\n          \u003cpath d=\"M36,52 L45,52 M40.5,48 L40.5,56\" stroke=\"#98A2B8\" stroke-width=\"3.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n        \u003c/svg>","active":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003cpath d=\"M40.5,14 C54,14 64,24 64,37 C64,45 60,51 55,55 C53,62 47,67 40.5,67 C34,67 28,62 26,55 C21,51 17,45 17,37 C17,24 27,14 40.5,14 Z\" stroke=\"#2F6FE0\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#2F6FE0\" fill-opacity=\"0.12\"/>\n          \u003cellipse cx=\"32.5\" cy=\"38\" rx=\"5.4\" ry=\"6\" fill=\"#2F6FE0\"/>\n          \u003cellipse cx=\"48.5\" cy=\"38\" rx=\"5.4\" ry=\"6\" fill=\"#2F6FE0\"/>\n          \u003cpath d=\"M36,52 L45,52 M40.5,48 L40.5,56\" stroke=\"#2F6FE0\" stroke-width=\"3.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n        \u003c/svg>"},"avatar":{"normal":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003ccircle cx=\"40.5\" cy=\"30\" r=\"14\" stroke=\"#98A2B8\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#98A2B8\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M16,68 C18,55 28,48 40.5,48 C53,48 63,55 65,68\" stroke=\"#98A2B8\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#98A2B8\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M35,30 Q40.5,34 46,30\" stroke=\"#98A2B8\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n        \u003c/svg>","active":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003ccircle cx=\"40.5\" cy=\"30\" r=\"14\" stroke=\"#2F6FE0\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#2F6FE0\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M16,68 C18,55 28,48 40.5,48 C53,48 63,55 65,68\" stroke=\"#2F6FE0\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#2F6FE0\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M35,30 Q40.5,34 46,30\" stroke=\"#2F6FE0\" stroke-width=\"3.4\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n        \u003c/svg>"},"inbox":{"normal":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003cpath d=\"M40.5,14 C41,22 48,24 54,28 C60,32 62,39 58,46 L54,52 L27,52 L23,46 C19,39 21,32 27,28 C33,24 40,22 40.5,14 Z\" stroke=\"#98A2B8\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#98A2B8\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M40.5,52 L40.5,58 M30,58 Q40.5,68 51,58\" stroke=\"#98A2B8\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n          \u003cpath d=\"M27,40 L54,40\" stroke=\"#98A2B8\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.5\"/>\n        \u003c/svg>","active":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"81\" height=\"81\" viewBox=\"0 0 81 81\" shape-rendering=\"geometricPrecision\">\n          \u003cpath d=\"M40.5,14 C41,22 48,24 54,28 C60,32 62,39 58,46 L54,52 L27,52 L23,46 C19,39 21,32 27,28 C33,24 40,22 40.5,14 Z\" stroke=\"#2F6FE0\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"#2F6FE0\" fill-opacity=\"0.12\"/>\n          \u003cpath d=\"M40.5,52 L40.5,58 M30,58 Q40.5,68 51,58\" stroke=\"#2F6FE0\" stroke-width=\"4.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n          \u003cpath d=\"M27,40 L54,40\" stroke=\"#2F6FE0\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.5\"/>\n        \u003c/svg>"}}};</script>
+  <script>/* 摔友记 V0 · 开发预览（浏览器内交互，非小程序运行时） */
+(function () {
+  const P = window.__PREVIEW__;
+  const RIG = P.rig;
+  const ART = P.art;
+  const DATA = P.data;
+  const TABBAR = P.tabbar;
+  const esc = (value) =>
+    String(value == null ? '' : value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const S = {
+    screen: 'atlas',
+    groupId: (DATA.groups[0] || {}).id || '',
+    view: 'front',
+    me: JSON.parse(JSON.stringify(DATA.me.avatar)),
+    prefs: Object.assign({}, DATA.me.preferences),
+    inventory: DATA.inventory.map((item) => Object.assign({}, item)),
+    weeklyClaimed: DATA.weekly.claimed,
+    unread: DATA.inbox.unreadCount,
+    inbox: DATA.inbox.events.map((event) => Object.assign({}, event)),
+    publishedDetails: {},
+    published: [],
+    sheetOpen: false,
+    storyId: Object.keys(DATA.details)[0] || null,
+    form: {
+      sport: 'ski_double',
+      scenario: [],
+      cause: [],
+      bodyParts: [],
+      impactKind: 'near_miss',
+      protectiveItems: [],
+      tone: 'humorous',
+      title: '',
+      body: '',
+      groups: [(DATA.groups[0] || {}).id].filter(Boolean),
+      anonymous: false,
+      funny: true,
+      gifts: true,
+    },
+  };
+
+  const toastEl = document.getElementById('toast');
+  let toastTimer = 0;
+  function toast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('on'), 1900);
+  }
+
+  function detailOf(storyId) {
+    return S.publishedDetails[storyId] || DATA.details[storyId] || null;
+  }
+
+  function groupOf(groupId) {
+    return DATA.groups.find((group) => group.id === groupId) || DATA.groups[0];
+  }
+
+  function atlasFor(groupId, view) {
+    const base = DATA.atlases[groupId] && DATA.atlases[groupId][view];
+    if (!base) return null;
+    const clone = JSON.parse(JSON.stringify(base));
+    const extras = S.published.filter((item) => item.groupIds.includes(groupId) && item.detail);
+    if (!extras.length) return clone;
+    for (const item of extras) {
+      const card = item.card;
+      clone.stories.push(card);
+      clone.storyCount += 1;
+      if (!clone.stories.some((story, index) => index < clone.stories.length - 1 && story.authorId === card.authorId)) {
+        clone.participantCount += 1;
+      }
+      for (const part of card.bodyParts) {
+        const spot = clone.hotspots.find((s) => s.id === part);
+        if (!spot) continue;
+        spot.count += 1;
+        spot.storyIds.push(card.id);
+        if (!spot.users.some((user) => user.userId === card.authorId)) {
+          spot.users.push({
+            userId: card.authorId,
+            displayName: card.authorName,
+            palette: card.palette,
+            expression: card.expression,
+            equipped: card.equipped,
+            isAnonymous: card.isAnonymous,
+          });
+        }
+      }
+    }
+    clone.stories.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const counts = new Map();
+    for (const story of clone.stories) {
+      for (const part of story.bodyParts) {
+        if (part === 'other') continue;
+        counts.set(part, (counts.get(part) || 0) + 1);
+      }
+    }
+    const max = Math.max(1, ...counts.values());
+    clone.hottest = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([bodyPart, count]) => ({
+        bodyPart,
+        label: DATA.labels.bodyPart[bodyPart] || bodyPart,
+        count,
+        pct: Math.round((count / max) * 100),
+      }));
+    return clone;
+  }
+
+  function layered(avatar, view, mode) {
+    const defs = (RIG.views[view] || RIG.views.front) || [];
+    const active = [];
+    for (const layer of defs) {
+      let src = null;
+      if (layer.slot === 'expression') src = layer.variants[avatar.expression] || layer.variants.happy;
+      else if (layer.slot) {
+        const value = avatar.equipped[layer.slot];
+        if (!value) continue;
+        src = layer.variants[value];
+      } else {
+        src = layer.src;
+      }
+      if (!src) continue;
+      if (mode === 'chip' && ['head', 'headgear', 'goggles'].indexOf(layer.id) < 0) continue;
+      active.push({ layer, src });
+    }
+    if (!active.length) return [];
+    const boxes = active.map((item) => item.layer.bbox);
+    let box = { x: 0, y: 0, w: RIG.canvas.width, h: RIG.canvas.height };
+    if (mode === 'chip') {
+      const raw = {
+        x: Math.min(...boxes.map((b) => b.x)),
+        y: Math.min(...boxes.map((b) => b.y)),
+        w: Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x)),
+        h: Math.max(...boxes.map((b) => b.y + b.h)) - Math.min(...boxes.map((b) => b.y)),
+      };
+      const side = Math.max(raw.w, raw.h);
+      box = { x: raw.x - (side - raw.w) / 2, y: raw.y - (side - raw.h) / 2, w: side, h: side };
+    }
+    return active.map(({ layer, src }) => ({
+      src,
+      z: layer.z,
+      left: ((layer.bbox.x - box.x) / box.w) * 100,
+      top: ((layer.bbox.y - box.y) / box.h) * 100,
+      width: (layer.bbox.w / box.w) * 100,
+      height: (layer.bbox.h / box.h) * 100,
+    }));
+  }
+
+  function rigHtml(avatar, view, mode, className) {
+    const layers = layered(avatar, view || 'front', mode || 'full');
+    const inner = layers
+      .map(
+        (layer) =>
+          `<div class="rig-layer" style="left:${layer.left.toFixed(2)}%;top:${layer.top.toFixed(
+            2,
+          )}%;width:${layer.width.toFixed(2)}%;height:${layer.height.toFixed(2)}%;z-index:${layer.z}">${
+            ART[layer.src] || ''
+          }</div>`,
+      )
+      .join('');
+    return `<div class="rig ${className || ''}">${inner}</div>`;
+  }
+
+  function chipHtml(chip, size) {
+    const avatar = {
+      palette: chip.palette,
+      expression: chip.expression,
+      equipped: chip.equipped,
+    };
+    return `<div class="avatar-chip" style="${size ? `width:${size}px;height:${size}px;` : ''}">${rigHtml(
+      avatar,
+      'front',
+      'chip',
+    )}</div>`;
+  }
+
+  function timeText(iso) {
+    const now = Date.now();
+    const ts = Date.parse(iso);
+    const diff = now - ts;
+    if (diff < 3600 * 1000) return Math.max(1, Math.round(diff / 60000)) + ' 分钟前';
+    if (diff < 24 * 3600 * 1000) return Math.round(diff / 3600000) + ' 小时前';
+    if (diff < 7 * 24 * 3600 * 1000) return Math.round(diff / 86400000) + ' 天前';
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}-${d.getDate()}`;
+  }
+
+  function impactLabel(detail) {
+    return DATA.labels.impact[detail.incident.impactKind] || '';
+  }
+
+  function storyCardHtml(card) {
+    return `<div class="story-card" onclick="P.openStory('${card.id}')">
+      <div class="story-card__head">
+        <div class="story-card__avatar">${chipHtml(card)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="story-card__name">${esc(card.authorName)}${
+            card.isAnonymous ? '<span class="story-card__badge">匿名</span>' : ''
+          }</div>
+          <div class="story-card__meta">${timeText(card.createdAt)} · ${DATA.labels.sportEmoji[card.sport] || ''} ${
+            DATA.labels.sport[card.sport] || ''
+          }</div>
+        </div>
+      </div>
+      <div class="story-card__title">${esc(card.title)}</div>
+      <div class="story-card__tags">
+        <span class="tag tag--blue">${DATA.labels.impact[card.impactKind] || ''}</span>
+        ${card.bodyParts
+          .filter((part) => part !== 'other')
+          .map((part) => `<span class="tag">${DATA.labels.bodyPart[part] || part}</span>`)
+          .join('')}
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------------------------------------------ atlas */
+
+  function renderAtlas() {
+    const group = groupOf(S.groupId);
+    const atlas = atlasFor(S.groupId, S.view);
+    if (!atlas) return '<div class="scroll"><div class="card" style="padding:40px">没有图鉴数据</div></div>';
+    const hotspots = atlas.hotspots
+      .map((spot) => {
+        const def = (RIG.hotspots[S.view] || []).find((item) => item.id === spot.id);
+        if (!def) return '';
+        const chips = spot.users.slice(0, 2).map((user) => chipHtml(user)).join('');
+        const more = spot.users.length > 2 ? `<div class="avatar-chip more">+${spot.users.length - 2}</div>` : '';
+        return `<div class="hotspot" style="left:${(def.x / RIG.canvas.width) * 100}%;top:${
+          (def.y / RIG.canvas.height) * 100
+        }%" onclick="P.openHotspot('${spot.id}')" title="${esc(spot.label)}">
+          ${spot.count ? `<div class="stack">${chips}${more}</div>` : '<div class="dot"></div>'}
+        </div>`;
+      })
+      .join('');
+    const bars = atlas.hottest
+      .map((item) => `<span class="hotpill">${esc(item.label)} ${item.count}</span>`)
+      .join('');
+    const stories = atlas.stories.map((card) => storyCardHtml(card)).join('');
+    return `<div class="scroll" id="atlas-scroll">
+      <div class="hero">
+        <div class="hero__top">
+          <div style="min-width:0">
+            <div class="hero__name" onclick="P.switchGroup()">${esc(group.name)} ▾</div>
+            <div class="hero__meta">${group.memberCount} 位雪友 · ${
+              group.role === 'owner' ? '圈主' : group.role === 'admin' ? '管理员' : '成员'
+            }</div>
+          </div>
+          <div class="hero__actions">
+            <button class="icon-btn" onclick="P.go('group')" title="圈子">圈</button>
+            <button class="icon-btn" onclick="P.go('settings')" title="设置">⚙</button>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="stat__num">${atlas.storyCount}</div><div class="stat__label">故事总数</div></div>
+          <div class="stat"><div class="stat__num">${atlas.participantCount}</div><div class="stat__label">参与者</div></div>
+          <div class="stat stat--wide"><div class="stat__label">最热话题部位</div><div class="stat__value">${
+            atlas.hottest.length ? esc(atlas.hottest[0].label) : '等第一个故事'
+          }</div></div>
+        </div>
+      </div>
+
+      <div class="card stage">
+        <div class="between">
+          <div class="seg">
+            <button class="${S.view === 'front' ? 'on' : ''}" onclick="P.setView('front')">正面</button>
+            <button class="${S.view === 'back' ? 'on' : ''}" onclick="P.setView('back')">背面</button>
+          </div>
+          <div class="seg"><button class="on">全部</button><button onclick="P.toast('预览里只展示全部时间范围')">本周</button></div>
+        </div>
+        <div class="stage__canvas">
+          <div class="figure">${rigHtml(S.me, S.view, 'full')}${hotspots}</div>
+        </div>
+        <div class="stage__hint">点身体上的小骷髅头像，看 TA 的那次经历</div>
+        ${bars ? `<div class="topicline"><span>话题部位</span>${bars}<span class="topicline__note">仅数量</span></div>` : ''}
+      </div>
+
+      <div class="recent">
+        <div class="between"><div class="section-title">最近故事</div></div>
+        <div class="recent__list">${stories}</div>
+      </div>
+
+      <div class="footnote">故事由本人自述与确认，仅作朋友间的轻松记录，不构成诊断、治疗、康复或理赔建议。</div>
+    </div>
+    <button class="fab" onclick="P.go('create')">＋ 记录一次</button>`;
+  }
+
+  /* ------------------------------------------------------------------ story */
+
+  function renderStory() {
+    const detail = detailOf(S.storyId);
+    if (!detail) return '<div class="scroll"><div class="card" style="padding:40px">故事不存在</div></div>';
+    const avatar = detail.avatar;
+    const story = detail.story;
+    const incident = detail.incident;
+    const group = detail.group || groupOf(S.groupId);
+    const tags = [
+      `<span class="tag tag--blue">${DATA.labels.sport[incident.sport] || ''}</span>`,
+      `<span class="tag">${DATA.labels.impact[incident.impactKind] || ''}</span>`,
+      ...incident.scenario.map((id) => `<span class="tag">${DATA.labels.scenario[id] || id}</span>`),
+      ...incident.selfReportedCause.map((id) => `<span class="tag tag--warm">自述：${DATA.labels.cause[id] || id}</span>`),
+      ...incident.protectiveItems.map((id) => `<span class="tag tag--mint">${DATA.labels.protective[id] || id}</span>`),
+    ].join('');
+    const updates = (detail.updates || [])
+      .map(
+        (update) => `<div class="update">
+          <div class="update__rail"><div class="update__dot"></div></div>
+          <div style="flex:1">
+            <div class="between"><div class="update__type">${DATA.labels.update[update.type] || '后续'}</div><div class="update__time">${timeText(
+              update.createdAt,
+            )}</div></div>
+            <div class="update__text">${esc(update.body)}</div>
+          </div>
+        </div>`,
+      )
+      .join('');
+    const reactionButtons = DATA.actions
+      .filter((action) => action.id !== 'receive_gift')
+      .map((action) => {
+        const mine = (detail.myReactions || []).find((item) => item.actionId === action.id) || { mine: 0 };
+        const total = (detail.reactions || []).find((item) => item.actionId === action.id) || { count: 0 };
+        const blocked = action.requiresFunnyConsent && !detail.canSpin;
+        const used = mine.mine >= action.maxPerActorPerStoryPerDay;
+        return `<button class="reaction" ${blocked || used ? 'disabled' : ''} onclick="P.react('${action.id}')">
+          <span class="reaction__emoji">${action.fallbackEmoji}</span>${action.name}
+          ${total.count ? `<span class="reaction__count">${total.count}</span>` : ''}
+        </button>`;
+      })
+      .join('');
+    return `<div class="scroll" id="story-scroll">
+      <div class="between">
+        <div class="author">
+          <div class="author__avatar">${chipHtml(avatar)}</div>
+          <div>
+            <div class="author__name">${esc(detail.author.displayName)}${
+              story.isAnonymous ? '<span class="story-card__badge">匿名展示</span>' : ''
+            }</div>
+            <div class="author__meta">${esc(group.name)} · ${timeText(story.createdAt)} · ${
+              DATA.labels.sportEmoji[incident.sport] || ''
+            } ${DATA.labels.sport[incident.sport] || ''}</div>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="P.toast('分享卡片会带 storyId，但不授予查看权限')">↗</button>
+      </div>
+
+      <div class="story-stage" id="story-stage">
+        <div class="story-stage__badge">${DATA.labels.sportEmoji[incident.sport] || ''} ${
+          DATA.labels.sport[incident.sport] || ''
+        }</div>
+        <div class="story-stage__impact">${DATA.labels.impact[incident.impactKind] || ''}</div>
+        <div class="story-stage__rig">${rigHtml(avatar, 'front', 'full', 'story-rig')}</div>
+        <div class="story-stage__me">${rigHtml(S.me, 'front', 'full')}</div>
+      </div>
+
+      <div class="card story-body">
+        <div class="story-body__title">${esc(story.title)}</div>
+        <div class="story-body__text">${esc(story.body)}</div>
+        <div class="chips" style="margin-top:10px">${tags}</div>
+        <div class="story-body__note">「原因」是本人自述，不是责任认定，也不构成医疗或理赔判断。</div>
+      </div>
+
+      ${updates ? `<div class="card timeline"><div class="section-title">后续</div>${updates}</div>` : ''}
+
+      <div class="card reactions">
+        <div class="reactions__grid">${reactionButtons}
+          <button class="reaction reaction--gift" onclick="P.openGift()">
+            <span class="reaction__emoji">🎁</span>送装备
+          </button>
+        </div>
+        <div class="reactions__note">每人每天对同一条故事最多互动 3 次；装备免费、无现金价值。作者关闭搞笑动作后，「转圈」会自动禁用。</div>
+      </div>
+
+      <div class="links">
+        <div class="link" onclick="P.toast('V0 本地原型没有平台审核后台，举报不会真的提交')">举报这条内容</div>
+        ${
+          detail.author.isMe
+            ? `<div class="link" onclick="P.toast('撤回后统计会同步更新（演示）')">撤回我的故事</div>`
+            : ''
+        }
+      </div>
+    </div>`;
+  }
+
+  /* ----------------------------------------------------------------- avatar */
+
+  function renderAvatar() {
+    const avatar = S.me;
+    const expressions = DATA.labels.expressions
+      .map(
+        (item) => `<button class="expression ${avatar.expression === item.id ? 'on' : ''}" onclick="P.setExpression('${item.id}')">
+          <span class="expression__emoji">${item.emoji}</span>${item.label}
+        </button>`,
+      )
+      .join('');
+    const palettes = DATA.labels.palettes
+      .map(
+        (item) =>
+          `<div class="swatch ${avatar.palette === item.id ? 'on' : ''}" style="background:${item.color}" onclick="P.setPalette('${
+            item.id
+          }')"></div>`,
+      )
+      .join('');
+    const outfits = DATA.items
+      .filter((item) => item.slot === 'outfit')
+      .map(
+        (item) => `<button class="gear ${avatar.equipped.outfit === item.id ? 'on' : ''}" onclick="P.equip('outfit','${item.id}')">
+          <span>${item.name}</span><span class="gear__check">${avatar.equipped.outfit === item.id ? '已穿' : '换上'}</span>
+        </button>`,
+      )
+      .join('');
+    const headgears = DATA.items
+      .filter((item) => item.slot === 'headgear')
+      .map(
+        (item) => `<button class="chip ${avatar.equipped.headgear === item.id ? 'on' : ''}" onclick="P.equip('headgear','${
+          item.id
+        }')">${item.name}</button>`,
+      )
+      .join('');
+    const inventory = S.inventory
+      .filter((item) => item.category !== 'cosmetic')
+      .map(
+        (item) => `<div class="item">
+          <div class="item__icon">${item.category === 'cosmetic' ? `<span style="font-size:19px">${item.icon}</span>` : ART.items[item.itemDefId] || ''}</div>
+          <div class="item__main"><div class="item__name">${esc(item.name)}</div><div class="item__meta">${item.expiresText}</div></div>
+          <div class="item__qty">×${item.quantity}</div>
+        </div>`,
+      )
+      .join('');
+    return `<div class="scroll">
+      <div class="form-intro"><div class="form-intro__title">我的角色</div><div class="form-intro__sub">换装、表情和配色都会同步到图鉴小头像</div></div>
+      <div class="avatar-stage"><div class="avatar-stage__rig">${rigHtml(avatar, 'front', 'full')}</div></div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">表情</div><div class="tiny">会显示在故事图鉴上</div></div>
+        <div class="expressions">${expressions}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">配色</div><div class="tiny">小头像的底色标签</div></div>
+        <div class="palettes">${palettes}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">雪服</div><div class="tiny">已拥有</div></div>
+        <div class="gear-list">${outfits}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">头部与护具</div><div class="tiny">原创通用造型</div></div>
+        <div class="chips">
+          <button class="chip ${!avatar.equipped.headgear ? 'on' : ''}" onclick="P.equip('headgear',null)">不戴</button>
+          ${headgears}
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">雪镜</div><div class="tiny">半透明镜片，不挡表情</div></div>
+          <button class="switch ${avatar.equipped.goggles ? 'on' : ''}" onclick="P.toggleGear('goggles','snow_goggles')"></button>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">护臀</div><div class="tiny">尾椎的忠实伙伴</div></div>
+          <button class="switch ${avatar.equipped.hip_protector ? 'on' : ''}" onclick="P.toggleGear('hip_protector','basic_hip_protector')"></button>
+        </div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">背包</div><div class="tiny">${
+          S.weeklyClaimed ? '本周补给已领取' : '本周补给待领取'
+        }</div></div>
+        <div class="weekly">
+          <div><div style="font-size:13px;font-weight:700">每周免费补给</div><div class="tiny">2 件随机互动道具 · 不需要分享</div></div>
+          <button class="btn ${S.weeklyClaimed ? 'btn--ghost' : 'btn--primary'}" onclick="P.claimWeekly()">${
+            S.weeklyClaimed ? '已领取' : '领取'
+          }</button>
+        </div>
+        <div class="items">${inventory}</div>
+      </div>
+
+      <div class="footnote">角色资产为原创几何造型；不包含任何品牌 Logo 或官方联名暗示。</div>
+    </div>`;
+  }
+
+  /* ------------------------------------------------------------------- form */
+
+  const PRESETS = {
+    tailbone: ['尾椎渡劫记', '雪地坐姿标准动作', '我的屁股先下班了'],
+    head: ['差一点就飞升', '头盔替我挡了一劫'],
+    back: ['后背和雪地的第一次接触'],
+    waist: ['腰：我只是路过'],
+    wrist_l: ['手腕说它今天不想上班'],
+    wrist_r: ['手腕说它今天不想上班'],
+    knee_l: ['膝盖的今日复盘'],
+    knee_r: ['膝盖的今日复盘'],
+    ankle_l: ['脚踝的意外假期'],
+    ankle_r: ['脚踝的意外假期'],
+    shoulder_l: ['肩膀说它有点懵'],
+    shoulder_r: ['肩膀说它有点懵'],
+  };
+  const FALLBACK_PRESETS = ['今天在雪里打了个滚', '一次不太优雅的落地', '平安回家的乌龙'];
+
+  function presets() {
+    const first = S.form.bodyParts[0];
+    return (first && PRESETS[first]) || FALLBACK_PRESETS;
+  }
+
+  function presetButtons() {
+    return presets()
+      .map((title) => `<button class="preset" onclick="P.usePreset('${esc(title)}')">${esc(title)}</button>`)
+      .join('');
+  }
+
+  function refreshPresets() {
+    const box = document.getElementById('preset-box');
+    if (box) box.innerHTML = presetButtons();
+  }
+
+  function renderCreate() {
+    const F = S.form;
+    const chip = (kind, id, label, selected) =>
+      `<button class="chip ${selected ? 'on' : ''}" data-chip-kind="${kind}" onclick="P.toggleForm('${kind}','${id}',this)">${label}</button>`;
+    const sports = DATA.labels.sports
+      .map((item) => chip('sport', item.id, `${item.emoji} ${item.label}`, F.sport === item.id))
+      .join('');
+    const scenarios = DATA.labels.scenarios
+      .map((item) => chip('scenario', item.id, item.label, F.scenario.includes(item.id)))
+      .join('');
+    const causes = DATA.labels.causes.map((item) => chip('cause', item.id, item.label, F.cause.includes(item.id))).join('');
+    const parts = DATA.labels.bodyParts
+      .map((item) => chip('bodyParts', item.id, item.label, F.bodyParts.includes(item.id)))
+      .join('');
+    const impacts = DATA.labels.impacts
+      .map((item) => chip('impactKind', item.id, item.label, F.impactKind === item.id))
+      .join('');
+    const protections = DATA.labels.protectives
+      .map((item) => chip('protectiveItems', item.id, item.label, F.protectiveItems.includes(item.id)))
+      .join('');
+    const groups = DATA.groups
+      .map(
+        (group) => `<div class="group-row" onclick="P.toggleGroup('${group.id}')">
+          <div class="checkbox ${F.groups.includes(group.id) ? 'on' : ''}">✓</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(group.name)}</div><div class="tiny">${
+            group.memberCount
+          } 位雪友</div></div>
+        </div>`,
+      )
+      .join('');
+    return `<div class="scroll" style="padding-bottom:110px">
+      <div class="form-intro"><div class="form-intro__title">记录一次经历</div><div class="form-intro__sub">标签 + 一句话，30 秒就能发；不用 AI 也完整可用。</div></div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">运动</div><div class="tiny">单选</div></div>
+        <div class="chips">${sports}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">发生背景</div><div class="tiny">最多 3 个</div></div>
+        <div class="chips">${scenarios}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">自述原因</div><div class="tiny">最多 3 个 · 不是责任认定</div></div>
+        <div class="chips">${causes}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">身体部位</div><div class="tiny">最多 3 个 · 用于热区统计</div></div>
+        <div class="chips">${parts}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">当时情况</div><div class="tiny">不构成伤情分级</div></div>
+        <div class="chips">${impacts}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">当时戴了</div><div class="tiny">可多选</div></div>
+        <div class="chips">${protections}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">标题</div><div class="tiny" id="title-count">${F.title.length}/24</div></div>
+        <input class="input" maxlength="24" placeholder="比如：尾椎渡劫记" value="${esc(F.title)}" oninput="P.inputTitle(this.value)" />
+        <div class="tiny" style="margin-top:7px">点一下直接套用</div>
+        <div class="presets" id="preset-box">${presetButtons()}</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">一句话经过</div><div class="tiny" id="body-count">${F.body.length}/140</div></div>
+        <textarea class="textarea" maxlength="140" placeholder="发生了什么？比如：转弯时卡刃，坐了个屁股墩，护臀救了我。" oninput="P.inputBody(this.value)">${esc(
+          F.body,
+        )}</textarea>
+        <div class="tiny" style="margin-top:6px">请去掉姓名、电话、证件号、详细住址等可识别信息。</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">可见圈子</div><div class="tiny">逐个勾选，不会自动跨群</div></div>
+        ${groups}
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">互动设置</div><div class="tiny">随时可改</div></div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">匿名展示</div><div class="tiny">只隐藏昵称</div></div>
+          <button class="switch ${F.anonymous ? 'on' : ''}" onclick="P.toggleField('anonymous')"></button>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">允许搞笑动作</div><div class="tiny">关闭后不能「转圈」</div></div>
+          <button class="switch ${F.funny ? 'on' : ''}" onclick="P.toggleField('funny')"></button>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-row__name">允许收礼物</div><div class="tiny">免费互动道具</div></div>
+          <button class="switch ${F.gifts ? 'on' : ''}" onclick="P.toggleField('gifts')"></button>
+        </div>
+      </div>
+
+      <div class="footnote">发布即表示这是你本人的经历与描述。摔友记不提供诊断、治疗、康复或理赔结论。</div>
+    </div>
+    <div class="form-footer"><button class="btn btn--primary btn--block" onclick="P.publish()">发布到圈子</button></div>`;
+  }
+
+  /* ------------------------------------------------------------------- group */
+
+  function renderGroup() {
+    const group = groupOf(S.groupId);
+    const members = (DATA.members[group.id] || [])
+      .map(
+        (member) => `<div class="item" style="background:transparent;padding:6px 4px">
+          <div style="width:34px;height:34px;border-radius:50%;background:#f1f4fd;overflow:hidden;flex:none">${chipHtml(
+            member,
+            34,
+          )}</div>
+          <div class="item__main"><div class="item__name">${esc(member.displayName)}${
+            member.isMe ? '<span class="story-card__badge" style="margin-left:4px">我</span>' : ''
+          }</div><div class="item__meta">${member.storyCount} 条故事</div></div>
+          <div style="font-size:10px;color:#c85f14">${member.role === 'owner' ? '圈主' : member.role === 'admin' ? '管理员' : ''}</div>
+        </div>`,
+      )
+      .join('');
+    return `<div class="scroll">
+      <div class="card panel" style="margin-top:4px">
+        <div class="between"><div style="font-size:22px;font-weight:800">${esc(group.name)}</div><span class="pill pill--blue">${
+          group.role === 'owner' ? '圈主' : group.role === 'admin' ? '管理员' : '成员'
+        }</span></div>
+        <div class="tiny" style="margin-top:4px">${group.memberCount} 位雪友 · ${
+          group.joinMode === 'open' ? '自由加入' : '需要圈主确认'
+        }</div>
+        <div class="stats"><div class="mini stat"><div class="stat__num">${(DATA.members[group.id] || []).length}</div><div class="stat__label">成员</div></div><div class="mini stat"><div class="stat__num">${
+          (DATA.members[group.id] || []).length
+        }</div><div class="stat__label">故事</div></div></div>
+      </div>
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">圈子成员</div><div class="tiny">按加入顺序</div></div>
+        ${members}
+      </div>
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">邀请雪友</div><div class="tiny">48 小时有效</div></div>
+        <button class="btn btn--primary" onclick="P.toast('邀请 token 由服务端生成，前端只拿到 sharePath')">生成邀请</button>
+        <div class="tiny" style="margin-top:8px">「圈子」是应用内的受邀群体，不等于微信群全体成员。</div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------------------------------------------- inbox */
+
+  function renderInbox() {
+    const events = S.inbox
+      .map(
+        (event, index) => `<div class="card event ${event.read ? 'read' : ''}" onclick="P.openEvent(${index})">
+          <div class="event__emoji">${actionEmoji(event.actionId)}</div>
+          <div style="flex:1;min-width:0">
+            <div class="event__text"><span class="event__actor">${esc(event.actorName)}</span>${eventText(event)}</div>
+            <div class="event__time">${timeText(event.createdAt)} · 点一下回放动画</div>
+          </div>
+          ${!event.read ? '<div class="event__dot"></div>' : ''}
+        </div>`,
+      )
+      .join('');
+    return `<div class="scroll">
+      <div class="between" style="padding:4px 2px 0">
+        <div><div style="font-size:23px;font-weight:800">消息</div><div class="tiny">谁对你的故事抱了抱、转了圈、送了装备</div></div>
+        ${
+          S.unread
+            ? `<button class="btn btn--ghost" style="height:28px;font-size:11px" onclick="P.markAllRead()">全部已读</button>`
+            : ''
+        }
+      </div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:7px">${
+        events || '<div class="card panel tiny">还没有互动</div>'
+      }</div>
+      <div class="footnote">互动只是展示层效果，不会改变对方的角色配置；收到的装备需要本人确认才会穿上。</div>
+    </div>`;
+  }
+
+  function actionEmoji(actionId) {
+    const action = DATA.actions.find((item) => item.id === actionId);
+    return action ? action.fallbackEmoji : '💬';
+  }
+
+  function eventText(event) {
+    if (event.actionId === 'receive_gift') {
+      const item = DATA.items.find((entry) => entry.id === event.itemDefId);
+      return ` 送你一件「${item ? item.name : '装备'}」`;
+    }
+    const action = DATA.actions.find((entry) => entry.id === event.actionId);
+    return ` ${action ? action.name : '互动'}了你的故事`;
+  }
+
+  /* ------------------------------------------------------------------- shell */
+
+  const TITLES = { atlas: '摔友记', story: '故事', avatar: '我的角色', create: '记录一次经历', inbox: '消息', group: '圈子', settings: '设置' };
+  const TAB_SCREENS = ['atlas', 'avatar', 'inbox'];
+
+  function render() {
+    const app = document.getElementById('app');
+    const nav = TITLES[S.screen] || '';
+    const back = TAB_SCREENS.indexOf(S.screen) < 0;
+    let body = '';
+    if (S.screen === 'atlas') body = renderAtlas();
+    else if (S.screen === 'story') body = renderStory();
+    else if (S.screen === 'avatar') body = renderAvatar();
+    else if (S.screen === 'create') body = renderCreate();
+    else if (S.screen === 'group') body = renderGroup();
+    else if (S.screen === 'inbox') body = renderInbox();
+    else body = '<div class="scroll"><div class="card panel">设置页在小程序里，预览暂略。</div></div>';
+    app.innerHTML = `<div class="navbar">${back ? `<button class="navbar__back" onclick="P.back()">‹</button>` : ''}${nav}</div>${body}`;
+    document.getElementById('tabbar').classList.toggle('hidden', !TAB_SCREENS.includes(S.screen));
+    document.querySelectorAll('.tabbar button').forEach((button) => {
+      button.classList.toggle('on', button.dataset.screen === S.screen);
+    });
+    document.querySelectorAll('.toolbar button[data-screen]').forEach((button) => {
+      button.classList.toggle('on', button.dataset.screen === S.screen);
+    });
+  }
+
+  function go(screen) {
+    S.screen = screen;
+    closeSheet();
+    render();
+  }
+
+  function back() {
+    go('atlas');
+  }
+
+  function openSheet(title, content, foot) {
+    const mask = document.querySelector('.sheet-mask');
+    const sheet = document.querySelector('.sheet');
+    sheet.innerHTML = `<div class="sheet__handle"></div><div class="sheet__head"><div class="section-title">${esc(
+      title,
+    )}</div><div class="tiny">${''}</div></div><div class="sheet__body">${content}</div>${
+      foot ? `<div class="sheet__foot">${foot}</div>` : ''
+    }`;
+    mask.classList.add('on');
+    sheet.classList.add('on');
+    S.sheetOpen = true;
+  }
+
+  function closeSheet() {
+    document.querySelector('.sheet-mask').classList.remove('on');
+    document.querySelector('.sheet').classList.remove('on');
+    S.sheetOpen = false;
+  }
+
+  /* ------------------------------------------------------------------ actions */
+
+  const api = {
+    go,
+    back,
+    toast,
+    switchGroup() {
+      const index = DATA.groups.findIndex((group) => group.id === S.groupId);
+      const next = DATA.groups[(index + 1) % DATA.groups.length];
+      S.groupId = next.id;
+      S.view = 'front';
+      render();
+    },
+    setView(view) {
+      S.view = view;
+      render();
+    },
+    openHotspot(id) {
+      const atlas = atlasFor(S.groupId, S.view);
+      const spot = atlas.hotspots.find((item) => item.id === id);
+      const stories = atlas.stories.filter((story) => story.bodyParts.includes(id));
+      if (!spot || !stories.length) {
+        toast(`${spot ? spot.label : '这个部位'}还没有故事`);
+        return;
+      }
+      openSheet(
+        `${spot.label}的故事`,
+        stories.map((card) => storyCardHtml(card)).join(''),
+      );
+    },
+    openStory(storyId) {
+      S.storyId = storyId;
+      closeSheet();
+      go('story');
+    },
+    openEvent(index) {
+      const event = S.inbox[index];
+      if (!event) return;
+      event.read = true;
+      S.unread = Math.max(0, S.unread - 1);
+      S.storyId = event.storyId;
+      go('story');
+      if (event.actionId && event.actionId !== 'receive_gift') setTimeout(() => animateStory(event.actionId), 320);
+    },
+    markAllRead() {
+      S.inbox.forEach((event) => (event.read = true));
+      S.unread = 0;
+      render();
+      toast('都看完啦');
+    },
+    react(actionId) {
+      const detail = detailOf(S.storyId);
+      if (!detail) return;
+      const action = DATA.actions.find((item) => item.id === actionId);
+      if (!action) return;
+      if (action.requiresFunnyConsent && !detail.canSpin) return toast('作者关闭了这个搞笑动作');
+      const mine = (detail.myReactions || []).find((item) => item.actionId === actionId);
+      if (!mine) return;
+      if (mine.mine >= action.maxPerActorPerStoryPerDay) return toast('今天对这条故事的互动次数用完了');
+      mine.mine += 1;
+      const total = (detail.reactions || []).find((item) => item.actionId === actionId);
+      if (total) total.count += 1;
+      render();
+      setTimeout(() => animateStory(actionId), 20);
+    },
+    openGift() {
+      const detail = detailOf(S.storyId);
+      if (!detail) return;
+      if (!detail.giftable) return toast('作者暂时不收礼物');
+      const items = S.inventory.filter((item) => item.category === 'consumable' && item.quantity > 0);
+      if (!items.length) return toast('背包里还没有可以送出的道具');
+      if (!S.selectedGift || !items.some((item) => item.itemDefId === S.selectedGift)) {
+        S.selectedGift = items[0].itemDefId;
+      }
+      openSheet(
+        '送一件装备',
+        items
+          .map(
+            (item) => `<div class="item ${S.selectedGift === item.itemDefId ? 'on' : ''}" onclick="P.selectGift('${
+              item.itemDefId
+            }')">
+              <div class="item__icon">${ART.items[item.itemDefId] || ''}</div>
+              <div class="item__main"><div class="item__name">${esc(item.name)}</div><div class="item__meta">${item.expiresText}</div></div>
+              <div class="item__qty">×${item.quantity}</div>
+            </div>`,
+          )
+          .join(''),
+        `<button class="btn btn--primary btn--block" onclick="P.sendGift()">送出去</button>`,
+      );
+    },
+    selectGift(itemDefId) {
+      S.selectedGift = itemDefId;
+      api.openGift();
+    },
+    sendGift() {
+      const item = S.inventory.find((entry) => entry.itemDefId === S.selectedGift);
+      if (!item || item.quantity <= 0) return toast('这件道具没有库存了');
+      item.quantity -= 1;
+      closeSheet();
+      render();
+      setTimeout(() => animateStory('receive_gift'), 20);
+      toast('送到啦');
+    },
+    setExpression(expression) {
+      S.me.expression = expression;
+      render();
+    },
+    setPalette(palette) {
+      S.me.palette = palette;
+      render();
+    },
+    equip(slot, value) {
+      S.me.equipped = Object.assign({}, S.me.equipped, { [slot]: value || null });
+      render();
+    },
+    toggleGear(slot, value) {
+      S.me.equipped = Object.assign({}, S.me.equipped, { [slot]: S.me.equipped[slot] ? null : value });
+      render();
+    },
+    claimWeekly() {
+      if (S.weeklyClaimed) return toast('本周补给已经领过啦');
+      S.weeklyClaimed = true;
+      const cocoa = S.inventory.find((item) => item.itemDefId === 'hot_cocoa');
+      if (cocoa) cocoa.quantity += 1;
+      const patch = S.inventory.find((item) => item.itemDefId === 'comfort_patch');
+      if (patch) patch.quantity += 1;
+      render();
+      toast('本周补给已到账');
+    },
+    toggleForm(kind, id, element) {
+      const F = S.form;
+      if (kind === 'sport' || kind === 'impactKind') {
+        if (kind === 'sport') F.sport = id;
+        else F.impactKind = id;
+        document.querySelectorAll(`.chip[data-chip-kind="${kind}"]`).forEach((node) => node.classList.remove('on'));
+        element.classList.add('on');
+        return;
+      }
+      const list = F[kind];
+      const index = list.indexOf(id);
+      if (index >= 0) list.splice(index, 1);
+      else {
+        if (list.length >= 3 && ['scenario', 'cause', 'bodyParts'].includes(kind)) return toast('最多选 3 个');
+        list.push(id);
+      }
+      element.classList.toggle('on');
+      if (kind === 'bodyParts') refreshPresets();
+    },
+    toggleGroup(groupId) {
+      const list = S.form.groups;
+      const index = list.indexOf(groupId);
+      if (index >= 0) list.splice(index, 1);
+      else list.push(groupId);
+      const rows = document.querySelectorAll('.group-row');
+      for (const row of rows) {
+        if (row.getAttribute('onclick') && row.getAttribute('onclick').indexOf(`'${groupId}'`) >= 0) {
+          const box = row.querySelector('.checkbox');
+          if (box) box.classList.toggle('on', list.indexOf(groupId) >= 0);
+        }
+      }
+    },
+    toggleField(field) {
+      S.form[field] = !S.form[field];
+      const rows = document.querySelectorAll('.toggle-row .switch');
+      // 三个开关按顺序：匿名 / 搞笑 / 礼物
+      const order = ['anonymous', 'funny', 'gifts'];
+      const index = order.indexOf(field);
+      if (index >= 0 && rows[index]) rows[index].classList.toggle('on', S.form[field]);
+    },
+    inputTitle(value) {
+      S.form.title = value;
+      const count = document.getElementById('title-count');
+      if (count) count.textContent = `${value.length}/24`;
+    },
+    inputBody(value) {
+      S.form.body = value;
+      const count = document.getElementById('body-count');
+      if (count) count.textContent = `${value.length}/140`;
+    },
+    usePreset(title) {
+      S.form.title = title;
+      const input = document.querySelector('input.input');
+      if (input) input.value = title;
+      const count = document.getElementById('title-count');
+      if (count) count.textContent = `${title.length}/24`;
+    },
+    publish() {
+      const F = S.form;
+      if (!F.title.trim()) return toast('先起个标题吧');
+      if (!F.body.trim()) return toast('写一句当时的经过');
+      if (!F.bodyParts.length) return toast('选一下身体部位');
+      if (!F.scenario.length) return toast('选一下发生背景');
+      if (!F.cause.length) return toast('选一下原因，或选「原因未知」');
+      if (!F.groups.length) return toast('至少选择一个可见圈子');
+      const storyId = `sty_preview_${Date.now()}`;
+      const now = new Date().toISOString();
+      const incident = {
+        id: `inc_${storyId}`,
+        sport: F.sport,
+        scenario: F.scenario.slice(),
+        selfReportedCause: F.cause.slice(),
+        bodyParts: F.bodyParts.slice(),
+        impactKind: F.impactKind,
+        protectiveItems: F.protectiveItems.slice(),
+        source: 'manual',
+      };
+      const story = {
+        id: storyId,
+        title: F.title.trim(),
+        body: F.body.trim(),
+        isAnonymous: F.anonymous,
+        allowFunnyActions: F.funny,
+        allowGifts: F.gifts,
+        visibilityGroupIds: F.groups.slice(),
+        createdAt: now,
+      };
+      const group = groupOf(F.groups[0]);
+      const detail = {
+        story,
+        incident,
+        author: { id: 'usr_me', displayName: '小北', palette: S.me.palette, isMe: true },
+        avatar: JSON.parse(JSON.stringify(S.me)),
+        updates: [],
+        reactions: DATA.actions
+          .filter((action) => action.id !== 'receive_gift')
+          .map((action) => ({ actionId: action.id, count: 0, mine: 0 })),
+        myReactions: DATA.actions
+          .filter((action) => action.id !== 'receive_gift')
+          .map((action) => ({ actionId: action.id, count: 0, mine: 0 })),
+        giftable: F.gifts,
+        canSpin: F.funny,
+        group,
+        canInteract: true,
+      };
+      const card = {
+        id: storyId,
+        title: story.title,
+        authorId: 'usr_me',
+        authorName: F.anonymous ? '匿名雪友' : '小北',
+        isAnonymous: F.anonymous,
+        sport: F.sport,
+        bodyParts: F.bodyParts,
+        impactKind: F.impactKind,
+        tone: F.tone,
+        allowFunnyActions: F.funny,
+        allowGifts: F.gifts,
+        publishStatus: 'published',
+        createdAt: now,
+        palette: S.me.palette,
+        expression: S.me.expression,
+        equipped: JSON.parse(JSON.stringify(S.me.equipped)),
+      };
+      S.publishedDetails[storyId] = detail;
+      S.published.push({ groupIds: F.groups.slice(), detail, card });
+      S.storyId = storyId;
+      S.groupId = F.groups[0];
+      S.screen = 'story';
+      render();
+      toast('发布成功');
+    },
+  };
+
+  function animateStory(actionId) {
+    const stage = document.getElementById('story-stage');
+    if (!stage) return;
+    const rig = stage.querySelector('.story-stage__rig .rig');
+    if (!rig) return;
+    const classes = { spin: 'rig--spin', hug: 'rig--hug', cheer: 'rig--cheer', receive_gift: 'rig--gift' };
+    const emojis = { spin: '😵‍💫', hug: '💗', cheer: '🎉', receive_gift: '🎁' };
+    rig.classList.add(classes[actionId] || '');
+    if (actionId === 'hug') stage.classList.add('hug');
+    const fx = document.createElement('div');
+    fx.className = 'fx';
+    fx.textContent = emojis[actionId] || '';
+    stage.appendChild(fx);
+    setTimeout(() => {
+      rig.classList.remove(classes[actionId] || '');
+      stage.classList.remove('hug');
+      if (fx.parentNode) fx.parentNode.removeChild(fx);
+    }, 1600);
+  }
+
+  window.P = api;
+  window.PREVIEW_STATE = S;
+
+  document.querySelectorAll('.toolbar button[data-screen]').forEach((button) => {
+    button.addEventListener('click', () => go(button.dataset.screen));
+  });
+  document.querySelectorAll('.tabbar button').forEach((button) => {
+    button.addEventListener('click', () => go(button.dataset.screen));
+  });
+  document.querySelector('.sheet-mask').addEventListener('click', closeSheet);
+
+  // 初始化 tabbar 图标
+  document.querySelectorAll('.tabbar button').forEach((button) => {
+    const screen = button.dataset.screen;
+    const icon = button.querySelector('.icon');
+    if (icon && TABBAR && TABBAR[screen]) {
+      icon.innerHTML = `<span class="normal">${TABBAR[screen].normal}</span><span class="active">${TABBAR[screen].active}</span>`;
+    }
+  });
+
+  const params = new URLSearchParams(location.search);
+  const initial = params.get('screen') || (location.hash || '').replace('#', '');
+  if (TITLES[initial]) S.screen = initial;
+  if (params.get('full')) document.body.classList.add('full-mode');
+
+  render();
+
+  const scrollTop = Number(params.get('scroll') || 0);
+  if (scrollTop > 0) {
+    const scroller = document.querySelector('.scroll');
+    if (scroller) scroller.scrollTop = scrollTop;
+  }
+})();
+</script>
+</body>
+</html>

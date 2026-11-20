@@ -1,0 +1,25 @@
+{
+  "name": "shaiyouji-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "摔友记 V0：本地可交互的群体战损图鉴原型（原生 TypeScript 微信小程序）",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "assets": "node scripts/build-assets.mjs",
+    "check:assets": "npm run build:test && node scripts/check-assets.mjs",
+    "test": "npm run build:test && node --test tests/*.test.mjs",
+    "export:data": "npm run build:test && node scripts/export-data.mjs",
+    "validate": "npm run build:test && node scripts/export-data.mjs && python3 scripts/validate_schemas.py",
+    "preview": "npm run build:test && node scripts/build-preview.mjs",
+    "verify": "npm run typecheck && npm run test && npm run validate && npm run check:assets",
+    "preview:qa": "npm run preview && node scripts/preview-qa.mjs",
+    "preview:full": "npm run preview && node scripts/preview-full-shots.mjs",
+    "shots": "npm run preview && node scripts/preview-shots.mjs"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^5.3.1",
+    "puppeteer-core": "^23.11.1",
+    "typescript": "^5.9.3"
+  }
+}

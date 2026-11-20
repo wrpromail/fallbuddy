@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "items": [
+    {"id":"basic_helmet_blue","name":"基础蓝头盔","category":"cosmetic","assetKey":"items/basic-helmet-blue","transferable":false,"permanent":true,"maxStack":1},
+    {"id":"steel_hip_guard","name":"祖传钢铁护臀","category":"consumable","assetKey":"items/steel-hip-guard","transferable":true,"permanent":false,"ttlDays":30,"maxStack":8},
+    {"id":"hot_cocoa","name":"续命热可可","category":"consumable","assetKey":"items/hot-cocoa","transferable":true,"permanent":false,"ttlDays":14,"maxStack":8},
+    {"id":"comfort_patch","name":"友谊创可贴","category":"consumable","assetKey":"items/comfort-patch","transferable":true,"permanent":false,"ttlDays":14,"maxStack":8}
+  ],
+  "weeklyGrant": {"count":2,"pool":["steel_hip_guard","hot_cocoa","comfort_patch"],"neverRequireSharing":true}
+}

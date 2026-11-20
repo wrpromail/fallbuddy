@@ -1,0 +1,73 @@
+<view class="page">
+  <view class="head">
+    <view class="head__title">设置</view>
+    <view class="head__sub">隐私、互动权限与本地数据</view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head"><view class="section-title">互动权限</view></view>
+    <view class="row">
+      <view class="row__main">
+        <view class="row__name">允许搞笑动作</view>
+        <view class="tiny muted">别人可以对我的故事使用「转圈」</view>
+      </view>
+      <switch checked="{{prefs.allowFunnyActions}}" color="#2F6FE0" bindchange="onFunny" />
+    </view>
+    <view class="row">
+      <view class="row__main">
+        <view class="row__name">允许收礼物</view>
+        <view class="tiny muted">免费互动道具，不可兑换现金</view>
+      </view>
+      <switch checked="{{prefs.allowGifts}}" color="#2F6FE0" bindchange="onGifts" />
+    </view>
+    <view class="row row--last">
+      <view class="row__main">
+        <view class="row__name">新故事默认匿名</view>
+        <view class="tiny muted">只隐藏昵称，后台仍绑定本人</view>
+      </view>
+      <switch checked="{{prefs.anonymousByDefault}}" color="#2F6FE0" bindchange="onAnonymous" />
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head"><view class="section-title">体验</view></view>
+    <view class="row row--last">
+      <view class="row__main">
+        <view class="row__name">减少动效</view>
+        <view class="tiny muted">互动改为静态表情，适合低性能设备</view>
+      </view>
+      <switch checked="{{reduceMotion}}" color="#2F6FE0" bindchange="onReduceMotion" />
+    </view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head"><view class="section-title">数据</view><view class="tiny muted">V0 只存在本机</view></view>
+    <view class="kv">
+      <view class="kv__k">数据源</view>
+      <view class="kv__v">{{dataSource}}</view>
+    </view>
+    <view class="kv">
+      <view class="kv__k">版本</view>
+      <view class="kv__v">V0 · {{appVersion}}</view>
+    </view>
+    <view class="kv">
+      <view class="kv__k">云函数 / 录音 / AI</view>
+      <view class="kv__v">V1 再接入</view>
+    </view>
+    <view class="reset" bindtap="onReset">重置本地演示数据</view>
+  </view>
+
+  <view class="panel card">
+    <view class="panel__head"><view class="section-title">边界与合规</view></view>
+    <view class="bullets">
+      <view class="bullet">不提供诊断、治疗、康复、事故责任或保险理赔结论。</view>
+      <view class="bullet">不采集手机号、真实好友列表或微信群成员列表。</view>
+      <view class="bullet">故事公开范围由作者逐个圈子确认，分享卡片不授予查看权限。</view>
+      <view class="bullet">「圈子」是应用内受邀群体，不等于微信群全体成员。</view>
+      <view class="bullet">V0 未接内容安全与审核后台，正式发布前必须补齐。</view>
+    </view>
+    <view class="about" bindtap="onAbout">查看项目说明</view>
+  </view>
+
+  <view class="footnote">摔友记 · 把运动翻车现场，变成朋友们共同的回忆。</view>
+</view>

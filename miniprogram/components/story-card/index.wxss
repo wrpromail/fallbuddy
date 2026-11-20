@@ -1,0 +1,98 @@
+.story-card {
+  background: #ffffff;
+  border-radius: 26rpx;
+  padding: 24rpx 26rpx;
+  box-shadow: 0 10rpx 30rpx rgba(43, 35, 64, 0.05);
+  transition: transform 120ms ease-out;
+}
+
+.story-card:active {
+  transform: scale(0.985);
+}
+
+.story-card--dense {
+  padding: 20rpx 22rpx;
+  background: #fafbff;
+  box-shadow: none;
+}
+
+.story-card--withdrawn {
+  opacity: 0.6;
+}
+
+.story-card__head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.story-card__avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f1f4fd;
+  overflow: hidden;
+  flex: none;
+}
+
+.story-card__who {
+  flex: 1;
+  min-width: 0;
+}
+
+.story-card__name {
+  font-size: 25rpx;
+  font-weight: 600;
+  color: #2b2340;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.story-card__badge {
+  font-size: 19rpx;
+  font-weight: 500;
+  color: #2f6fe0;
+  background: rgba(76, 141, 255, 0.12);
+  border-radius: 999rpx;
+  padding: 2rpx 12rpx;
+}
+
+.story-card__badge--grey {
+  color: #7a7790;
+  background: #eef1f8;
+}
+
+.story-card__meta {
+  font-size: 21rpx;
+  color: #8a869f;
+  margin-top: 2rpx;
+}
+
+.story-card__title {
+  margin-top: 16rpx;
+  font-size: 31rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #2b2340;
+}
+
+.story-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.tag {
+  font-size: 20rpx;
+  color: #6b6784;
+  background: #f3f5fb;
+  border-radius: 999rpx;
+  padding: 5rpx 16rpx;
+}
+
+.tag--blue {
+  color: #2f6fe0;
+  background: rgba(76, 141, 255, 0.12);
+}

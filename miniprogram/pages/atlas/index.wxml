@@ -1,0 +1,117 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero__top">
+      <view class="group" bindtap="onGroupTap">
+        <view class="group__name">{{group ? group.name : '摔友记'}}</view>
+        <view class="group__meta">
+          <text wx:if="{{group}}">{{group.memberCount}} 位雪友 · {{group.role === 'owner' ? '圈主' : group.role === 'admin' ? '管理员' : '成员'}}</text>
+          <text wx:else>正在载入</text>
+          <text class="caret">▾</text>
+        </view>
+      </view>
+      <view class="hero__actions">
+        <view class="icon-btn" bindtap="onGroup">圈</view>
+        <view class="icon-btn" bindtap="onSettings">⚙</view>
+      </view>
+    </view>
+    <view wx:if="{{atlas}}" class="stats">
+      <view class="stat">
+        <view class="stat__num">{{atlas.storyCount}}</view>
+        <view class="stat__label">{{period === 'week' ? '本周故事' : '故事总数'}}</view>
+      </view>
+      <view class="stat">
+        <view class="stat__num">{{atlas.participantCount}}</view>
+        <view class="stat__label">参与者</view>
+      </view>
+      <view class="stat stat--wide">
+        <view class="stat__label">最热话题部位</view>
+        <view class="stat__value">{{atlas.hottest.length ? atlas.hottest[0].label : '等第一个故事'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{error}}" class="empty card">
+    <view class="empty__emoji">🧊</view>
+    <view class="empty__title">{{error}}</view>
+    <view class="empty__text">摔友记 V0 是本地原型，你可以先在设置里重置演示数据。</view>
+  </view>
+
+  <view wx:elif="{{loading && !atlas}}" class="loading card">正在把雪友们的战损拼起来…</view>
+
+  <block wx:else>
+    <view class="stage card">
+      <view class="stage__bar">
+        <view class="seg">
+          <view class="seg__item {{view === 'front' ? 'seg__item--on' : ''}}" data-view="front" bindtap="onSwitchView">正面</view>
+          <view class="seg__item {{view === 'back' ? 'seg__item--on' : ''}}" data-view="back" bindtap="onSwitchView">背面</view>
+        </view>
+        <view class="seg seg--small">
+          <view class="seg__item {{period === 'all' ? 'seg__item--on' : ''}}" data-period="all" bindtap="onSwitchPeriod">全部</view>
+          <view class="seg__item {{period === 'week' ? 'seg__item--on' : ''}}" data-period="week" bindtap="onSwitchPeriod">本周</view>
+        </view>
+      </view>
+
+      <view class="stage__canvas">
+        <view class="snow snow--a"></view>
+        <view class="snow snow--b"></view>
+        <view class="stage__figure">
+          <skeleton-map
+            wx:if="{{avatar && atlas}}"
+            view="{{view}}"
+            hotspots="{{atlas.hotspots}}"
+            appearance="{{avatar}}"
+            bind:hotspot="onHotspot"
+          />
+        </view>
+        <view wx:if="{{atlas && atlas.storyCount === 0}}" class="stage__empty">
+          <view class="stage__empty-title">这个圈子还没有故事</view>
+          <view class="stage__empty-text">第一批战损图鉴，等你来画</view>
+          <view class="btn btn--primary" bindtap="onCreate">记录第一条</view>
+        </view>
+      </view>
+      <view class="stage__hint">点身体上的小骷髅头像，看 TA 的那次经历</view>
+      <view wx:if="{{hottest.length}}" class="topicline">
+        <text class="topicline__label">话题部位</text>
+        <text wx:for="{{hottest}}" wx:key="bodyPart" class="topicline__item">{{item.label}} {{item.count}}</text>
+        <text class="topicline__note">按故事数统计</text>
+      </view>
+    </view>
+
+    <view class="recent">
+      <view class="between">
+        <view class="section-title">最近故事</view>
+      </view>
+      <view class="recent__list">
+        <story-card
+          wx:for="{{atlas.stories}}"
+          wx:key="id"
+          story="{{item}}"
+          bind:select="onSelectStory"
+        />
+      </view>
+    </view>
+
+    <view class="footnote">
+      故事由本人自述与确认，仅作朋友间的轻松记录，不构成诊断、治疗、康复或理赔建议。
+    </view>
+  </block>
+
+  <view class="fab" bindtap="onCreate">
+    <text class="fab__plus">＋</text>
+    <text>记录一次</text>
+  </view>
+
+  <view wx:if="{{sheetOpen}}" class="sheet-mask" bindtap="closeSheet"></view>
+  <view class="sheet {{sheetOpen ? 'sheet--open' : ''}}" catchtap="noop">
+    <view class="sheet__handle"></view>
+    <view class="sheet__head">
+      <view class="section-title">{{sheetSpot ? sheetSpot.label : ''}}的故事</view>
+      <view class="tiny muted">{{sheetStories.length}} 条</view>
+    </view>
+    <scroll-view scroll-y class="sheet__body" style="height:{{sheetHeight}}rpx">
+      <view class="sheet__list">
+        <story-card wx:for="{{sheetStories}}" wx:key="id" story="{{item}}" bind:select="onSelectStory" />
+      </view>
+    </scroll-view>
+  </view>
+</view>

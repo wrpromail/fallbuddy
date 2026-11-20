@@ -1,0 +1,18 @@
+<view class="reactions">
+  <view
+    wx:for="{{buttons}}"
+    wx:key="id"
+    class="reaction {{item.disabled ? 'reaction--disabled' : ''}}"
+    hover-class="reaction--hover"
+    data-id="{{item.id}}"
+    bindtap="{{item.disabled ? '' : 'onReact'}}"
+  >
+    <view class="reaction__emoji">{{item.emoji}}</view>
+    <view class="reaction__name">{{item.name}}</view>
+    <view wx:if="{{item.count}}" class="reaction__count">{{item.count}}</view>
+  </view>
+  <view class="reaction reaction--gift" hover-class="reaction--hover" bindtap="onGift">
+    <view class="reaction__emoji">🎁</view>
+    <view class="reaction__name">送装备</view>
+  </view>
+</view>

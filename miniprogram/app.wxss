@@ -1,0 +1,149 @@
+page {
+  background: #f2f6ff;
+  color: #2b2340;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  font-size: 28rpx;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+view,
+text,
+image,
+button,
+input,
+textarea,
+scroll-view {
+  box-sizing: border-box;
+}
+
+button {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  line-height: inherit;
+  font-size: inherit;
+  color: inherit;
+  border-radius: 0;
+}
+
+button::after {
+  border: none;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  box-shadow: 0 12rpx 40rpx rgba(43, 35, 64, 0.06);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.muted {
+  color: #7a7790;
+}
+
+.tiny {
+  font-size: 22rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 0.5rpx;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  height: 76rpx;
+  padding: 0 32rpx;
+  border-radius: 999rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #2f6fe0;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #4c8dff, #2f6fe0);
+  color: #ffffff;
+  box-shadow: 0 10rpx 24rpx rgba(47, 111, 224, 0.28);
+}
+
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.7);
+  color: #2b2340;
+  border: 1rpx solid #e4e9f6;
+}
+
+.btn--danger {
+  background: #fdecec;
+  color: #d93a3a;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  background: #f1f4fd;
+  color: #5b5875;
+}
+
+.pill--accent {
+  background: rgba(255, 138, 61, 0.12);
+  color: #d96a1f;
+}
+
+.pill--mint {
+  background: rgba(47, 185, 143, 0.12);
+  color: #1f8f6b;
+}
+
+.pill--blue {
+  background: rgba(76, 141, 255, 0.12);
+  color: #2f6fe0;
+}
+
+.divider {
+  height: 1rpx;
+  background: #eef1f8;
+}
+
+.safe-bottom {
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.fade-in {
+  animation: fade-in 240ms ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
