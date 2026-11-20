@@ -12,10 +12,11 @@
     "export:data": "npm run build:test && node scripts/export-data.mjs",
     "validate": "npm run build:test && node scripts/export-data.mjs && python3 scripts/validate_schemas.py",
     "preview": "npm run build:test && node scripts/build-preview.mjs",
-    "verify": "npm run typecheck && npm run test && npm run validate && npm run check:assets",
+    "verify": "npm run typecheck && npm run test && npm run validate && npm run check:assets && npm run check:wxml",
     "preview:qa": "npm run preview && node scripts/preview-qa.mjs",
     "preview:full": "npm run preview && node scripts/preview-full-shots.mjs",
-    "shots": "npm run preview && node scripts/preview-shots.mjs"
+    "shots": "npm run preview && node scripts/preview-shots.mjs",
+    "check:wxml": "node scripts/check-wxml.mjs"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^5.3.1",

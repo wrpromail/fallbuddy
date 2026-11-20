@@ -63,7 +63,7 @@ npm run shots        # 重新生成 preview/screens 里的文档截图
 npm run verify
 ```
 
-包含：严格类型检查 → 编译 + 19 项服务层测试 → 数据导出 + JSON Schema/业务不变量校验 → 素材尺寸与透明度校验。
+包含：严格类型检查 → 编译 + 19 项服务层测试 → 数据导出 + JSON Schema/业务不变量校验 → 素材尺寸与透明度校验 → WXML 静态检查。
 
 其他脚本：
 
@@ -72,6 +72,7 @@ npm run assets       # 重新生成全部角色 PNG、tabBar 图标、道具图�
 npm run typecheck    # 只做类型检查
 npm run test         # 只跑服务层测试
 npm run validate     # 数据与 Schema 校验
+npm run check:wxml   # 无 DevTools 时的 WXML 静态检查
 ```
 
 ## 目录结构
