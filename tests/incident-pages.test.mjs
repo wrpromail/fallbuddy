@@ -213,3 +213,90 @@ test('草稿重复保存可重试，冲突时可采用已存版本，已发布�
   assert.equal(b.data.canSubmit, true);
   assert.ok(b.draft.version > a.draft.version);
 });
+
+test('永久删除发现另一台设备新增后续时刷新详情并要求重新确认', async (t) => {
+  const getModal = mountAccidentTest(t);
+  const page = await readyForm();
+  await page.onSubmit();
+  const mine = await mockApi.story.listMine();
+  const storyId = mine.data.find((item) => item.title === '练习转弯').id;
+  const detail = makeDetail();
+  detail.onLoad({ storyId });
+  await detail.load();
+  assert.equal(detail.data.isMine, true);
+  detail.onDeleteStory();
+  await getModal().success({ confirm: false });
+  assert.equal((await mockApi.story.getDetail({ storyId })).ok, true);
+
+  detail.onDeleteStory();
+  const followUp = await mockApi.story.appendUpdate({
+    storyId, type: 'follow_up', body: '另一台设备刚写下的后续。', requestId: 'follow-up-on-second-device',
+  });
+  assert.ok(followUp.ok);
+  await getModal().success({ confirm: true });
+  assert.deepEqual(detail.data.updatesView.map(({ body }) => body), ['另一台设备刚写下的后续。']);
+  assert.equal((await mockApi.story.getDetail({ storyId })).ok, true);
+
+  detail.onDeleteStory();
+  await getModal().success({ confirm: true });
+  assert.equal((await mockApi.story.getDetail({ storyId })).code, 'NOT_FOUND');
+  assert.ok(!(await mockApi.story.listMine()).data.some((item) => item.id === storyId));
+});
+
+test('编辑页保留退圈时选定的故事受众，作者可以明确取消', async (t) => {
+  mountAccidentTest(t);
+  const base = await readyForm();
+  base.onToggleGroup(tap({ id: 'grp_skate' }));
+  const published = await mockApi.story.publish({ input: base.formInput(), requestId: 'retaining-audience-page' });
+  assert.ok(published.ok);
+  assert.ok((await mockApi.group.leave({ groupId: 'grp_snow', retainStories: true })).ok);
+  const page = makeCreate();
+  page.storyId = published.data.storyId;
+  await page.load(false);
+  const retained = page.data.groupChips.find((group) => group.id === 'grp_snow');
+  assert.equal(retained.retained, true);
+  assert.ok(retained.name);
+  assert.equal(retained.checked, true);
+  const detail = makeDetail();
+  detail.onLoad({ storyId: page.storyId });
+  await detail.load();
+  const { authorAudiences } = detail.data.detail;
+  assert.equal(detail.data.groupName, `仍对${authorAudiences.map(({ name }) => `「${name}」`).join('、')}可见`);
+  assert.equal(authorAudiences.length, 2);
+
+  page.onBodyInput(input('更新事故自述。'));
+  await page.onSubmit();
+  const getLatest = () => mockApi.story.getDetail({ storyId: published.data.storyId });
+  assert.deepEqual((await getLatest()).data.story.visibilityGroupIds.sort(), ['grp_skate', 'grp_snow']);
+
+  const next = makeCreate();
+  next.storyId = page.storyId;
+  await next.load(false);
+  next.onToggleGroup(tap({ id: 'grp_snow' }));
+  await next.onSubmit();
+  assert.deepEqual((await getLatest()).data.story.visibilityGroupIds, ['grp_skate']);
+});
+
+test('详情页标出退圈后仍有权查看的唯一圈子，切为仅自己可见后更新标签', async (t) => {
+  mountAccidentTest(t);
+  const form = await readyForm();
+  const original = form.formInput();
+  const published = await mockApi.story.publish({ input: original, requestId: 'retained-label' });
+  assert.ok(published.ok);
+  assert.ok((await mockApi.group.leave({ groupId: 'grp_snow', retainStories: true })).ok);
+  const detail = makeDetail();
+  detail.onLoad({ storyId: published.data.storyId });
+  await detail.load();
+  assert.equal(detail.data.detail.group, null);
+  const [audience] = detail.data.detail.retainedAudiences;
+  assert.equal(detail.data.groupName, `仍对「${audience.name}」可见`);
+
+  const updated = await mockApi.story.update({
+    ...published.data,
+    input: { ...original, story: { ...original.story, visibility: 'self', visibilityGroupIds: [] } },
+    requestId: 'retained-to-private',
+  });
+  assert.ok(updated.ok);
+  await detail.load();
+  assert.equal(detail.data.groupName, '仅自己可见');
+});

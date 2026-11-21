@@ -86,3 +86,19 @@ export function mintInviteToken(): string {
 export function inviteTokenHash(token: string): string {
   return hashString(token).toString(36);
 }
+
+export function publishRequestFingerprint(requestId: string): string {
+  return requestId;
+}
+
+export function accountFingerprint(openid: string): string {
+  return inviteTokenHash(`closed-account:${openid}`);
+}
+
+export function platformInteractionsPaused(): boolean {
+  return false;
+}
+
+export function platformPollsPaused(): boolean {
+  return false;
+}

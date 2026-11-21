@@ -1,25 +1,32 @@
-import { ANONYMOUS_APPEARANCE, EMPTY_GEAR, grantCosmetic } from '../../shared/avatar';
+import { setFollow, followedUpdates } from './follows';
+import { listOutfits, saveOutfit } from './outfits';
+import { listLinks, requestLink, decideLink, linkRequests } from './story-links';
+import { listPoll, changePoll, myPollBadge, closePoll } from './polls';
+import { nextRequestId, ok, fail } from './response';
+import { isActiveMember, isBlockedBetween } from './access';
+import { ANONYMOUS_APPEARANCE, EMPTY_GEAR, grantCosmetic, withoutExpiredGear, removeUnavailableGear } from '../../shared/avatar';
 import { ACTIONS, ACTION_MAP, ANIMATION_VERSION, MAX_GIFTS_PER_DAY, MAX_INTERACTIONS_PER_DAY } from '../../shared/actions';
-import { ITEM_DEFINITIONS, ITEM_MAP, WEEKLY_GRANT } from '../../shared/items';
+import { ITEM_DEFINITIONS, ITEM_MAP, SNOWBOARD_ID, WEEKLY_GRANT } from '../../shared/items';
 import {
   BODY_PART_LABEL,
+  CARRY_HANDS,
   EQUIP_SLOTS,
   EXPRESSIONS,
   PALETTES,
   HEAD_SHAPES,
-  type HeadShape,
+  type CarryHand,
   UPDATE_TYPES,
   type UpdateType,
   type BodyPart,
-  type Expression,
-  type Palette,
 } from '../../shared/enums';
-import { addDays, dayKey, hashString, isThisWeek, relativeTime, weekKey } from '../../shared/time';
+import { addDays, dayKey, formatDate, hashString, isThisWeek, weekKey } from '../../shared/time';
 import { findSensitiveInfo } from '../../shared/moderation';
 import { validateCreateStoryInput } from '../../shared/validation';
 import { hotspotsFor, resolveRigLayers } from '../../shared/rig';
-import { inviteTokenHash, loadState, loadStateForWrite, mintInviteToken, saveState } from '../store';
-import type { DbState, UserRecord } from '../../shared/db-types';
+import type { RigAppearance } from '../../shared/rig-types';
+import { accountFingerprint, inviteTokenHash, loadState, loadStateForWrite, mintInviteToken, platformInteractionsPaused, saveState } from '../store';
+import { publishKey, purgeAccount, purgeStories, removeCommunityAudience, recordedPublishStoryId, removeStoryAudience } from './data-removal';
+import type { DbState, InviteRecord, UserRecord } from '../../shared/db-types';
 import type {
   ActionId,
   ApiResponse,
@@ -29,11 +36,11 @@ import type {
   AvatarState,
   CreateStoryInput,
   EquippedGear,
-  ErrorCode,
   GroupMemberView,
   GroupSummary,
   HotspotSummary,
   InboxEvent,
+  InboxGroup,
   Incident,
   InteractionEvent,
   InventoryItem,
@@ -50,22 +57,6 @@ import type {
 } from '../../shared/types';
 
 /* ------------------------------------------------------------------ 基础 */
-
-let requestSeq = 0;
-
-function nextRequestId(): string {
-  requestSeq += 1;
-  return `req_${Date.now().toString(36)}_${requestSeq}_${Math.random().toString(36).slice(2, 6)}`;
-}
-
-function ok<T>(data: T, requestId: string): ApiResponse<T> {
-  // 模拟云端序列化，避免调用方拿到内部对象引用
-  return { ok: true, code: 'OK', data: JSON.parse(JSON.stringify(data)) as T, requestId };
-}
-
-function fail(code: ErrorCode, message: string, requestId: string): ApiResponse<never> {
-  return { ok: false, code, message, requestId };
-}
 
 function hasWx(): boolean {
   return typeof wx !== 'undefined';
@@ -102,7 +93,16 @@ function remember<T>(state: DbState, action: string, requestId: string, response
       .map((key) => ({ key, at: state.operations[key].createdAt }))
       .sort((a, b) => a.at.localeCompare(b.at))
       .slice(0, keys.length - 200);
-    for (const item of oldest) delete state.operations[item.key];
+    for (const { key } of oldest) {
+      const operation = state.operations[key];
+      const storyId = recordedPublishStoryId(operation);
+      if (storyId) {
+        const publishes = (state.storyPublishes ??= {});
+        const requestKey = publishKey(operation.userId, operation.requestId);
+        if (publishes[requestKey] === undefined) publishes[requestKey] = storyId;
+      }
+      delete state.operations[key];
+    }
   }
 }
 
@@ -119,22 +119,23 @@ function userById(state: DbState, userId: string): UserRecord | undefined {
 }
 
 function avatarOf(state: DbState, userId: string): AvatarState | undefined {
-  return state.avatars.find((a) => a.ownerId === userId);
+  const avatar = state.avatars.find((a) => a.ownerId === userId);
+  if (avatar && userId !== state.currentUserId && userById(state, userId)?.preferences.hideAvatar) {
+    return { ...avatar, ...ANONYMOUS_APPEARANCE, carryHand: undefined, version: 1, customized: false };
+  }
+  return avatar && withoutExpiredGear(state, avatar);
 }
 
 function toPublicUser(user: UserRecord, currentUserId: string): PublicUser {
   return {
     id: user.id,
     displayName: user.displayName,
-    palette: user.palette,
+    palette: user.id !== currentUserId && user.preferences.hideAvatar ? 'blue' : user.palette,
     avatarId: user.avatarId,
     isMe: user.id === currentUserId,
   };
 }
 
-function isActiveMember(state: DbState, groupId: string, userId: string): boolean {
-  return state.memberships.some((m) => m.groupId === groupId && m.userId === userId && m.status === 'active');
-}
 
 function membershipRole(state: DbState, groupId: string, userId: string): 'owner' | 'admin' | 'member' | null {
   const m = state.memberships.find((x) => x.groupId === groupId && x.userId === userId && x.status === 'active');
@@ -157,6 +158,11 @@ function visibleGroupIds(state: DbState, story: Story): string[] {
   return story.visibilityGroupIds.filter((groupId) => isActiveMember(state, groupId, state.currentUserId));
 }
 
+function storyAudienceGroups(state: DbState, story: Story) {
+  if (story.visibility !== 'groups') return [];
+  return state.groups.filter((group) => story.visibilityGroupIds.includes(group.id));
+}
+
 /** 返回当前用户在该故事上可用的 groupId；无权访问返回 null */
 function resolveStoryGroup(state: DbState, story: Story, preferredGroupId?: string): string | null {
   // 仅自己可见不参与任何圈子，也不接受互动/赠礼
@@ -173,6 +179,18 @@ function resolveStoryGroup(state: DbState, story: Story, preferredGroupId?: stri
   }
   return null;
 }
+
+function interactionGroup(state: DbState, story: Story, groupId?: string): string | null {
+  if (groupId !== undefined) return visibleGroupIds(state, story).includes(groupId) ? groupId : null;
+  return resolveStoryGroup(state, story);
+}
+
+function interactionsPaused(state: DbState, groupId: string, otherUserId: string): boolean {
+  const userId = state.currentUserId;
+  return platformInteractionsPaused() || !!state.groups.find((group) => group.id === groupId)?.interactionsPaused ||
+    isBlockedBetween(state, userId, otherUserId);
+}
+
 
 function anonymousName(): string {
   return '匿名雪友';
@@ -243,7 +261,8 @@ function reactionSummary(state: DbState, storyId: string): ReactionSummary[] {
   const result: ReactionSummary[] = [];
   for (const action of ACTIONS) {
     if (action.id === 'receive_gift') continue;
-    const events = state.interactions.filter((e) => e.storyId === storyId && e.actionId === action.id && e.status === 'ok');
+    const events = state.interactions.filter((e) => e.storyId === storyId && e.actionId === action.id && e.status === 'ok' &&
+      !isBlockedBetween(state, state.currentUserId, e.actorId));
     result.push({
       actionId: action.id,
       count: events.length,
@@ -277,7 +296,7 @@ function inventoryView(state: DbState, item: InventoryItem): InventoryView {
     name: def?.name ?? item.itemDefId,
     category: def?.category ?? 'consumable',
     icon: def && def.category === 'cosmetic' ? def.icon : `/assets/items/${item.itemDefId}.png`,
-    expiresText: item.expiresAt ? `${relativeTime(item.expiresAt)}后过期` : '永久',
+    expiresText: item.expiresAt ? `${formatDate(item.expiresAt)} 到期` : '永久',
     equipped,
   };
 }
@@ -325,6 +344,23 @@ async function ensureUser(): Promise<ApiResponse<{ user: PublicUser; avatar: Ava
   return ok({ user: toPublicUser(user, state.currentUserId), avatar, preferences: user.preferences }, requestId);
 }
 
+async function deleteAccount(params: { confirm: true }): Promise<ApiResponse<{ deleted: true }>> {
+  const requestId = nextRequestId();
+  await latency();
+  if (params?.confirm !== true) return fail('VALIDATION_FAILED', '请确认注销账号', requestId);
+  const state = loadStateForWrite();
+  const user = userById(state, state.currentUserId);
+  if (!user) return ok({ deleted: true }, requestId);
+  const ownedGroups = state.groups.filter((group) => group.ownerId === user.id);
+  if (ownedGroups.some((group) => state.memberships.some((member) =>
+    member.groupId === group.id && member.userId !== user.id && member.status === 'active'))) {
+    return fail('VALIDATION_FAILED', '请先把有其他成员的圈子转让，再注销账号', requestId);
+  }
+  purgeAccount(state, user, accountFingerprint(user.openid));
+  saveState(state, true);
+  return ok({ deleted: true }, requestId);
+}
+
 async function listMine(): Promise<ApiResponse<GroupSummary[]>> {
   const requestId = nextRequestId();
   await latency();
@@ -334,6 +370,29 @@ async function listMine(): Promise<ApiResponse<GroupSummary[]>> {
     .map((m) => groupSummary(state, m.groupId))
     .filter((g): g is GroupSummary => g !== null);
   return ok(groups, requestId);
+}
+
+async function createGroup(params: { name: string; joinMode: 'open' | 'approval'; requestId: string }): Promise<ApiResponse<GroupSummary>> {
+  const requestId = params.requestId || nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const replay = cached<GroupSummary>(state, 'group.create', requestId);
+  if (replay) return replay;
+  const name = typeof params.name === 'string' ? params.name.trim() : '';
+  if (!name || name.length > 24 || /[\r\n]/.test(name) || !['open', 'approval'].includes(params.joinMode)) {
+    return fail('VALIDATION_FAILED', '请填写 1–24 个字的圈子名称并选择加入方式', requestId);
+  }
+  if (findSensitiveInfo(name).length) return fail('CONTENT_REJECTED', '圈子名称包含疑似个人信息', requestId);
+  const id = nextRequestId().replace('req_', 'grp_');
+  const now = new Date().toISOString();
+  const ownerId = state.currentUserId;
+  const group = { id, name, ownerId, joinMode: params.joinMode, createdAt: now };
+  state.groups.push(group);
+  state.memberships.push({ groupId: id, userId: ownerId, role: 'owner', status: 'active', joinedAt: now });
+  const response = ok<GroupSummary>({ ...group, role: 'owner', memberCount: 1 }, requestId);
+  remember(state, 'group.create', requestId, response);
+  saveState(state, true);
+  return response;
 }
 
 async function getAtlas(params: {
@@ -354,6 +413,7 @@ async function getAtlas(params: {
       story.moderationStatus === 'approved' &&
       story.visibility !== 'self' &&
       story.visibilityGroupIds.includes(params.groupId) &&
+      !isBlockedBetween(state, state.currentUserId, story.authorId) &&
       (period === 'all' || isThisWeek(story.createdAt)),
   );
 
@@ -429,7 +489,8 @@ async function getMembers(groupId: string): Promise<ApiResponse<GroupMemberView[
       const user = userById(state, m.userId);
       const avatar = avatarOf(state, m.userId);
       const storyCount = state.stories.filter(
-        (s) => s.authorId === m.userId && s.publishStatus === 'published' && s.moderationStatus === 'approved' &&
+        (s) => s.authorId === m.userId && (!s.isAnonymous || s.authorId === state.currentUserId) &&
+          s.publishStatus === 'published' && s.moderationStatus === 'approved' &&
           s.visibility !== 'self' && s.visibilityGroupIds.includes(groupId),
       ).length;
       if (!user || !avatar) return null;
@@ -453,7 +514,7 @@ async function getMembers(groupId: string): Promise<ApiResponse<GroupMemberView[
 async function createInvite(params: {
   groupId: string;
   ttlHours?: number;
-}): Promise<ApiResponse<{ sharePath: string; expiresAt: string; token: string }>> {
+}): Promise<ApiResponse<{ id: string; sharePath: string; expiresAt: string; token: string }>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
@@ -464,8 +525,9 @@ async function createInvite(params: {
   const ttl = params.ttlHours ?? 48;
   if (!Number.isInteger(ttl) || ttl < 1 || ttl > 48) return fail('VALIDATION_FAILED', '邀请有效期应为 1–48 小时', requestId);
   const expiresAt = new Date(Date.now() + ttl * 60 * 60 * 1000).toISOString();
+  const tokenHash = inviteTokenHash(token);
   state.invites.push({
-    tokenHash: inviteTokenHash(token),
+    tokenHash,
     groupId: params.groupId,
     ownerId: state.currentUserId,
     expiresAt,
@@ -474,7 +536,7 @@ async function createInvite(params: {
     status: 'active',
   });
   saveState(state);
-  return ok({ sharePath: `/pages/group/index?inviteToken=${token}`, expiresAt, token }, requestId);
+  return ok({ id: tokenHash, sharePath: `/pages/group/index?inviteToken=${token}`, expiresAt, token }, requestId);
 }
 
 async function join(params: { inviteToken: string }): Promise<ApiResponse<{ groupId: string; status: string }>> {
@@ -542,17 +604,87 @@ async function reviewMember(params: { groupId: string; userId: string; approve: 
   return ok({ approved: params.approve }, requestId);
 }
 
-async function leave(params: { groupId: string }): Promise<ApiResponse<{ status: string }>> {
+async function listInvites(groupId: string): Promise<ApiResponse<(Pick<InviteRecord, 'expiresAt' | 'uses' | 'maxUses'> & { id: string })[]>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
+  if (!canManageGroup(state, groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以管理邀请', requestId);
+  const invites = state.invites.filter((invite) => invite.groupId === groupId && invite.status === 'active' &&
+    Date.parse(invite.expiresAt) > Date.now() && invite.uses < invite.maxUses);
+  return ok(invites.map(({ tokenHash, expiresAt, uses, maxUses }) => ({ id: tokenHash, expiresAt, uses, maxUses })), requestId);
+}
+
+async function revokeInvite(params: { groupId: string; inviteId: string }): Promise<ApiResponse<{ revoked: true }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  if (!canManageGroup(state, params.groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以撤销邀请', requestId);
+  const invite = state.invites.find((item) => item.groupId === params.groupId && item.tokenHash === params.inviteId);
+  if (!invite) return fail('NOT_FOUND', '这条邀请不存在', requestId);
+  invite.status = 'revoked';
+  saveState(state, true);
+  return ok({ revoked: true }, requestId);
+}
+
+async function transferOwner(params: { groupId: string; userId: string }): Promise<ApiResponse<{ ownerId: string }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const group = state.groups.find((item) => item.id === params.groupId);
+  if (!group || group.ownerId !== state.currentUserId) return fail('UNAUTHORIZED', '只有圈主可以转让圈子', requestId);
+  const members = state.memberships.filter((item) => item.groupId === group.id && item.status === 'active');
+  const owner = members.find((item) => item.userId === state.currentUserId && item.role === 'owner');
+  const next = members.find((item) => item.userId === params.userId && item.userId !== state.currentUserId);
+  if (!owner || !next) return fail('VALIDATION_FAILED', '请选择另一位已加入圈子的成员', requestId);
+  owner.role = 'admin';
+  next.role = 'owner';
+  group.ownerId = next.userId;
+  saveState(state, true);
+  return ok({ ownerId: group.ownerId }, requestId);
+}
+
+async function setInteractionsPaused(params: { groupId: string; paused: boolean }): Promise<ApiResponse<{ paused: boolean }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const group = state.groups.find((item) => item.id === params.groupId);
+  if (!group || !canManageGroup(state, params.groupId)) return fail('UNAUTHORIZED', '只有圈主或管理员可以管理互动', requestId);
+  if (typeof params.paused !== 'boolean') return fail('VALIDATION_FAILED', '互动开关值无效', requestId);
+  if (!!group.interactionsPaused !== params.paused) {
+    group.interactionsPaused = params.paused;
+    (state.interactionControls ??= []).push({
+      groupId: group.id, changedBy: state.currentUserId, paused: params.paused, changedAt: new Date().toISOString(),
+    });
+    saveState(state, true);
+  }
+  return ok({ paused: params.paused }, requestId);
+}
+
+async function leave(params: { groupId: string; retainStories?: boolean }): Promise<ApiResponse<{ status: string }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  if (params.retainStories !== undefined && typeof params.retainStories !== 'boolean') {
+    return fail('VALIDATION_FAILED', '请选择退圈后的故事可见范围', requestId);
+  }
   const membership = state.memberships.find(
     (m) => m.groupId === params.groupId && m.userId === state.currentUserId && m.status === 'active',
   );
   if (!membership) return fail('NOT_MEMBER', '你还不在这个圈子里', requestId);
-  if (membership.role === 'owner') return fail('VALIDATION_FAILED', '圈主暂时不能直接退出', requestId);
+  if (membership.role === 'owner') return fail('VALIDATION_FAILED', '请先转让圈主，再退出圈子', requestId);
   membership.status = 'left';
-  saveState(state);
+  membership.role = 'member';
+  for (const invite of state.invites) {
+    if (invite.groupId === params.groupId && invite.ownerId === state.currentUserId) invite.status = 'revoked';
+  }
+  state.follows = state.follows?.filter((row) => row.userId !== state.currentUserId || row.groupId !== params.groupId);
+  if (params.retainStories) {
+    for (const story of state.stories.filter((row) => row.authorId === state.currentUserId && row.visibilityGroupIds.includes(params.groupId))) {
+      removeCommunityAudience(state, story.id, params.groupId);
+    }
+  }
+  if (!params.retainStories) removeStoryAudience(state, params.groupId, state.currentUserId);
+  saveState(state, true);
   return ok({ status: 'left' }, requestId);
 }
 
@@ -561,6 +693,7 @@ async function leave(params: { groupId: string }): Promise<ApiResponse<{ status:
 async function getDetail(params: {
   storyId: string;
   groupId?: string;
+  replayEventId?: string;
 }): Promise<ApiResponse<StoryDetail>> {
   const requestId = nextRequestId();
   await latency();
@@ -568,6 +701,9 @@ async function getDetail(params: {
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在或已被删除', requestId);
   const viewerIsAuthor = story.authorId === state.currentUserId;
+  if (isBlockedBetween(state, state.currentUserId, story.authorId)) {
+    return fail('NOT_VISIBLE', '这条故事当前不可见', requestId);
+  }
   if (story.publishStatus !== 'published' && !viewerIsAuthor) {
     return fail('NOT_VISIBLE', '这条故事已被作者撤回', requestId);
   }
@@ -602,11 +738,13 @@ async function getDetail(params: {
     ? updates.map((update) => ({ ...update, authorId: maskedAuthorId }))
     : updates;
   const maskedAvatar: AvatarState = story.isAnonymous
-    ? { ...avatar, ...ANONYMOUS_APPEARANCE, id: `avt_${maskedAuthorId}`, ownerId: maskedAuthorId, version: 1, customized: false, privacy: { allowFunnyActions: false, allowGifts: true } }
+    ? { ...avatar, ...ANONYMOUS_APPEARANCE, carryHand: undefined, id: `avt_${maskedAuthorId}`, ownerId: maskedAuthorId, version: 1, customized: false, privacy: { allowFunnyActions: false, allowGifts: true } }
     : avatar;
 
   const group = groupId ? groupSummary(state, groupId) : null;
   const authorPrefs = author.preferences;
+  const canInteract = !!groupId && !viewerIsAuthor && story.publishStatus === 'published' &&
+    story.moderationStatus === 'approved' && !interactionsPaused(state, groupId, story.authorId);
   const detail: StoryDetail = {
     story: maskedStory,
     incident: maskedIncident,
@@ -621,13 +759,29 @@ async function getDetail(params: {
     updates: maskedUpdates,
     reactions: reactionSummary(state, story.id),
     myReactions: todayMine(state, story.id),
-    giftable:
-      !!groupId && !viewerIsAuthor && story.allowGifts && authorPrefs.allowGifts && story.publishStatus === 'published',
-    canSpin: !!groupId && !viewerIsAuthor && story.allowFunnyActions && authorPrefs.allowFunnyActions,
+    giftable: canInteract && story.allowGifts && authorPrefs.allowGifts,
+    canSpin: canInteract && story.allowFunnyActions && authorPrefs.allowFunnyActions,
     group,
-    canInteract: !!groupId && story.publishStatus === 'published' && !viewerIsAuthor,
+    canInteract,
     viewerIsAuthor,
+    following: !!state.follows?.some((row) => row.userId === state.currentUserId && row.storyId === story.id && row.groupId === groupId),
   };
+  if (viewerIsAuthor && story.visibility === 'groups') {
+    const audiences = storyAudienceGroups(state, story).map(({ id, name }) => ({ id, name }));
+    detail.authorAudiences = audiences;
+    detail.retainedAudiences = audiences.filter(({ id }) => !isActiveMember(state, id, state.currentUserId));
+  }
+  if (viewerIsAuthor && params.replayEventId && !isSelfOnly &&
+      story.publishStatus === 'published' && story.moderationStatus === 'approved') {
+    const event = state.interactions.find((item) => item.id === params.replayEventId &&
+      item.storyId === story.id && isInboxEventVisible(state, item) &&
+      !state.ignoredInbox?.[state.currentUserId]?.includes(inboxGroupKey(item)));
+    const actor = event && avatarOf(state, event.actorId);
+    if (actor) {
+      const { palette, headShape, expression, equipped, carryHand } = actor;
+      detail.replay = { actionId: event.actionId, actorAppearance: { palette, headShape, expression, equipped, carryHand } };
+    }
+  }
   return ok(detail, requestId);
 }
 
@@ -666,14 +820,16 @@ async function saveDraft(params: { input: CreateStoryInput; version: number; req
   return ok(draft, requestId);
 }
 
-function validateStoryWrite(state: DbState, input: CreateStoryInput, requestId: string) {
+function validateStoryWrite(state: DbState, input: CreateStoryInput, requestId: string, retainedGroupIds: string[] = []) {
   const invalid = validateCreateStoryInput(input);
   if (invalid) return fail('VALIDATION_FAILED', invalid, requestId);
   if (input.story.visibility !== 'self') {
     const groupIds = input.story.visibilityGroupIds ?? [];
-    if (!groupIds.length) return fail('VALIDATION_FAILED', '请至少选择一个可见圈子，或选择「仅自己可见」', requestId);
-    if (groupIds.some((groupId) => !isActiveMember(state, groupId, state.currentUserId))) {
-      return fail('NOT_MEMBER', '只能发布到你已加入的圈子', requestId);
+    if (!groupIds.length && !retainedGroupIds.length) {
+      return fail('VALIDATION_FAILED', '请至少选择一个可见圈子，或选择「仅自己可见」', requestId);
+    }
+    if (groupIds.some((id) => !retainedGroupIds.includes(id) && !isActiveMember(state, id, state.currentUserId))) {
+      return fail('NOT_MEMBER', '只能保留原有受众，或发布到你已加入的圈子', requestId);
     }
   }
   if (findSensitiveInfo([input.story.title, input.story.body, input.incident.userSummary].filter(Boolean).join(' ')).length) {
@@ -715,6 +871,10 @@ async function publish(params: { input: CreateStoryInput; requestId: string; dra
   const requestId = params.requestId || nextRequestId();
   await latency();
   const state = loadStateForWrite();
+  const key = publishKey(state.currentUserId, requestId);
+  const publishedStoryId = state.storyPublishes?.[key];
+  if (publishedStoryId === null) return fail('NOT_FOUND', '这条事故记录已永久删除', requestId);
+  if (publishedStoryId !== undefined) return ok({ storyId: publishedStoryId, version: 1 }, requestId);
   const replay = cached<{ storyId: string; version: number }>(state, 'story.publish', requestId);
   if (replay) return replay;
   const invalid = validateStoryWrite(state, input, requestId);
@@ -732,7 +892,7 @@ async function publish(params: { input: CreateStoryInput; requestId: string; dra
     id: incidentId,
     schemaVersion: 1,
     authorId: state.currentUserId,
-    source: 'manual',
+    source: params.input.incident.source ?? 'manual',
     venueId: null,
     createdAt: now,
     updatedAt: now,
@@ -751,13 +911,18 @@ async function publish(params: { input: CreateStoryInput; requestId: string; dra
   });
   if (params.draftVersion && state.storyDrafts) delete state.storyDrafts[state.currentUserId];
   const response = ok({ storyId, version: 1 }, requestId);
-  remember(state, 'story.publish', requestId, response);
+  (state.storyPublishes ??= {})[key] = storyId;
   saveState(state, true);
   return response;
 }
 
-async function updateStory(params: { storyId: string; version: number; input: CreateStoryInput; requestId: string })
-  : Promise<ApiResponse<{ storyId: string; version: number }>> {
+async function updateStory(params: {
+  storyId: string;
+  version: number;
+  input: CreateStoryInput;
+  requestId: string;
+  removeRetainedGroupIds?: string[];
+}): Promise<ApiResponse<{ storyId: string; version: number }>> {
   const requestId = params.requestId || nextRequestId();
   await latency();
   const state = loadStateForWrite();
@@ -772,14 +937,30 @@ async function updateStory(params: { storyId: string; version: number; input: Cr
   if (story.version !== params.version) {
     return fail('CONFLICT', '这条记录已经更新，请查看已保存版本', requestId);
   }
-  const invalid = validateStoryWrite(state, params.input, requestId);
+  const { removeRetainedGroupIds = [] } = params;
+  const submittedGroupIds = params.input?.story?.visibilityGroupIds;
+  if (!Array.isArray(removeRetainedGroupIds) || removeRetainedGroupIds.some((id) =>
+    typeof id !== 'string' || !story.visibilityGroupIds.includes(id) ||
+    (Array.isArray(submittedGroupIds) && submittedGroupIds.includes(id)))) {
+    return fail('VALIDATION_FAILED', '请选择要移除的原有圈子受众', requestId);
+  }
+  // 旧版表单只列当前加入的圈子，改正文时会漏传退圈后保留的受众。
+  const retainedGroupIds = params.input?.story?.visibility === 'self' ? [] : storyAudienceGroups(state, story)
+    .filter(({ id }) => !removeRetainedGroupIds.includes(id) && !isActiveMember(state, id, state.currentUserId))
+    .map(({ id }) => id);
+  const invalid = validateStoryWrite(state, params.input, requestId, retainedGroupIds);
   if (invalid) return invalid;
   const incident = state.incidents.find((item) => item.id === story.incidentId);
   if (!incident) return fail('NOT_FOUND', '事故记录不存在', requestId);
   const updatedAt = new Date().toISOString();
   // 本地原型使用和发布相同的同步文字校验。云端审核结果由服务端决定。
-  Object.assign(incident, incidentFields(params.input.incident), { updatedAt });
-  Object.assign(story, storyFields(params.input.story), { updatedAt, version: story.version + 1 });
+  Object.assign(incident, incidentFields(params.input.incident), { updatedAt, source: params.input.incident.source ?? incident.source });
+  const fields = storyFields(params.input.story);
+  const visibilityGroupIds = [...new Set([...fields.visibilityGroupIds, ...retainedGroupIds])];
+  for (const groupId of story.visibilityGroupIds) {
+    if (!visibilityGroupIds.includes(groupId)) removeCommunityAudience(state, story.id, groupId);
+  }
+  Object.assign(story, fields, { visibilityGroupIds, updatedAt, version: story.version + 1 });
   for (const update of state.storyUpdates) {
     if (update.storyId !== story.id) continue;
     update.visibilityGroupIds = update.visibilityGroupIds.filter((id) => story.visibilityGroupIds.includes(id));
@@ -791,7 +972,7 @@ async function updateStory(params: { storyId: string; version: number; input: Cr
   return response;
 }
 
-async function appendUpdate(params: { storyId: string; type: UpdateType; body: string; requestId: string })
+async function appendUpdate(params: { storyId: string; expectedVersion?: number; type: UpdateType; body: string; requestId: string })
   : Promise<ApiResponse<StoryUpdate>> {
   const requestId = params.requestId || nextRequestId();
   await latency();
@@ -803,6 +984,9 @@ async function appendUpdate(params: { storyId: string; type: UpdateType; body: s
   if (replay) return replay;
   if (story.publishStatus !== 'published' || story.moderationStatus !== 'approved') {
     return fail('NOT_VISIBLE', '这条故事当前不能追加后续', requestId);
+  }
+  if (params.expectedVersion !== undefined && params.expectedVersion !== story.version) {
+    return fail('CONFLICT', '原记录已更新，请核对最新可见范围后再保存后续', requestId);
   }
   const body = typeof params.body === 'string' ? params.body.trim() : '';
   if (!UPDATE_TYPES.includes(params.type) || !body || body.length > 140) {
@@ -824,6 +1008,8 @@ async function appendUpdate(params: { storyId: string; type: UpdateType; body: s
     createdAt: new Date(now).toISOString(),
   };
   state.storyUpdates.push(update);
+  story.version += 1;
+  story.updatedAt = update.createdAt;
   const response = ok(update, requestId);
   remember(state, 'story.appendUpdate', requestId, response);
   saveState(state, true);
@@ -839,8 +1025,12 @@ async function withdrawUpdate(params: { storyId: string; updateId: string }): Pr
   if (!story || !update) return fail('NOT_FOUND', '这条后续不存在', requestId);
   if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能撤回自己的后续', requestId);
 
-  update.withdrawnAt ??= new Date().toISOString();
-  saveState(state, true);
+  if (!update.withdrawnAt) {
+    update.withdrawnAt = new Date().toISOString();
+    story.version += 1;
+    story.updatedAt = update.withdrawnAt;
+    saveState(state, true);
+  }
   return ok({ withdrawnAt: update.withdrawnAt }, requestId);
 }
 
@@ -856,6 +1046,19 @@ async function withdraw(params: { storyId: string }): Promise<ApiResponse<{ stat
   story.version += 1;
   saveState(state, true);
   return ok({ status: story.publishStatus }, requestId);
+}
+
+async function deleteStory(params: { storyId: string; version: number }): Promise<ApiResponse<{ deleted: true }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const story = state.stories.find((item) => item.id === params.storyId);
+  if (!story) return fail('NOT_FOUND', '这条事故记录已不存在', requestId);
+  if (story.authorId !== state.currentUserId) return fail('UNAUTHORIZED', '只能删除自己的事故记录', requestId);
+  if (story.version !== params.version) return fail('CONFLICT', '记录已更新，请查看最新版本后再删除', requestId);
+  purgeStories(state, new Set([story.id]));
+  saveState(state, true);
+  return ok({ deleted: true }, requestId);
 }
 
 async function listMyStories(): Promise<ApiResponse<AtlasStoryCard[]>> {
@@ -882,7 +1085,8 @@ async function reportStory(params: { storyId: string; groupId: string; reason: S
   const story = state.stories.find((item) => item.id === params.storyId);
   if (!story || story.visibility === 'self' || story.publishStatus !== 'published' ||
     story.moderationStatus !== 'approved' || !story.visibilityGroupIds.includes(params.groupId) ||
-    !isActiveMember(state, params.groupId, state.currentUserId) || story.authorId === state.currentUserId) {
+    !isActiveMember(state, params.groupId, state.currentUserId) || story.authorId === state.currentUserId ||
+    isBlockedBetween(state, state.currentUserId, story.authorId)) {
     return fail('NOT_VISIBLE', '只能举报当前圈子内可见的其他成员故事', requestId);
   }
   const reports = (state.reports ??= []);
@@ -947,21 +1151,21 @@ async function getMyAvatar(): Promise<ApiResponse<AvatarState>> {
   return ok(avatar, requestId);
 }
 
-function ownedCosmetic(state: DbState, itemDefId: string, slot: string): boolean {
+function ownedWearable(state: DbState, itemDefId: string, slot: string): boolean {
   const def = ITEM_MAP[itemDefId];
-  if (!def || def.category !== 'cosmetic' || def.slot !== slot) return false;
+  if (!def?.slot || def.slot !== slot) return false;
   const inv = findInventory(state, state.currentUserId, itemDefId);
-  return !!inv && inv.quantity > 0;
+  return !!inv && inv.quantity > 0 && (!inv.expiresAt || Date.parse(inv.expiresAt) > Date.now());
 }
 
 async function updateAppearance(params: {
-  appearance: { palette: Palette; equipped: EquippedGear; expression: Expression; headShape?: HeadShape };
+  appearance: RigAppearance & { equipped: EquippedGear & { carryHand?: CarryHand } };
   expectedVersion: number;
 }): Promise<ApiResponse<{ avatar: AvatarState }>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadStateForWrite();
-  const avatar = avatarOf(state, state.currentUserId);
+  const avatar = state.avatars.find((row) => row.ownerId === state.currentUserId);
   if (!avatar) return fail('NOT_FOUND', '角色数据缺失', requestId);
   if (avatar.version !== params?.expectedVersion) {
     return fail('CONFLICT', '角色已被更新，请确认后再保存', requestId);
@@ -975,14 +1179,23 @@ async function updateAppearance(params: {
   if (!PALETTES.includes(appearance.palette)) return fail('VALIDATION_FAILED', '配色不可用', requestId);
   if (!EXPRESSIONS.includes(appearance.expression)) return fail('VALIDATION_FAILED', '表情不可用', requestId);
   const equipped = { ...EMPTY_GEAR };
+  const desired = {
+    gloves: avatar.equipped.gloves, knee_pads: avatar.equipped.knee_pads, handheld: avatar.equipped.handheld,
+    ...appearance.equipped,
+  };
   for (const slot of EQUIP_SLOTS) {
-    const value = appearance.equipped[slot];
+    const value = desired[slot];
     if (value === undefined || value === null) continue;
-    if (typeof value !== 'string' || !ownedCosmetic(state, value, slot)) {
+    if (typeof value !== 'string' || !ownedWearable(state, value, slot)) {
       return fail('VALIDATION_FAILED', '装备未拥有或与当前槽位不匹配', requestId);
     }
     equipped[slot] = value;
   }
+  const requestedHand = appearance.carryHand === undefined ? appearance.equipped.carryHand : appearance.carryHand;
+  const carryHand = requestedHand === undefined ? avatar.carryHand ?? 'right' : requestedHand;
+  if (!CARRY_HANDS.includes(carryHand)) return fail('VALIDATION_FAILED', '无效的雪板握持手', requestId);
+  if (equipped.handheld === SNOWBOARD_ID) avatar.carryHand = carryHand;
+  else delete avatar.carryHand;
   avatar.palette = appearance.palette;
   avatar.equipped = equipped;
   avatar.expression = appearance.expression;
@@ -1002,10 +1215,32 @@ async function getInventory(): Promise<ApiResponse<InventoryView[]>> {
   const state = loadState();
   const order = { cosmetic: 0, consumable: 1, badge: 2 };
   const items = state.inventory
-    .filter((inv) => inv.ownerId === state.currentUserId && inv.quantity > 0)
+    .filter((inv) => inv.ownerId === state.currentUserId && inv.quantity > 0 && (!inv.expiresAt || Date.parse(inv.expiresAt) > Date.now()))
     .map((inv) => inventoryView(state, inv))
     .sort((a, b) => order[a.category] - order[b.category] || a.name.localeCompare(b.name));
   return ok(items, requestId);
+}
+
+async function consume(params: { itemDefId: string; version: number; requestId: string }) {
+  const state = loadStateForWrite();
+  const { itemDefId, requestId } = params;
+  if (typeof requestId !== 'string' || !requestId || requestId.length > 140 ||
+      ITEM_MAP[itemDefId]?.category !== 'consumable') return fail('VALIDATION_FAILED', '请选择互动道具', nextRequestId());
+  const item = findInventory(state, state.currentUserId, itemDefId);
+  const operationId = 'consume_' + requestId;
+  const previous = state.ledger.find((row) => row.operationId === operationId && row.fromUserId === state.currentUserId);
+  if (previous) return previous.itemDefId === itemDefId ? ok({ used: true }, requestId) : fail('CONFLICT', '重复的使用请求', requestId);
+  if (!item || item.quantity <= 0 || (item.expiresAt && Date.parse(item.expiresAt) <= Date.now())) {
+    return fail('INVENTORY_INSUFFICIENT', '道具已用完或过期', requestId);
+  }
+  if (item.version !== params.version) return fail('CONFLICT', '库存有变动，请重新确认', requestId);
+  item.quantity--;
+  item.version++;
+  removeUnavailableGear(state, state.currentUserId);
+  state.ledger.push({ operationId, fromUserId: state.currentUserId, toUserId: null, itemDefId, delta: -1,
+    eventId: 'consume', createdAt: new Date().toISOString() });
+  saveState(state, true);
+  return ok({ used: true }, requestId);
 }
 
 async function claimCosmetic(params: { itemDefId: string }): Promise<ApiResponse<InventoryView>> {
@@ -1026,7 +1261,7 @@ async function claimWeekly(params: { requestId: string }): Promise<
 > {
   const requestId = params.requestId || nextRequestId();
   await latency();
-  const state = loadState();
+  const state = loadStateForWrite();
   const cachedResponse =
     cached<{ grantId: string; items: InventoryView[]; alreadyGranted: boolean }>(state, 'inventory.claimWeekly', requestId);
   if (cachedResponse) return cachedResponse;
@@ -1050,10 +1285,15 @@ async function claimWeekly(params: { requestId: string }): Promise<
   }
   const now = Date.now();
   const grantId = `grant_${wk}_${state.currentUserId}`;
+  const granted: string[] = [];
   for (const itemDefId of picks) {
     const def = ITEM_MAP[itemDefId];
     const inv = ensureInventory(state, state.currentUserId, itemDefId);
-    inv.quantity = Math.min(def.maxStack, inv.quantity + 1);
+    removeUnavailableGear(state, state.currentUserId);
+    if (inv.expiresAt && Date.parse(inv.expiresAt) <= now) inv.quantity = 0;
+    if (inv.quantity >= def.maxStack) continue;
+    inv.quantity += 1;
+    granted.push(itemDefId);
     inv.expiresAt = def.permanent ? null : addDays(now, def.ttlDays ?? 14);
     inv.version += 1;
     state.ledger.push({
@@ -1066,14 +1306,15 @@ async function claimWeekly(params: { requestId: string }): Promise<
       createdAt: new Date(now).toISOString(),
     });
   }
-  state.weeklyGrants.push({ userId: state.currentUserId, weekKey: wk, grantId, items: picks, createdAt: new Date(now).toISOString() });
-  const items = picks
+  if (!granted.length) return fail('CONFLICT', '这周的补给道具已满，腾出位置后可再领取', requestId);
+  state.weeklyGrants.push({ userId: state.currentUserId, weekKey: wk, grantId, items: granted, createdAt: new Date(now).toISOString() });
+  const items = granted
     .map((id) => findInventory(state, state.currentUserId, id))
     .filter((inv): inv is InventoryItem => !!inv)
     .map((inv) => inventoryView(state, inv));
   const response = ok({ grantId, items, alreadyGranted: false }, requestId);
   remember(state, 'inventory.claimWeekly', requestId, response);
-  saveState(state);
+  saveState(state, true);
   return response;
 }
 
@@ -1096,12 +1337,13 @@ async function gift(params: {
   /** 可选：服务端从 storyId 解析真实作者，客户端不需要（也不应该）拿到匿名作者 ID */
   toUserId?: string;
   storyId: string;
+  groupId?: string;
   itemDefId: string;
   requestId: string;
 }): Promise<ApiResponse<{ eventId: string; itemDefId: string; toUserId: string }>> {
   const requestId = params.requestId || nextRequestId();
   await latency();
-  const state = loadState();
+  const state = loadStateForWrite();
   const cachedResponse = cached<{ eventId: string; itemDefId: string; toUserId: string }>(state, 'inventory.gift', requestId);
   const story = state.stories.find((s) => s.id === params.storyId);
   if (!story) return fail('NOT_FOUND', '这条故事不存在', requestId);
@@ -1116,9 +1358,11 @@ async function gift(params: {
   if (story.publishStatus !== 'published' || story.moderationStatus !== 'approved') {
     return fail('NOT_VISIBLE', '这条故事当前不可见', requestId);
   }
-  if (!resolveStoryGroup(state, story)) {
+  const groupId = interactionGroup(state, story, params.groupId);
+  if (!groupId) {
     return fail('NOT_MEMBER', '你不在这个故事所属的圈子里', requestId);
   }
+  if (interactionsPaused(state, groupId, targetId)) return fail('INTERACTION_DISABLED', '这条故事的互动暂不可用', requestId);
   if (!story.allowGifts) return fail('INTERACTION_DISABLED', '作者关闭了收礼', requestId);
   const target = userById(state, targetId);
   if (!target) return fail('NOT_FOUND', '收礼的雪友不存在', requestId);
@@ -1144,10 +1388,14 @@ async function gift(params: {
   if (giftsToday >= MAX_GIFTS_PER_DAY) return fail('RATE_LIMIT', '今天送礼次数已用完，明天再来', requestId);
 
   // 事务：扣减 → 增加 → 台账（任何一步失败都不保存）
+  const targetInv = ensureInventory(state, targetId, params.itemDefId);
+  if (targetInv.expiresAt && Date.parse(targetInv.expiresAt) <= Date.now()) targetInv.quantity = 0;
+  if (targetInv.quantity >= def.maxStack) return fail('CONFLICT', '对方的这种道具已满', requestId);
   mine.quantity -= 1;
   mine.version += 1;
-  const targetInv = ensureInventory(state, targetId, params.itemDefId);
-  targetInv.quantity = Math.min(ITEM_MAP[params.itemDefId].maxStack, targetInv.quantity + 1);
+  removeUnavailableGear(state, targetId);
+  removeUnavailableGear(state, state.currentUserId);
+  targetInv.quantity += 1;
   if (!ITEM_MAP[params.itemDefId].permanent) {
     targetInv.expiresAt = addDays(Date.now(), ITEM_MAP[params.itemDefId].ttlDays ?? 14);
   }
@@ -1176,7 +1424,7 @@ async function gift(params: {
   });
   const response = ok({ eventId: event.id, itemDefId: params.itemDefId, toUserId: publicAuthorId(story) }, requestId);
   remember(state, 'inventory.gift', requestId, response);
-  saveState(state);
+  saveState(state, true);
   return response;
 }
 
@@ -1184,6 +1432,7 @@ async function gift(params: {
 
 async function react(params: {
   storyId: string;
+  groupId?: string;
   actionId: ActionId;
   requestId: string;
 }): Promise<ApiResponse<{ eventId: string; actionId: ActionId }>> {
@@ -1202,8 +1451,9 @@ async function react(params: {
   }
   if (story.visibility === 'self') return fail('NOT_VISIBLE', '这条故事仅作者自己可见', requestId);
   if (story.authorId === state.currentUserId) return fail('VALIDATION_FAILED', '不能给自己的故事做互动', requestId);
-  const groupId = resolveStoryGroup(state, story);
+  const groupId = interactionGroup(state, story, params.groupId);
   if (!groupId) return fail('NOT_MEMBER', '你不在这个故事所属的圈子里', requestId);
+  if (interactionsPaused(state, groupId, story.authorId)) return fail('INTERACTION_DISABLED', '这条故事的互动暂不可用', requestId);
   const author = userById(state, story.authorId);
   if (!author) return fail('NOT_FOUND', '故事作者不存在', requestId);
   if (def.requiresFunnyConsent && (!story.allowFunnyActions || !author.preferences.allowFunnyActions)) {
@@ -1231,73 +1481,129 @@ async function react(params: {
   return response;
 }
 
+function inboxGroupKey(event: InteractionEvent): string {
+  return `${event.storyId}|${dayKey(Date.parse(event.createdAt))}|${event.actionId}`;
+}
+
+function isInboxEventVisible(state: DbState, event: InteractionEvent): boolean {
+  const userId = state.currentUserId;
+  return event.targetId === userId && event.status === 'ok' && !isBlockedBetween(state, userId, event.actorId);
+}
+
+function inboxEvents(state: DbState): InboxEvent[] {
+  const targetId = state.currentUserId;
+  const ignored = new Set(state.ignoredInbox?.[targetId]);
+  const stories = new Map(state.stories.map((story) => [story.id, story]));
+  const actors = new Map(state.users.map((user) => [user.id, user.displayName]));
+  const notices = new Map(state.notifications.filter((notice) => notice.targetId === targetId)
+    .map((notice) => [notice.eventId, notice]));
+  return state.interactions
+    .filter((event) => isInboxEventVisible(state, event) && !ignored.has(inboxGroupKey(event)))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+    .flatMap((event) => {
+      const story = stories.get(event.storyId);
+      if (!story || story.publishStatus !== 'published' || story.moderationStatus !== 'approved' || story.visibility === 'self') return [];
+      return [{ ...event, actorName: actors.get(event.actorId) ?? '雪友', storyTitle: story.title, read: !!notices.get(event.id)?.readAt }];
+    });
+}
+
+function inboxPage<T>(items: T[], params: { cursor?: string; limit?: number }) {
+  const offset = params.cursor && /^\d+$/.test(params.cursor) ? Number(params.cursor) : 0;
+  const limit = Math.min(Math.max(Number.isInteger(params.limit) ? params.limit! : 20, 1), 50);
+  return { items: items.slice(offset, offset + limit), nextCursor: offset + limit < items.length ? String(offset + limit) : null };
+}
+
 async function getInbox(params: { cursor?: string; limit?: number }): Promise<
   ApiResponse<{ events: InboxEvent[]; nextCursor: string | null; unreadCount: number }>
 > {
   const requestId = nextRequestId();
   await latency();
-  const state = loadState();
-  const limit = Math.min(Math.max(params.limit ?? 20, 1), 50);
-  const offset = params.cursor ? Number(params.cursor) : 0;
-  const all = state.interactions
-    .filter((e) => e.targetId === state.currentUserId && e.status === 'ok')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const page = all.slice(offset, offset + limit).map((event) => {
-    const actor = userById(state, event.actorId);
-    const story = state.stories.find((s) => s.id === event.storyId);
-    const notification = state.notifications.find((n) => n.eventId === event.id && n.targetId === state.currentUserId);
-    return {
-      ...event,
-      actorName: actor?.displayName ?? '雪友',
-      storyTitle: story?.title ?? '一条故事',
-      read: !!notification?.readAt,
-    } satisfies InboxEvent;
-  });
-  const unreadCount = all.filter((event) => {
-    const notification = state.notifications.find((n) => n.eventId === event.id && n.targetId === state.currentUserId);
-    return !notification?.readAt;
-  }).length;
-  return ok(
-    {
-      events: page,
-      nextCursor: offset + limit < all.length ? String(offset + limit) : null,
-      unreadCount,
-    },
-    requestId,
-  );
+  const all = inboxEvents(loadState());
+  const { items, nextCursor } = inboxPage(all, params);
+  return ok({ events: items, nextCursor, unreadCount: all.filter((event) => !event.read).length }, requestId);
 }
 
-async function markRead(params: { eventIds?: string[]; all?: boolean }): Promise<ApiResponse<{ updatedCount: number }>> {
+async function getInboxGroups(params: { cursor?: string; limit?: number }): Promise<
+  ApiResponse<{ groups: InboxGroup[]; nextCursor: string | null; unreadCount: number }>
+> {
+  const requestId = nextRequestId();
+  await latency();
+  const groups = new Map<string, InboxGroup>();
+  const events = inboxEvents(loadState());
+  for (const event of events) {
+    const id = inboxGroupKey(event);
+    const group = groups.get(id) ?? { id, events: [], unreadCount: 0 };
+    group.events.push(event);
+    if (!event.read) group.unreadCount += 1;
+    groups.set(id, group);
+  }
+  const { items, nextCursor } = inboxPage([...groups.values()], params);
+  return ok({ groups: items, nextCursor, unreadCount: events.filter((event) => !event.read).length }, requestId);
+}
+
+async function markRead(params: { eventIds?: string[]; all?: boolean; groupKey?: string }): Promise<ApiResponse<{ updatedCount: number }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const all = params.all === true;
+  const groupKey = typeof params.groupKey === 'string' ? params.groupKey : '';
+  const eventIds = Array.isArray(params.eventIds) ? params.eventIds : [];
+  if (!all && !groupKey && !eventIds.length) {
+    return fail('VALIDATION_FAILED', '缺少要标记的事件', requestId);
+  }
+  const ids = new Set(groupKey
+    ? inboxEvents(state).filter((event) => inboxGroupKey(event) === groupKey).map((event) => event.id)
+    : eventIds);
+  const now = new Date().toISOString();
+  let updated = 0;
+  for (const notification of state.notifications) {
+    if (notification.targetId === state.currentUserId && !notification.readAt &&
+      (all || ids.has(notification.eventId))) {
+      notification.readAt = now;
+      updated += 1;
+    }
+  }
+  if (updated) saveState(state, true);
+  return ok({ updatedCount: updated }, requestId);
+}
+
+async function ignoreInboxGroup(params: { groupKey: string }): Promise<ApiResponse<{ ignored: true }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  const userId = state.currentUserId;
+  const ignored = state.ignoredInbox?.[userId] ?? [];
+  if (ignored.includes(params.groupKey)) return ok({ ignored: true }, requestId);
+  if (!inboxEvents(state).some((event) => inboxGroupKey(event) === params.groupKey)) {
+    return fail('NOT_FOUND', '找不到这组消息', requestId);
+  }
+  (state.ignoredInbox ??= {})[userId] = [...ignored, params.groupKey];
+  saveState(state, true);
+  return ok({ ignored: true }, requestId);
+}
+
+async function setBlocked(params: { userId: string; blocked: boolean }): Promise<ApiResponse<{ blocked: boolean }>> {
+  const requestId = nextRequestId();
+  await latency();
+  const state = loadStateForWrite();
+  if (typeof params.blocked !== 'boolean' || params.userId === state.currentUserId || !userById(state, params.userId)) {
+    return fail('VALIDATION_FAILED', '无效的屏蔽对象', requestId);
+  }
+  const userId = state.currentUserId;
+  const blocked = new Set(state.blocks?.[userId]);
+  if (params.blocked) blocked.add(params.userId);
+  else blocked.delete(params.userId);
+  (state.blocks ??= {})[userId] = [...blocked];
+  saveState(state, true);
+  return ok({ blocked: params.blocked }, requestId);
+}
+
+async function listBlocked(): Promise<ApiResponse<{ id: string; name: string }[]>> {
   const requestId = nextRequestId();
   await latency();
   const state = loadState();
-  const now = new Date().toISOString();
-  let updated = 0;
-  if (params.all) {
-    // 全部已读由服务端按「当前用户」判定：客户端只加载了一页，
-    // 不能让它替服务端决定「全部」的范围（否则分页外的未读会被漏标）
-    for (const notification of state.notifications) {
-      if (notification.targetId === state.currentUserId && !notification.readAt) {
-        notification.readAt = now;
-        updated += 1;
-      }
-    }
-  } else {
-    const eventIds = params.eventIds ?? [];
-    if (!eventIds.length) return fail('VALIDATION_FAILED', '缺少要标记的事件', requestId);
-    for (const notification of state.notifications) {
-      if (
-        notification.targetId === state.currentUserId &&
-        eventIds.includes(notification.eventId) &&
-        !notification.readAt
-      ) {
-        notification.readAt = now;
-        updated += 1;
-      }
-    }
-  }
-  if (updated) saveState(state);
-  return ok({ updatedCount: updated }, requestId);
+  const blocked = new Set(state.blocks?.[state.currentUserId]);
+  return ok(state.users.filter((user) => blocked.has(user.id)).map((user) => ({ id: user.id, name: user.displayName })), requestId);
 }
 
 /* ------------------------------------------------------------------ 设置 */
@@ -1318,14 +1624,14 @@ async function updateSettings(params: {
   const changes = params.preferences;
   if (!changes || typeof changes !== 'object') return fail('VALIDATION_FAILED', '偏好设置不合法', requestId);
   const next = { ...user.preferences };
-  for (const key of ['allowFunnyActions', 'allowGifts', 'reduceMotion', 'anonymousByDefault'] as const) {
+  for (const key of ['allowFunnyActions', 'allowGifts', 'reduceMotion', 'anonymousByDefault', 'hideAvatar'] as const) {
     const value = changes[key];
     if (value === undefined) continue;
     if (typeof value !== 'boolean') return fail('VALIDATION_FAILED', '偏好设置不合法', requestId);
     next[key] = value;
   }
   user.preferences = next;
-  const avatar = avatarOf(state, user.id);
+  const avatar = state.avatars.find((row) => row.ownerId === user.id);
   if (avatar) {
     avatar.privacy = { allowFunnyActions: next.allowFunnyActions, allowGifts: next.allowGifts };
   }
@@ -1336,12 +1642,16 @@ async function updateSettings(params: {
 /* ------------------------------------------------------------------ 导出 */
 
 export const mockApi = {
-  auth: { ensureUser },
-  group: { listMine, getAtlas, getMembers, createInvite, join, leave, getJoinRequests, reviewMember },
-  story: { getDetail, getDraft, saveDraft, publish, update: updateStory, appendUpdate, withdrawUpdate, withdraw, listMine: listMyStories },
-  avatar: { getMine: getMyAvatar, updateAppearance },
-  inventory: { getMine: getInventory, claimCosmetic, claimWeekly, getWeekly: getWeeklyStatus, gift },
-  interaction: { react, getInbox, markRead },
+  poll: { list: listPoll, change: changePoll, close: closePoll, myBadge: myPollBadge },
+  links: { list: listLinks, request: requestLink, decide: decideLink, requests: linkRequests },
+  auth: { ensureUser, deleteAccount },
+  group: { listMine, create: createGroup, getAtlas, getMembers, createInvite, listInvites, revokeInvite, join, leave,
+    getJoinRequests, reviewMember, transferOwner, setInteractionsPaused },
+  story: { setFollow, followedUpdates, getDetail, getDraft, saveDraft, publish, update: updateStory, appendUpdate, withdrawUpdate, withdraw,
+    delete: deleteStory, listMine: listMyStories },
+  avatar: { getMine: getMyAvatar, updateAppearance, listOutfits, saveOutfit },
+  inventory: { getMine: getInventory, consume, claimCosmetic, claimWeekly, getWeekly: getWeeklyStatus, gift },
+  interaction: { react, getInbox, getInboxGroups, markRead, ignoreInboxGroup, setBlocked, listBlocked },
   moderation: { reportStory, listReports, resolveReport },
   settings: { get: getSettings, update: updateSettings },
 };

@@ -149,6 +149,63 @@ const avatarLayerAfter = await page.evaluate(() => document.querySelectorAll('.a
 check('角色页渲染图层并按表情切换', avatarLayerBefore === avatarLayerAfter && avatarLayerAfter > 3, `${avatarLayerAfter} 层`);
 await page.screenshot({ path: join(OUT, 'avatar-edit@2x.png') });
 
+const gearViews = await page.evaluate(() => {
+  const click = (selector) => document.querySelector(selector).click();
+  const layers = () => [...document.querySelectorAll('.avatar-stage .rig-layer')].map((layer) => layer.dataset.layer);
+  click('[data-gear="gloves_frost"]');
+  click('[data-gear="pads_slate"]');
+  click('[data-gear="snowboard_dawn"]');
+  const front = layers();
+  click('[data-avatar-view="back"]');
+  const back = layers();
+  click('[data-carry-hand="left"]');
+  const left = layers();
+  click('[data-gear="ski_poles"]');
+  const poles = layers();
+  click('[data-avatar-view="chip"]');
+  const chip = layers();
+  click('[data-avatar-view="front"]');
+  return { front, back, left, poles, chip };
+});
+check('手套与护膝在正背视图显示', ['front', 'back'].every((view) =>
+  ['glove_left', 'glove_right', 'knee_pads'].every((id) => gearViews[view].includes(id))));
+check('单板正背面和换手使用对应的一侧', gearViews.front.includes('board_left') && !gearViews.front.includes('board_right') &&
+  gearViews.back.includes('board_right') && !gearViews.back.includes('board_left') &&
+  gearViews.left.includes('board_left') && !gearViews.left.includes('board_right'));
+check('双雪杖各挂在一只手上，小头像只显示头部', ['pole_left', 'pole_right'].every((id) => gearViews.poles.includes(id)) &&
+  gearViews.chip.every((id) => ['head', 'face', 'headgear', 'goggles'].includes(id)));
+
+for (const [action, hidesGear] of [['hug', true], ['spin', false], ['cheer', true]]) {
+  const inMotion = await page.evaluate(async (id) => {
+    document.querySelector(`[data-avatar-action="${id}"]`).click();
+    await new Promise(requestAnimationFrame);
+    const rig = document.querySelector('.avatar-stage .rig');
+    const arm = rig.querySelector('.rig__arm--left');
+    const target = id === 'spin' ? rig : arm;
+    const motion = target.getAnimations()[0];
+    if (motion) motion.currentTime = id === 'hug' ? 590 : id === 'cheer' ? 290 : 450;
+    return {
+      moving: !!motion && getComputedStyle(target).transform !== 'none',
+      staysWithHand: arm.contains(rig.querySelector('[data-layer="pole_left"]')),
+      hidden: [...rig.querySelectorAll('.rig__handheld')].every((item) => getComputedStyle(item).opacity === '0'),
+    };
+  }, action);
+  await page.waitForFunction((id) => !document.querySelector('.avatar-stage .rig').classList.contains(`is-${id}`), {}, action);
+  const visibleAgain = await page.evaluate(() => [...document.querySelectorAll('.avatar-stage .rig__handheld')].every((layer) =>
+    getComputedStyle(layer).opacity === '1'));
+  check(`装备随「${action}」动作处理并复位`, inMotion.moving && inMotion.staysWithHand && inMotion.hidden === hidesGear && visibleAgain);
+}
+
+const still = await page.evaluate(() => {
+  window.PREVIEW_STATE.prefs.reduceMotion = true;
+  document.querySelector('[data-avatar-action="hug"]').click();
+  const rig = document.querySelector('.avatar-stage .rig');
+  window.PREVIEW_STATE.prefs.reduceMotion = false;
+  return !rig.getAnimations({ subtree: true }).length && [...rig.querySelectorAll('.rig__handheld')].every((item) =>
+    getComputedStyle(item).opacity === '1');
+});
+check('减少动效保留静态握持', still);
+
 // 发布页
 await page.evaluate(() => window.P.go('create'));
 await new Promise((r) => setTimeout(r, 2200));
@@ -203,6 +260,28 @@ await new Promise((r) => setTimeout(r, 200));
 await page.screenshot({ path: join(OUT, 'inbox@2x.png') });
 const unread = await page.evaluate(() => window.PREVIEW_STATE.unread);
 check('消息页有未读互动', unread >= 0, `unread=${unread}`);
+const replayActor = await page.evaluate(() => {
+  const state = window.PREVIEW_STATE;
+  const index = state.inbox.findIndex((event) =>
+    event.replay?.actionId === 'hug' && event.replay.actorAppearance.palette !== state.me.palette);
+  const notice = state.inbox[index];
+  if (!notice) return null;
+  document.querySelectorAll('.event')[index].click();
+  return notice.replay.actorAppearance.palette;
+});
+if (replayActor) {
+  await page.waitForSelector('.story-stage.hug .story-stage__me');
+}
+const replayMatches = await page.evaluate((actorPalette) => {
+  if (!actorPalette) return false;
+  const preview = window.__PREVIEW__;
+  const body = preview.rig.views.front.find((layer) => layer.id === 'body');
+  const expected = document.createElement('div');
+  expected.innerHTML = preview.art[body.variants[actorPalette]];
+  return document.querySelector('.story-stage__me [data-layer="body"]').innerHTML === expected.innerHTML;
+}, replayActor);
+check('收件箱回放使用实际发起抱抱的角色', replayMatches);
+
 
 check('无 JS 运行时错误', errors.length === 0, errors.slice(0, 3).join(' | '));
 

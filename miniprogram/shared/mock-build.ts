@@ -59,7 +59,9 @@ function storyFromFixture(story: FixtureStory, now: number): Story {
 }
 
 function cosmeticIds(): string[] {
-  return ITEM_DEFINITIONS.filter((item) => item.category === 'cosmetic' && item.id !== 'snow_boots').map((item) => item.id);
+  return ITEM_DEFINITIONS.filter((item) => item.category === 'cosmetic' &&
+    (item.slot === 'outfit' || item.slot === 'headgear' || item.slot === 'goggles' || item.slot === 'hip_protector'))
+    .map((item) => item.id);
 }
 
 const BASE_CONSUMABLES: Record<string, Record<string, number>> = {

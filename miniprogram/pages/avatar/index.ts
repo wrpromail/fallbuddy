@@ -1,16 +1,13 @@
 import { api } from '../../services/api';
 import { ACTIONS } from '../../shared/actions';
 import {
-  EQUIP_SLOTS, EXPRESSIONS, EXPRESSION_LABEL, HEAD_SHAPES, PALETTE_COLOR, PALETTES,
-  type EquipSlot, type Expression, type HeadShape, type Palette,
+  CARRY_HANDS, EQUIP_SLOTS, EQUIP_SLOT_LABEL, EXPRESSIONS, EXPRESSION_LABEL, HEAD_SHAPES, PALETTE_COLOR, PALETTES,
+  type CarryHand, type EquipSlot, type Expression, type HeadShape, type Palette,
 } from '../../shared/enums';
-import { ITEM_DEFINITIONS, ITEM_MAP } from '../../shared/items';
+import { ITEM_DEFINITIONS, ITEM_MAP, SNOWBOARD_ID } from '../../shared/items';
 import type { RigAppearance } from '../../shared/rig-types';
 import type { AtlasStoryCard, AvatarState, InventoryView } from '../../shared/types';
 
-const SLOT_LABEL: Record<EquipSlot, string> = {
-  headgear: '头饰', goggles: '雪镜', outfit: '服装', hip_protector: '护臀', boots: '鞋靴',
-};
 const SHAPE_LABEL: Record<HeadShape, string> = { round: '圆头', soft_square: '方圆头' };
 const PALETTE_LABEL: Record<Palette, string> = { blue: '冰蓝', orange: '杏橙', purple: '雾紫', mint: '薄荷' };
 
@@ -23,7 +20,7 @@ type WardrobeOption = {
 };
 
 const WARDROBE = Object.fromEntries(EQUIP_SLOTS.map((slot) => [
-  slot, ITEM_DEFINITIONS.filter((item) => item.category === 'cosmetic' && item.slot === slot).map((item) => ({
+  slot, ITEM_DEFINITIONS.filter((item) => item.slot === slot).map((item) => ({
     id: item.id, name: item.name, src: `/assets/${item.assetKey}.png`, desc: item.description,
   })),
 ]));
@@ -38,6 +35,7 @@ interface AvatarPageData {
   slot: EquipSlot;
   selectedItem: string | null;
   selectedOwned: boolean;
+  snowboardSelected: boolean;
   wardrobe: WardrobeOption[];
   ownedIds: string[];
   headShapes: { id: HeadShape; label: string }[];
@@ -50,6 +48,8 @@ interface AvatarPageData {
   claimingItem: boolean;
   notice: string;
   error: string;
+  outfits: { slot: number; version: number; appearance: RigAppearance | null }[];
+  pollBadge: boolean;
   inventory: InventoryView[];
   myStories: AtlasStoryCard[];
   hasDraft: boolean;
@@ -71,12 +71,13 @@ Page({
     slot: 'headgear',
     selectedItem: null,
     selectedOwned: false,
+    snowboardSelected: false,
     wardrobe: [],
     ownedIds: [],
     headShapes: HEAD_SHAPES.map((id) => ({ id, label: SHAPE_LABEL[id] })),
     expressions: EXPRESSIONS.map((id) => ({ id, label: EXPRESSION_LABEL[id] })),
     palettes: PALETTES.map((id) => ({ id, color: PALETTE_COLOR[id], label: PALETTE_LABEL[id] })),
-    slots: EQUIP_SLOTS.map((id) => ({ id, label: SLOT_LABEL[id] })),
+    slots: EQUIP_SLOTS.map((id) => ({ id, label: EQUIP_SLOT_LABEL[id] })),
     actions: ACTIONS.map(({ id, name }) => ({ id, label: name })),
     reduceMotion: false,
     saving: false,
@@ -84,6 +85,8 @@ Page({
     notice: '',
     error: '',
     inventory: [],
+    outfits: [],
+    pollBadge: false,
     myStories: [],
     hasDraft: false,
     weeklyClaimed: false,
@@ -102,9 +105,9 @@ Page({
   async load() {
     if (this.data.saving) return;
     this.setData({ loading: true, error: '' });
-    const [avatarRes, invRes, storiesRes, draftRes, weeklyRes, settingsRes] = await Promise.all([
+    const [avatarRes, invRes, storiesRes, draftRes, weeklyRes, settingsRes, outfitsRes, badgeRes] = await Promise.all([
       api.avatar.getMine(), api.inventory.getMine(), api.story.listMine(), api.story.getDraft(),
-      api.inventory.getWeekly(), api.settings.get(),
+      api.inventory.getWeekly(), api.settings.get(), api.avatar.listOutfits(), api.poll.myBadge(),
     ]);
     if (!avatarRes.ok || !invRes.ok) {
       this.setData({ loading: false, error: !avatarRes.ok ? avatarRes.message : '暂时无法读取衣橱，请重试' });
@@ -115,9 +118,11 @@ Page({
       loading: false,
       avatar: this.data.draft ? this.data.avatar : avatar,
       preview: this.data.draft ?? avatar,
-      ownedIds: invRes.data.filter((item) => item.category === 'cosmetic').map((item) => item.itemDefId),
+      ownedIds: invRes.data.filter((item) => ITEM_MAP[item.itemDefId]?.slot).map((item) => item.itemDefId),
       inventory: invRes.data.filter((item) => item.category !== 'cosmetic'),
       myStories: storiesRes.ok ? storiesRes.data : [],
+      outfits: outfitsRes.ok ? outfitsRes.data : [],
+      pollBadge: badgeRes.ok && badgeRes.data.earned,
       hasDraft: draftRes.ok && !!draftRes.data,
       weeklyClaimed: weeklyRes.ok && weeklyRes.data.claimed,
       reduceMotion: settingsRes.ok && settingsRes.data.reduceMotion,
@@ -129,8 +134,10 @@ Page({
     const slot = this.data.slot;
     const owned = new Set(this.data.ownedIds);
     const selectedItem = this.data.draft?.equipped[slot] ?? null;
-    const wardrobe = (WARDROBE[slot] ?? []).map((item) => ({ ...item, owned: owned.has(item.id) }));
-    this.setData({ wardrobe, selectedItem, selectedOwned: !!selectedItem && owned.has(selectedItem) });
+    const wardrobe = (WARDROBE[slot] ?? []).filter((item) =>
+      ITEM_MAP[item.id]?.category === 'cosmetic' || owned.has(item.id)).map((item) => ({ ...item, owned: owned.has(item.id) }));
+    this.setData({ wardrobe, selectedItem, selectedOwned: !!selectedItem && owned.has(selectedItem),
+      snowboardSelected: selectedItem === SNOWBOARD_ID });
   },
 
   onEdit() {
@@ -141,7 +148,41 @@ Page({
       palette: avatar.palette,
       expression: avatar.expression,
       equipped: { ...avatar.equipped },
+      carryHand: avatar.carryHand ?? 'right',
     });
+  },
+
+  onTryOutfit(event: WechatMiniprogram.TouchEvent) {
+    const row = this.data.outfits.find((item) => item.slot === Number(event.currentTarget.dataset.slot));
+    if (row?.appearance && !this.data.saving) this.setDraft({ ...row.appearance, equipped: { ...row.appearance.equipped } });
+  },
+
+  async onStoreOutfit(event: WechatMiniprogram.TouchEvent) {
+    const { slot, clear } = event.currentTarget.dataset;
+    const row = this.data.outfits.find((item) => item.slot === Number(slot));
+    if (!row || !this.data.avatar || this.data.draft || this.data.saving) return;
+    this.setData({ saving: true });
+    try {
+      const res = await api.avatar.saveOutfit({ slot: row.slot, slotVersion: row.version,
+        clear: clear === 'yes', avatarVersion: this.data.avatar.version });
+      this.setData({ notice: res.ok ? (clear === 'yes' ? '已移除收藏' : '已收藏当前形象') : res.message });
+    } finally {
+      this.setData({ saving: false });
+      await this.load();
+    }
+  },
+
+  onRandomOutfit() {
+    const draft = this.data.draft;
+    if (!draft || this.data.saving) return;
+    const pick = <T>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)];
+    const equipped = { ...draft.equipped };
+    for (const slot of EQUIP_SLOTS) {
+      const choices = this.data.ownedIds.filter((id) => ITEM_MAP[id]?.slot === slot);
+      equipped[slot] = pick([null, ...choices]);
+    }
+    this.setDraft({ headShape: pick(HEAD_SHAPES), expression: pick(EXPRESSIONS), palette: pick(PALETTES),
+      equipped, carryHand: pick(CARRY_HANDS) });
   },
 
   onCancel() {
@@ -180,7 +221,16 @@ Page({
     const id = event.currentTarget.dataset.id as string | undefined;
     const { draft, slot, saving } = this.data;
     if (!draft || saving || (id && ITEM_MAP[id]?.slot !== slot)) return;
+    if (slot === 'gloves' || slot === 'knee_pads' || slot === 'handheld') this.setData({ mode: 'full' });
     this.setDraft({ ...draft, equipped: { ...draft.equipped, [slot]: id || null } });
+  },
+
+  onCarryHand(event: WechatMiniprogram.TouchEvent) {
+    const hand = event.currentTarget.dataset.id as CarryHand;
+    const { draft, saving } = this.data;
+    if (saving || draft?.equipped.handheld !== SNOWBOARD_ID || !CARRY_HANDS.includes(hand)) return;
+    this.setData({ mode: 'full' });
+    this.setDraft({ ...draft, carryHand: hand });
   },
 
   async onClaimGear(event: WechatMiniprogram.TouchEvent) {
@@ -216,7 +266,7 @@ Page({
     const { avatar, draft, saving, claimingItem } = this.data;
     if (!avatar || !draft || saving || claimingItem || this.data.loading) return;
     const owned = new Set(this.data.ownedIds);
-    const unowned = Object.values(draft.equipped).filter((id): id is string => !!id && !owned.has(id));
+    const unowned = EQUIP_SLOTS.map((slot) => draft.equipped[slot]).filter((id): id is string => !!id && !owned.has(id));
     if (unowned.length) {
       this.setData({ notice: `请先领取${unowned.map((id) => ITEM_MAP[id]?.name ?? id).join('、')}` });
       return;
@@ -241,6 +291,19 @@ Page({
     } finally {
       this.setData({ saving: false });
     }
+  },
+
+  onConsume(event: WechatMiniprogram.TouchEvent) {
+    const item = this.data.inventory.find((row) => row.itemDefId === event.currentTarget.dataset.id);
+    if (!item || item.category !== 'consumable') return;
+    wx.showModal({ title: '使用一件' + item.name + '？', content: '确认后将从你的背包扣除一件。', confirmText: '使用',
+      success: async ({ confirm }) => {
+        if (!confirm) return;
+        const res = await api.inventory.consume({ itemDefId: item.itemDefId, version: item.version, requestId: requestId() });
+        wx.showToast({ title: res.ok ? '已使用' : res.message, icon: 'none' });
+        await this.load();
+      },
+    });
   },
 
   async onClaimWeekly() {

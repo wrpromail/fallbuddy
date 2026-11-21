@@ -1,0 +1,15 @@
+<button wx:if="{{!open}}" class="btn btn--ghost" bindtap="onOpen">用语音起草</button>
+<view wx:else class="voice">
+  <text>录下 15 至 90 秒口述。关闭后会丢弃这段临时录音。</text>
+  <button wx:if="{{!hasFile && !recording}}" class="btn" bindtap="onRecord">开始录音</button>
+  <button wx:if="{{recording}}" class="btn btn--primary" bindtap="onStop">结束录音</button>
+  <button wx:if="{{hasFile}}" class="btn" bindtap="onPlay">回听录音</button>
+  <button wx:if="{{hasFile && available}}" disabled="{{busy}}" class="btn" bindtap="onTranscribe">{{busy ? '正在转写…' : '自动转写和整理'}}</button>
+  <text wx:if="{{hasFile && !available}}" class="tiny muted">当前可回听录音，手动整理正文。</text>
+  <text wx:if="{{transcript}}" selectable="true">原始转写 · {{transcript}}</text>
+  <text wx:if="{{title}}">建议标题 · {{title}}</text>
+  <textarea class="textarea" disabled="{{busy}}" maxlength="140" value="{{body}}" placeholder="核对或填写准备采用的正文" bindinput="onText" />
+  <text wx:if="{{notice}}" aria-role="status">{{notice}}</text>
+  <button class="btn btn--primary" disabled="{{!body || busy}}" bindtap="onApply">用这段话替换表单正文</button>
+  <button class="btn btn--ghost" bindtap="onClose">{{busy ? '取消任务并关闭' : '丢弃并关闭'}}</button>
+</view>

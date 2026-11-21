@@ -1,4 +1,7 @@
-import type { BodyPart, EquipSlot, Expression, HeadShape, Palette } from './enums';
+import type { BodyPart, CarryHand, EquipSlot, Expression, HeadShape, Palette } from './enums';
+import type { EquippedGear } from './types';
+
+export type ScreenArm = 'left' | 'right';
 
 export interface LayerBox {
   x: number;
@@ -14,6 +17,8 @@ export interface RigLayerDef {
   slot?: 'expression' | 'palette' | 'headShape' | EquipSlot;
   src?: string;
   variants?: Record<string, string>;
+  arm?: ScreenArm;
+  carriedBy?: CarryHand;
 }
 
 export interface RigHotspot {
@@ -40,17 +45,14 @@ export interface ResolvedLayer {
   top: number;
   width: number;
   height: number;
+  arm?: ScreenArm;
+  handheld?: boolean;
 }
 
 export interface RigAppearance {
   palette: Palette;
   headShape?: HeadShape;
-  equipped: {
-    headgear: string | null;
-    goggles: string | null;
-    outfit: string | null;
-    hip_protector: string | null;
-    boots: string | null;
-  };
+  equipped: EquippedGear;
+  carryHand?: CarryHand;
   expression: Expression;
 }

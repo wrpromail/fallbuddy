@@ -127,7 +127,7 @@ def main() -> int:
     for view, layers in rig["views"].items():
         for layer in layers:
             if "variants" in layer:
-                rig_slots.setdefault(layer["slot"], {})[view] = set(layer["variants"].keys())
+                rig_slots.setdefault(layer["slot"], {}).setdefault(view, set()).update(layer["variants"].keys())
 
     for item in items_doc["items"]:
         if item["category"] not in {"cosmetic", "consumable", "badge"}:

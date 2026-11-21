@@ -2,6 +2,7 @@
   "navigationBarTitleText": "记录一次经历",
   "navigationBarBackgroundColor": "#F2F6FF",
   "usingComponents": {
+    "voice-draft": "/components/voice-draft/index",
     "incident-map": "/components/incident-map/index"
   }
 }

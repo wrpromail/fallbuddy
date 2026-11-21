@@ -16,3 +16,7 @@ exports.loadStateForWrite = exports.loadState;
 exports.saveState = (state) => Object.assign(requestStore(), { state, dirty: true });
 exports.mintInviteToken = () => 'inv_' + randomBytes(24).toString('base64url');
 exports.inviteTokenHash = (token) => createHash('sha256').update(token).digest('hex');
+exports.publishRequestFingerprint = exports.inviteTokenHash;
+exports.accountFingerprint = (openid) => exports.inviteTokenHash('closed-account:' + openid);
+exports.platformInteractionsPaused = () => process.env.FALLBUDDY_DISABLE_INTERACTIONS === '1';
+exports.platformPollsPaused = () => process.env.FALLBUDDY_DISABLE_POLLS === '1';

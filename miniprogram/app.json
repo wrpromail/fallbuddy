@@ -6,7 +6,9 @@
     "pages/story/detail",
     "pages/incident/create",
     "pages/group/index",
-    "pages/settings/index"
+    "pages/settings/index",
+    "pages/links/index",
+    "pages/poll/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "#F2F6FF",

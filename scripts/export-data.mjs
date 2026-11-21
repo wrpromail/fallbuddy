@@ -35,6 +35,7 @@ const avatars = state.avatars.map((avatar) => ({
   palette: avatar.palette,
   headShape: avatar.headShape ?? 'round',
   equipped: avatar.equipped,
+  carryHand: avatar.carryHand,
   expression: avatar.expression,
   privacy: avatar.privacy,
 }));

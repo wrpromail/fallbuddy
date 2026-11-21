@@ -7,6 +7,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const handle = createHandler({
   api: mockApi,
+  voiceProvider: require('./voice.cjs').providerFromEnv(),
   store,
   appId: process.env.FALLBUDDY_APP_ID,
   ownerOpenId: process.env.FALLBUDDY_PILOT_OWNER,

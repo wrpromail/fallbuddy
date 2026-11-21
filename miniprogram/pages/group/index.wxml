@@ -1,4 +1,18 @@
 <view class="page">
+  <view wx:if="{{!joining && !loading}}" class="panel card">
+    <picker wx:if="{{groups.length}}" range="{{groups}}" range-key="name" bindchange="onChooseGroup">
+      <view class="btn btn--ghost">切换圈子</view>
+    </picker>
+    <button class="btn btn--primary" bindtap="onToggleCreate">{{creating ? '收起表单' : '创建圈子'}}</button>
+    <block wx:if="{{creating}}">
+      <input class="group-name-input" value="{{groupName}}" maxlength="24" placeholder="圈子名称" bindinput="onGroupName" />
+      <view class="member">
+        <view class="member__main">新成员需要审批</view>
+        <switch checked="{{requiresApproval}}" bindchange="onJoinMode" />
+      </view>
+      <button class="btn btn--primary" disabled="{{createSaving || !groupName}}" bindtap="onCreateGroup">{{createSaving ? '创建中…' : '创建'}}</button>
+    </block>
+  </view>
   <view wx:if="{{joining}}" class="loading">正在加入圈子…</view>
 
   <view wx:elif="{{loading}}" class="loading">正在打开圈子…</view>
@@ -15,6 +29,7 @@
         <view class="pill pill--blue">{{group.role === 'owner' ? '圈主' : group.role === 'admin' ? '管理员' : '成员'}}</view>
       </view>
       <view class="hero__meta">{{group.memberCount}} 位雪友 · {{group.joinMode === 'open' ? '自由加入' : '需要圈主确认'}}</view>
+      <navigator class="btn btn--ghost" url="/pages/poll/index?groupId={{group.id}}">圈内故事评选</navigator>
       <view class="hero__stats">
         <view class="mini">
           <view class="mini__num">{{members.length}}</view>
@@ -51,6 +66,7 @@
             <view class="member__meta">{{item.storyCount}} 条故事</view>
           </view>
           <view class="member__role">{{item.role === 'owner' ? '圈主' : item.role === 'admin' ? '管理员' : ''}}</view>
+          <button wx:if="{{isOwner && !item.isMe}}" class="btn btn--ghost" data-id="{{item.userId}}" bindtap="onTransfer">转让圈主</button>
         </view>
       </view>
     </view>
@@ -76,6 +92,10 @@
         <view class="invite-box__note">链接只带邀请 token，不带任何账号凭证。对方点击后仍需确认加入。</view>
       </view>
       <view class="invite-note">「圈子」是应用内的受邀群体，不等于微信群全体成员。加入后才能看到圈内故事。</view>
+      <view wx:for="{{invites}}" wx:key="id" class="member">
+        <view class="member__main">{{item.expires}} 到期 · 已用 {{item.uses}} / {{item.maxUses}}</view>
+        <button class="btn btn--ghost" data-id="{{item.id}}" bindtap="onRevokeInvite">撤销</button>
+      </view>
     </view>
 
     <view wx:if="{{joinRequests.length}}" class="panel card">
@@ -96,6 +116,17 @@
       </view>
     </view>
 
-    <view wx:if="{{!isOwner}}" class="leave" bindtap="onLeave">退出这个圈子</view>
+    <view wx:if="{{canInvite}}" class="panel card member">
+      <view class="member__main">
+        <view class="section-title">暂停圈内互动</view>
+        <view class="tiny muted">暂停抱抱、转圈、鼓掌和赠礼，故事仍可阅读。</view>
+      </view>
+      <switch checked="{{group.interactionsPaused}}" bindchange="onPauseInteractions" />
+    </view>
+    <view wx:if="{{!isOwner}}" class="panel card">
+      <view class="section-title">退出圈子</view>
+      <button class="btn btn--ghost" data-retain="no" bindtap="onLeave">退出并移除此圈子的故事权限</button>
+      <button class="btn btn--ghost" data-retain="yes" bindtap="onLeave">退出并保留圈内已发故事</button>
+    </view>
   </block>
 </view>

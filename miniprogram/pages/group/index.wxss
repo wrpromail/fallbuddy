@@ -192,3 +192,10 @@
   color: #d93a3a;
   text-decoration: underline;
 }
+.group-name-input {
+  margin: 16rpx 0;
+  padding: 12rpx 18rpx;
+  min-height: 72rpx;
+  background: #f5f7fc;
+  border-radius: 16rpx;
+}

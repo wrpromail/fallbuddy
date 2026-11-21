@@ -1,7 +1,10 @@
-<view class="page">
+<view wx:if="{{accountDeleted}}" class="page">
+  <view class="panel card"><view class="section-title">账号已注销</view></view>
+</view>
+<view wx:else class="page">
   <view class="head">
     <view class="head__title">设置</view>
-    <view class="head__sub">隐私、互动权限与本地数据</view>
+    <view class="head__sub">隐私、互动权限与数据</view>
   </view>
 
   <view class="panel card">
@@ -20,12 +23,24 @@
       </view>
       <switch checked="{{prefs.allowGifts}}" color="#2F6FE0" bindchange="onGifts" />
     </view>
+    <view class="row">
+      <view class="row__main"><view class="row__name">对圈友隐藏我的形象</view><view class="tiny muted">圈友在图鉴、成员列表和互动回放中会看到基础形象。</view></view>
+      <switch checked="{{prefs.hideAvatar}}" color="#2F6FE0" bindchange="onHideAvatar" />
+    </view>
     <view class="row row--last">
       <view class="row__main">
         <view class="row__name">新故事默认匿名</view>
-        <view class="tiny muted">只隐藏昵称，后台仍绑定本人</view>
+        <view class="tiny muted">圈友看到统一昵称和头像，后台保留作者关联以处理举报</view>
       </view>
       <switch checked="{{prefs.anonymousByDefault}}" color="#2F6FE0" bindchange="onAnonymous" />
+    </view>
+  </view>
+
+  <view wx:if="{{blocked.length}}" class="panel card">
+    <view class="section-title">已屏蔽的雪友</view>
+    <view wx:for="{{blocked}}" wx:key="id" class="row">
+      <view class="row__main">{{item.name}}</view>
+      <button class="btn btn--ghost" data-id="{{item.id}}" bindtap="onUnblock">取消屏蔽</button>
     </view>
   </view>
 
@@ -51,6 +66,9 @@
       <view class="kv__v">V0 · {{appVersion}}</view>
     </view>
     <view wx:if="{{!isCloud}}" class="reset" bindtap="onReset">重置本地演示数据</view>
+    <button wx:if="{{isCloud && !loading}}" class="btn btn--ghost reset" disabled="{{deleting}}" bindtap="onDeleteAccount">
+      {{deleting ? '注销中…' : '注销账号'}}
+    </button>
   </view>
 
   <view class="panel card">

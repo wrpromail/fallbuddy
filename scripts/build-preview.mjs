@@ -16,8 +16,9 @@ const OUT_DIR = join(ROOT, 'preview');
 const { resetState } = require('../build/test/miniprogram/services/store.js');
 const { mockApi } = require('../build/test/miniprogram/services/mock/api.js');
 const { RIG } = require('../build/test/miniprogram/shared/rig.js');
+const { ANONYMOUS_APPEARANCE } = require('../build/test/miniprogram/shared/avatar.js');
 const { ACTIONS } = require('../build/test/miniprogram/shared/actions.js');
-const { ITEM_DEFINITIONS } = require('../build/test/miniprogram/shared/items.js');
+const { ITEM_DEFINITIONS, SNOWBOARD_ID } = require('../build/test/miniprogram/shared/items.js');
 const E = require('../build/test/miniprogram/shared/enums.js');
 
 resetState();
@@ -50,6 +51,10 @@ for (const groupAtlases of Object.values(atlases)) {
 }
 
 const inbox = await mockApi.interaction.getInbox({ limit: 30 });
+const inboxEvents = await Promise.all((inbox.ok ? inbox.data.events : []).map(async (event) => {
+  const detail = await mockApi.story.getDetail({ storyId: event.storyId, replayEventId: event.id });
+  return { ...event, replay: detail.ok ? detail.data.replay : undefined };
+}));
 const inventory = await mockApi.inventory.getMine();
 const weekly = await mockApi.inventory.getWeekly();
 
@@ -98,15 +103,18 @@ const data = {
   atlases,
   details,
   members,
-  inbox: inbox.ok ? inbox.data : { events: [], unreadCount: 0 },
+  inbox: { events: inboxEvents, unreadCount: inbox.ok ? inbox.data.unreadCount : 0 },
   inventory: inventory.ok ? inventory.data : [],
   weekly: weekly.ok ? weekly.data : { claimed: false, items: [] },
   actions: ACTIONS,
   items: ITEM_DEFINITIONS,
+  snowboardId: SNOWBOARD_ID,
+  anonymousAppearance: ANONYMOUS_APPEARANCE,
   labels,
 };
 
-const css = readFileSync(join(ROOT, 'scripts/preview/styles.css'), 'utf8');
+const css = ['scripts/preview/styles.css', 'miniprogram/components/avatar-rig/arms.wxss']
+  .map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 const js = readFileSync(join(ROOT, 'scripts/preview/app.js'), 'utf8');
 const payload = JSON.stringify({ rig: RIG, art, data, tabbar }).replace(/</g, '\\u003c');
 

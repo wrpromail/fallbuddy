@@ -5,6 +5,7 @@ import type { ItemDefinition } from './types';
  * 所有道具免费、无现金价值、不可交易（除明确 transferable 的互动道具）。
  */
 export const STARTER_COSMETICS = ['ski_blue', 'basic_hip_protector'] as const;
+export const SNOWBOARD_ID = 'snowboard_dawn';
 
 export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
@@ -104,16 +105,65 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     description: '带蓝色搭扣与深色鞋底的原创雪靴。',
   },
   {
+    id: 'gloves_frost',
+    name: '霜蓝雪地手套',
+    category: 'cosmetic',
+    assetKey: 'rigs/front/glove_left/gloves_frost',
+    transferable: false,
+    permanent: true,
+    maxStack: 1,
+    slot: 'gloves',
+    icon: '🧤',
+    description: '成对穿戴，正面可看到掌心补强。',
+  },
+  {
+    id: 'pads_slate',
+    name: '青岩护膝',
+    category: 'cosmetic',
+    assetKey: 'rigs/front/knee_pads/pads_slate',
+    transferable: false,
+    permanent: true,
+    maxStack: 1,
+    slot: 'knee_pads',
+    icon: '🛡️',
+    description: '正面是膝盖护壳，背面可看到固定带。',
+  },
+  {
+    id: SNOWBOARD_ID,
+    name: '晨光单板',
+    category: 'cosmetic',
+    assetKey: 'rigs/front/board_left/snowboard_dawn',
+    transferable: false,
+    permanent: true,
+    maxStack: 1,
+    slot: 'handheld',
+    icon: '🏂',
+    description: '可由左手或右手握持，正背面显示板面与板底。',
+  },
+  {
+    id: 'ski_poles',
+    name: '冰川双雪杖',
+    category: 'cosmetic',
+    assetKey: 'rigs/front/pole_left/ski_poles',
+    transferable: false,
+    permanent: true,
+    maxStack: 1,
+    slot: 'handheld',
+    icon: '⛷️',
+    description: '每只手各握一根雪杖。',
+  },
+  {
     id: 'steel_hip_guard',
     name: '祖传钢铁护臀',
     category: 'consumable',
     assetKey: 'items/steel_hip_guard',
+    slot: 'hip_protector',
     transferable: true,
     permanent: false,
     ttlDays: 30,
     maxStack: 8,
     icon: '🛡️',
-    description: '互动礼物：可以送给朋友，领取后显示在背包。',
+    description: '互动礼物：可赠送、消耗或在衣橱试穿。穿戴期间须持有一件有效护臀。',
   },
   {
     id: 'hot_cocoa',

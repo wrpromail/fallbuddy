@@ -1,3 +1,4 @@
+import { draftTags, type DraftTag } from '../../shared/draft-tags';
 import { api } from '../../services/api';
 import {
   BODY_PARTS,
@@ -45,9 +46,12 @@ function markSelected<T extends string>(list: Option<T>[], selected: T[]): Optio
 interface GroupChip {
   id: string;
   name: string;
-  memberCount: number;
+  memberCount?: number;
+  retained?: boolean;
   checked: boolean;
 }
+
+type RetainedAudience = Pick<GroupSummary, 'id' | 'name'>;
 
 type ConflictStatus = '' | 'loading' | 'ready' | 'missing' | 'retry' | 'unavailable';
 
@@ -56,6 +60,7 @@ interface CreatePageData {
   loadError: string;
   editing: boolean;
   draftAvailable: boolean;
+  suggestedTags: DraftTag[];
   savingDraft: boolean;
   conflictStatus: ConflictStatus;
   latestFields: { label: string; value: string }[];
@@ -69,6 +74,7 @@ interface CreatePageData {
   avatarHeadShape: string;
   avatarExpression: string;
   avatarEquipped: unknown;
+  avatarCarryHand: string;
   anonymousAppearance: typeof ANONYMOUS_APPEARANCE;
   sports: Option<Sport>[];
   scenarios: Option<Scenario>[];
@@ -136,6 +142,7 @@ Page({
     loadError: '',
     editing: false,
     draftAvailable: false,
+    suggestedTags: [],
     savingDraft: false,
     conflictStatus: '',
     latestFields: [],
@@ -149,6 +156,7 @@ Page({
     avatarHeadShape: 'round',
     avatarExpression: 'happy',
     avatarEquipped: null,
+    avatarCarryHand: 'right',
     anonymousAppearance: ANONYMOUS_APPEARANCE,
     sports: [
       { id: 'ski_double', label: SPORT_LABEL.ski_double, emoji: SPORT_EMOJI.ski_double, selected: true },
@@ -189,11 +197,14 @@ Page({
     canSubmit: false,
   } as CreatePageData,
 
+  assisted: false,
   storyId: '',
   version: 0,
   draft: null as StoryDraft | null,
   usingDraft: false,
   latest: null as StoryDraft | null,
+  latestRetainedAudiences: [] as RetainedAudience[],
+  latestGroups: [] as GroupSummary[],
   lastSubmission: null as { signature: string; id: string } | null,
   lastDraftSave: null as { signature: string; id: string } | null,
 
@@ -234,17 +245,19 @@ Page({
     const avatar = meRes.data.avatar;
     this.draft = draftRes?.ok ? draftRes.data : null;
     this.setData({
-      groups,
-      groupChips: groups.map((group) => ({ id: group.id, name: group.name, memberCount: group.memberCount, checked: false })),
+      groupChips: [],
       myAvatar: avatar,
       avatarPalette: avatar?.palette ?? 'blue',
       avatarHeadShape: avatar?.headShape ?? 'round',
       avatarExpression: avatar?.expression ?? 'happy',
       avatarEquipped: avatar?.equipped ?? null,
+      avatarCarryHand: avatar?.carryHand ?? 'right',
       isAnonymous: prefs.anonymousByDefault,
       allowGifts: prefs.allowGifts,
       draftAvailable: !!this.draft,
     });
+    this.syncAudiences(groups, detailRes?.ok ? detailRes.data.retainedAudiences ?? [] : [],
+      detailRes?.ok ? detailRes.data.story.visibilityGroupIds : []);
     if (detailRes?.ok) {
       const { incident, story } = detailRes.data;
       this.version = story.version;
@@ -257,7 +270,32 @@ Page({
     this.refreshSubmitState();
   },
 
+  syncAudiences(groups: GroupSummary[], retained: RetainedAudience[], savedGroupIds: string[]) {
+    const previous = new Map(this.data.groupChips.map((group) => [group.id, group]));
+    const retainedById = new Map(retained.map((group) => [group.id, group]));
+    // 圈子列表与详情分别请求。有人在两次请求之间退圈时，仍按已保存的受众显示。
+    for (const id of savedGroupIds) {
+      if (!retainedById.has(id) && !groups.some((group) => group.id === id)) {
+        retainedById.set(id, { id, name: previous.get(id)?.name ?? '原可见圈子' });
+      }
+    }
+    this.setData({
+      groups,
+      groupChips: [
+        ...groups.filter((group) => !retainedById.has(group.id)).map(({ id, name, memberCount }) => ({
+          id, name, memberCount, checked: previous.get(id)?.checked ?? false,
+        })),
+        ...Array.from(retainedById.values(), (group) => {
+          const prior = previous.get(group.id);
+          return { ...group, retained: true, checked: prior?.retained ? prior.checked : true };
+        }),
+      ],
+    });
+  },
+
   applyInput({ incident, story }: CreateStoryInput) {
+    this.assisted = incident.source === 'ai_assisted';
+    this.setData({ suggestedTags: [] });
     const { sport, scenario, selfReportedCause, bodyParts, impactKind, protectiveItems } = incident;
     const { title, body, tone, visibilityGroupIds } = story;
     const userSummary = incident.userSummary ?? '';
@@ -392,9 +430,28 @@ Page({
     this.refreshSubmitState();
   },
 
+  onVoiceDraft(event: WechatMiniprogram.CustomEvent<{ body: string; title: string; assisted: boolean }>) {
+    const { body, title, assisted } = event.detail;
+    this.assisted = assisted;
+    const nextTitle = this.data.title || title;
+    this.setData({ body, suggestedTags: draftTags(body), bodyLen: body.length, title: nextTitle, titleLen: nextTitle.length,
+      sensitive: sensitiveWarning([nextTitle, body, this.data.userSummary].join(' ')) });
+    this.refreshSubmitState();
+  },
+
+  onConfirmTag(event: WechatMiniprogram.TouchEvent) {
+    const { kind, id } = event.currentTarget.dataset;
+    const tag = this.data.suggestedTags.find((row) => row.kind === kind && row.id === id);
+    if (!tag) return;
+    const chosen: string[] = tag.kind === 'protections' ? this.data.protectiveItems : this.data[tag.kind];
+    if (!chosen.includes(tag.id)) this.onMulti(event);
+    const current: string[] = tag.kind === 'protections' ? this.data.protectiveItems : this.data[tag.kind];
+    if (current.includes(tag.id)) this.setData({ suggestedTags: this.data.suggestedTags.filter((row) => row !== tag) });
+  },
+
   onBodyInput(event: WechatMiniprogram.Input) {
     const body = event.detail.value;
-    this.setData({ body, bodyLen: body.length, sensitive: sensitiveWarning([body, this.data.userSummary].join(' ')) });
+    this.setData({ body, suggestedTags: [], bodyLen: body.length, sensitive: sensitiveWarning([body, this.data.userSummary].join(' ')) });
     this.refreshSubmitState();
   },
 
@@ -446,6 +503,7 @@ Page({
     const data = this.data;
     return {
       incident: {
+        source: this.assisted ? 'ai_assisted' : 'manual',
         sport: data.sport,
         scenario: data.scenario,
         selfReportedCause: data.cause,
@@ -529,22 +587,31 @@ Page({
   async onRefreshLatest() {
     if (this.data.conflictStatus === 'loading') return;
     this.latest = null;
+    this.latestRetainedAudiences = [];
     this.setData({ conflictStatus: 'loading', latestFields: [] }, () => {
       wx.pageScrollTo({ selector: '#version-conflict', duration: 200 });
     });
     this.refreshSubmitState();
     try {
       if (this.storyId) {
-        const res = await api.story.getDetail({ storyId: this.storyId });
+        const [res, groups] = await Promise.all([
+          api.story.getDetail({ storyId: this.storyId }), api.group.listMine(),
+        ]);
         if (!res.ok) {
           this.setData({ conflictStatus: res.code === 'UNAVAILABLE' ? 'retry' : 'unavailable' });
           return;
         }
-        const { incident, story, viewerIsAuthor } = res.data;
+        if (!groups.ok) {
+          this.setData({ conflictStatus: 'retry' });
+          return;
+        }
+        this.latestGroups = groups.data;
+        const { incident, story, viewerIsAuthor, retainedAudiences } = res.data;
         if (!viewerIsAuthor || story.publishStatus !== 'published' || story.moderationStatus === 'hidden') {
           this.setData({ conflictStatus: 'unavailable' });
           return;
         }
+        this.latestRetainedAudiences = retainedAudiences ?? [];
         this.latest = { input: { incident, story }, version: story.version, updatedAt: story.updatedAt };
       } else {
         const res = await api.story.getDraft();
@@ -566,7 +633,8 @@ Page({
 
   describeLatest({ incident, story }: CreateStoryInput) {
     const circles = story.visibilityGroupIds.map((id) =>
-      this.data.groups.find((group) => group.id === id)?.name ?? '已退出的圈子');
+      this.latestRetainedAudiences.find((group) => group.id === id)?.name ??
+      (this.storyId ? this.latestGroups : this.data.groups).find((group) => group.id === id)?.name ?? '已退出的圈子');
     return [
       { label: '标题', value: story.title },
       { label: '故事正文', value: story.body },
@@ -608,6 +676,7 @@ Page({
     if (this.storyId) {
       if (!latest) return;
       this.version = latest.version;
+      this.syncAudiences(this.latestGroups, this.latestRetainedAudiences, latest.input.story.visibilityGroupIds);
     } else {
       this.draft = latest;
       this.usingDraft = true;
@@ -627,13 +696,16 @@ Page({
     if (!this.data.canSubmit || this.data.submitting || this.data.savingDraft) return;
     const input = this.formInput();
     const draftVersion = this.usingDraft ? this.draft?.version ?? 0 : undefined;
-    const signature = JSON.stringify({ input, version: this.version, draftVersion });
+    const removeRetainedGroupIds = this.storyId && !this.data.selfOnly
+      ? this.data.groupChips.filter((group) => group.retained && !group.checked).map((group) => group.id)
+      : [];
+    const signature = JSON.stringify({ input, version: this.version, draftVersion, removeRetainedGroupIds });
     if (this.lastSubmission?.signature !== signature) this.lastSubmission = { signature, id: requestId() };
     const id = this.lastSubmission.id;
     this.setData({ submitting: true });
     try {
       const res = this.storyId
-        ? await api.story.update({ storyId: this.storyId, version: this.version, input, requestId: id })
+        ? await api.story.update({ storyId: this.storyId, version: this.version, input, requestId: id, removeRetainedGroupIds })
         : await api.story.publish({
           input,
           requestId: id,

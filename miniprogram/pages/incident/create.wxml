@@ -16,6 +16,7 @@
         head-shape="{{isAnonymous ? anonymousAppearance.headShape : avatarHeadShape}}"
         expression="{{isAnonymous ? anonymousAppearance.expression : avatarExpression}}"
         equipped="{{isAnonymous ? anonymousAppearance.equipped : avatarEquipped}}"
+        carry-hand="{{isAnonymous ? 'right' : avatarCarryHand}}"
       />
     </view>
     <view class="preview__main">
@@ -153,8 +154,11 @@
       placeholder-class="placeholder"
       bindinput="onBodyInput"
     />
+    <voice-draft bind:applydraft="onVoiceDraft" />
+    <view wx:if="{{suggestedTags.length}}" class="hint">口述中提到了这些词。点选符合你本人经历的标签。</view>
+    <view class="chips"><button wx:for="{{suggestedTags}}" wx:key="label" class="btn btn--ghost" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="onConfirmTag">{{item.label}}</button></view>
     <view wx:if="{{sensitive}}" class="warn">{{sensitive}}</view>
-    <view class="hint">请去掉姓名、电话、证件号、详细住址等可识别信息。语音与 AI 整理会在 V1.1 提供。</view>
+    <view class="hint">请去掉姓名、电话、证件号、详细住址等可识别信息。</view>
   </view>
 
   <view class="section card">
@@ -178,7 +182,8 @@
         <view class="checkbox {{item.checked && !selfOnly ? 'checkbox--on' : ''}}">{{item.checked && !selfOnly ? '✓' : ''}}</view>
         <view class="group-row__main">
           <view class="group-row__name">{{item.name}}</view>
-          <view class="tiny muted">{{item.memberCount}} 位雪友</view>
+          <view wx:if="{{item.retained}}" class="tiny muted">已退出 · 可保留或移除此圈子的访问权限</view>
+          <view wx:else class="tiny muted">{{item.memberCount}} 位雪友</view>
         </view>
       </view>
     </view>

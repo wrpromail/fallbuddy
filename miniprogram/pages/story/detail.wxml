@@ -43,16 +43,19 @@
           head-shape="{{detail.avatar.headShape}}"
           expression="{{detail.avatar.expression}}"
           equipped="{{detail.avatar.equipped}}"
+          carry-hand="{{detail.avatar.carryHand}}"
           reduce-motion="{{reduceMotion}}"
         />
       </view>
-      <view wx:if="{{stageClass === 'is-hug' && myAvatar}}" class="stage__me">
+      <view wx:if="{{stageClass === 'is-hug' && hugActor}}" class="stage__me">
         <avatar-rig
           view="front"
-          palette="{{myAvatar.palette}}"
-          head-shape="{{myAvatar.headShape}}"
-          expression="{{myAvatar.expression}}"
-          equipped="{{myAvatar.equipped}}"
+          palette="{{hugActor.palette}}"
+          head-shape="{{hugActor.headShape}}"
+          expression="{{hugActor.expression}}"
+          equipped="{{hugActor.equipped}}"
+          carry-hand="{{hugActor.carryHand}}"
+          action="hug"
         />
       </view>
       <view wx:if="{{stageEmoji}}" class="stage__fx">{{stageEmoji}}</view>
@@ -73,6 +76,8 @@
         <text wx:for="{{causeLabels}}" wx:key="*this" class="tag tag--warm">自述：{{item}}</text>
         <text wx:for="{{protectiveLabels}}" wx:key="*this" class="tag tag--mint">{{item}}</text>
       </view>
+      <navigator wx:if="{{detail.group && detail.story.visibility === 'groups' && detail.story.publishStatus === 'published' && detail.story.moderationStatus === 'approved'}}" class="btn btn--ghost" url="/pages/links/index?groupId={{detail.group.id}}&amp;storyId={{detail.story.id}}">查看或关联同款经历</navigator>
+      <button wx:if="{{!isMine && detail.group}}" class="btn" bindtap="onFollow">{{detail.following ? '取消关注后续' : '关注这条故事的后续'}}</button>
       <incident-map parts="{{detail.incident.bodyParts}}" />
       <view class="story__note">「原因」是本人自述，不是责任认定，也不构成医疗或理赔判断。</view>
       <view wx:if="{{detail.story.visibility === 'self'}}" class="story__note">这条故事仅自己可见，不会出现在圈子图鉴，别人也打不开。</view>
@@ -91,7 +96,7 @@
         </picker>
         <textarea value="{{updateBody}}" maxlength="140" auto-height disabled="{{updateSaving}}"
           placeholder="写下后来发生的事" bindinput="onUpdateBody" />
-        <view class="tiny muted">可见范围继承当前故事 · {{updateBody.length}}/140</view>
+        <view class="tiny muted">后续沿用故事的可见范围 · {{groupName}} · {{updateBody.length}}/140</view>
         <button class="btn btn--primary" disabled="{{updateSaving || !updateBody.length}}" bindtap="onSaveUpdate">保存后续</button>
       </view>
       <view wx:for="{{updatesView}}" wx:key="id" class="update">
@@ -126,6 +131,7 @@
       <view wx:if="{{!isMine && detail.group}}" class="link" bindtap="onReport">举报这条内容</view>
       <view wx:if="{{canEdit}}" class="link" bindtap="onEditStory">编辑事故记录</view>
       <view wx:if="{{canEdit}}" class="link link--danger" bindtap="onWithdraw">撤回我的故事</view>
+      <view wx:if="{{isMine}}" class="link link--danger" bindtap="onDeleteStory">永久删除事故记录</view>
     </view>
   </block>
 

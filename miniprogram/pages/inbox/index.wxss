@@ -151,3 +151,20 @@
   color: #9a96ae;
   text-align: center;
 }
+
+.event-details {
+  padding: 0 20rpx 20rpx;
+}
+
+.event-details__row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 16rpx 0;
+}
+
+.event-details__main {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

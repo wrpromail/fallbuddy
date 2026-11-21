@@ -48,6 +48,7 @@ function checkEnumList(value: unknown, rules: ListRules): string | null {
 export function validateCreateStoryInput(input: CreateStoryInput, draft = false): string | null {
   if (!input || !input.incident || !input.story) return '内容不完整';
   const { incident, story } = input;
+  if (incident.source !== undefined && !['manual', 'ai_assisted'].includes(incident.source)) return '记录来源无效';
 
   if (typeof story.title !== 'string' || typeof story.body !== 'string') return '标题与正文不能为空';
   const title = story.title.trim();

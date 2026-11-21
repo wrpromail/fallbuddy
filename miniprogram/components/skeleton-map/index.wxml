@@ -10,6 +10,7 @@
     head-shape="{{figHeadShape}}"
     expression="{{figExpression}}"
     equipped="{{figEquipped}}"
+    carry-hand="{{figCarryHand}}"
     reduce-motion="{{reduceMotion}}"
   />
   <block wx:if="{{showMarkers}}">

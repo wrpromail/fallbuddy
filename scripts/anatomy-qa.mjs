@@ -98,6 +98,14 @@ try {
 
   check((await page.$eval('#health', (el) => el.textContent)).includes('离线'), '页面显示离线模式徽标');
 
+  await page.click('#referencePlates summary');
+  await page.$$eval('.plate-grid img', (images) => Promise.all(images.map((image) => image.decode())));
+  check(await page.$$eval('.plate-grid img', (images) => images.length === 4 && images.every((image) =>
+    image.naturalWidth === 600 && image.naturalHeight === 900)), '四张标准解剖正背图加载成功');
+  check(await page.$$eval('.plate-grid a', (links) => links.every((link) =>
+    link.href === link.querySelector('img').src)), '每张标准图可独立打开原图');
+  await page.click('#referencePlates summary');
+
   const struct = await page.evaluate(() => ({
     joints: document.querySelectorAll('#gBody [id^="j:"]').length,
     overlays: document.querySelectorAll('#gOverlays .ov').length,

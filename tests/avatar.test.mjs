@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { mockApi } = require('../build/test/miniprogram/services/mock/api.js');
-const { resetState } = require('../build/test/miniprogram/services/store.js');
+const { resetState, loadState } = require('../build/test/miniprogram/services/store.js');
 const { ANONYMOUS_APPEARANCE, ensureAvatar } = require('../build/test/miniprogram/shared/avatar.js');
 const { resolveRigLayers } = require('../build/test/miniprogram/shared/rig.js');
 
@@ -131,8 +131,8 @@ test('收礼仅转移互动道具，接收角色的穿戴和版本保持原状',
   const appearance = structuredClone(recipient);
   const before = state.inventory.find((item) => item.ownerId === 'usr_ma' && item.itemDefId === 'steel_hip_guard')?.quantity ?? 0;
   checked(await mockApi.inventory.gift({ storyId: 'sty_back', itemDefId: 'steel_hip_guard', requestId: 'avatar-gift' }));
-  assert.deepEqual(recipient, appearance);
-  assert.equal(state.inventory.find((item) => item.ownerId === 'usr_ma' && item.itemDefId === 'steel_hip_guard').quantity, before + 1);
+  assert.deepEqual(loadState().avatars.find((row) => row.ownerId === recipient.ownerId), appearance);
+  assert.equal(loadState().inventory.find((item) => item.ownerId === 'usr_ma' && item.itemDefId === 'steel_hip_guard').quantity, before + 1);
 });
 
 
@@ -148,24 +148,110 @@ test('互动动作播放及静态降级均保留穿戴，结束后清理动画�
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const rig = {
     data: { view: 'front', mode: 'full', palette: 'mint', headShape: 'soft_square', expression: 'cool',
-      equipped: { outfit: 'ski_blue', boots: 'snow_boots' }, reduceMotion: false },
+      equipped: { outfit: 'ski_blue', boots: 'snow_boots', gloves: 'gloves_frost', knee_pads: 'pads_slate', handheld: 'ski_poles' },
+      reduceMotion: false },
     setData(patch) { Object.assign(this.data, patch); },
     ...rigComponent.methods,
   };
   rig.rebuild();
   assert.equal(rig.data.layers.find((layer) => layer.id === 'head').width, 46.25);
   const initialLayers = structuredClone(rig.data.layers);
+  const initialArms = structuredClone(rig.data.arms);
+  assert.ok(rig.data.layers.some((layer) => layer.id === 'knee_pads'));
+  for (const { side, layers } of initialArms) {
+    assert.ok(layers.some((layer) => layer.id === 'glove_' + side));
+    assert.ok(layers.some((layer) => layer.id === 'pole_' + side && layer.handheld));
+  }
   for (const [id, cls] of [['hug', 'is-hug'], ['spin', 'is-spin'], ['cheer', 'is-cheer'], ['receive_gift', 'is-gift']]) {
     rig.play(id);
     assert.equal(rig.data.cls, cls);
     assert.deepEqual(rig.data.layers, initialLayers);
+    assert.deepEqual(rig.data.arms, initialArms);
     t.mock.timers.tick(1800);
     assert.equal(rig.data.cls, '');
   }
   rig.data.reduceMotion = true;
-  rig.play('receive_gift');
+  rig.play('hug');
   assert.equal(rig.data.cls, 'is-static');
   assert.ok(rig.data.emoji);
   assert.deepEqual(rig.data.layers, initialLayers);
+  assert.deepEqual(rig.data.arms, initialArms);
   rig.stop();
+  rig.data.equipped.handheld = 'snowboard_dawn';
+  rig.data.carryHand = '';
+  rig.rebuild();
+  assert.deepEqual(rig.data.arms.flatMap(({ layers }) => layers.filter((layer) => layer.handheld).map((layer) => layer.id)), ['board_left']);
+});
+
+test('护膝贴着双膝，手套在手部上方，单板按人体侧别换位，双雪杖各自跟随手臂', () => {
+  const appearance = { palette: 'blue', expression: 'happy',
+    equipped: { outfit: 'ski_blue', gloves: 'gloves_frost', knee_pads: 'pads_slate', handheld: 'snowboard_dawn' } };
+  for (const view of ['front', 'back']) {
+    for (const carryHand of [undefined, 'left', 'right']) {
+      const layers = resolveRigLayers(view, { ...appearance, carryHand });
+      const props = layers.filter((layer) => layer.handheld);
+      assert.equal(props.length, 1);
+      const screenSide = view === 'front' ? (carryHand === 'left' ? 'right' : 'left') : carryHand ?? 'right';
+      assert.equal(props[0].arm, screenSide);
+      assert.match(props[0].src, new RegExp('/' + view + '/board_' + screenSide));
+      for (const side of ['left', 'right']) {
+        const arm = layers.find((layer) => layer.id === 'arm_' + side);
+        const glove = layers.find((layer) => layer.id === 'glove_' + side);
+        assert.equal(glove.arm, arm.arm);
+        assert.ok(props[0].z < arm.z && arm.z < glove.z);
+      }
+      assert.match(layers.find((layer) => layer.id === 'knee_pads').src, new RegExp('/' + view + '/knee_pads/'));
+      const chip = resolveRigLayers(view, { ...appearance, carryHand }, 'chip');
+      assert.ok(chip.every((layer) => !layer.arm && !layer.handheld && layer.id !== 'knee_pads'));
+    }
+    const poles = resolveRigLayers(view, { ...appearance, equipped: { ...appearance.equipped, handheld: 'ski_poles' } })
+      .filter((layer) => layer.handheld);
+    assert.deepEqual(poles.map((layer) => layer.arm), ['left', 'right']);
+  }
+});
+
+test('角色页可免费领取手套与护膝，换手持板、切换雪杖以及放下装备', async () => {
+  resetState();
+  const state = {
+    ...page, data: structuredClone(page.data),
+    setData(patch) { Object.assign(this.data, patch); },
+  };
+  const tap = (id) => ({ currentTarget: { dataset: { id } } });
+  await state.load();
+  const old = state.data.avatar;
+  state.onEdit();
+  state.onPreview(tap('chip'));
+  for (const [slot, id] of [['gloves', 'gloves_frost'], ['knee_pads', 'pads_slate'], ['handheld', 'snowboard_dawn']]) {
+    state.onSlot(tap(slot));
+    assert.ok(!state.data.ownedIds.includes(id));
+    state.onTryGear(tap(id));
+    assert.equal(state.data.mode, 'full');
+    await state.onSave();
+    assert.match(state.data.notice, /请先领取/);
+    await state.onClaimGear(tap(id));
+  }
+  state.onCarryHand(tap('left'));
+  assert.equal(state.data.snowboardSelected, true);
+  await state.onSave();
+  const saved = checked(await mockApi.avatar.getMine());
+  for (const slot of ['outfit', 'headgear', 'hip_protector', 'goggles', 'boots']) {
+    assert.equal(saved.equipped[slot], old.equipped[slot]);
+  }
+  assert.equal(saved.carryHand, 'left');
+  assert.ok(!('carryHand' in saved.equipped));
+  assert.equal(saved.equipped.gloves, 'gloves_frost');
+  assert.equal(saved.equipped.knee_pads, 'pads_slate');
+  state.onEdit();
+  state.onSlot(tap('handheld'));
+  state.onTryGear(tap('ski_poles'));
+  assert.equal(state.data.snowboardSelected, false);
+  await state.onClaimGear(tap('ski_poles'));
+  await state.onSave();
+  const poles = checked(await mockApi.avatar.getMine());
+  assert.equal(poles.equipped.handheld, 'ski_poles');
+  assert.ok(!('carryHand' in poles));
+  state.onEdit();
+  state.onTryGear(tap(''));
+  await state.onSave();
+  assert.equal(checked(await mockApi.avatar.getMine()).equipped.handheld, null);
 });

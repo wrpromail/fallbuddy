@@ -1,0 +1,52 @@
+.rig__arm {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 23;
+  pointer-events: none;
+}
+
+.rig.is-hug .rig__handheld,
+.rig.is-cheer .rig__handheld {
+  opacity: 0;
+}
+
+.rig.is-hug .rig__arm--left {
+  animation: hug-left-arm 1400ms ease-in-out;
+}
+
+.rig.is-hug .rig__arm--right {
+  animation: hug-right-arm 1400ms ease-in-out;
+}
+
+.rig.is-cheer .rig__arm--left {
+  animation: cheer-left-arm 900ms ease-in-out;
+}
+
+.rig.is-cheer .rig__arm--right {
+  animation: cheer-right-arm 900ms ease-in-out;
+}
+
+@keyframes hug-left-arm {
+  0%, 100% { transform: rotate(0deg); }
+  42%, 64% { transform: rotate(-32deg); }
+}
+
+@keyframes hug-right-arm {
+  0%, 100% { transform: rotate(0deg); }
+  42%, 64% { transform: rotate(32deg); }
+}
+
+@keyframes cheer-left-arm {
+  0%, 100% { transform: rotate(0deg); }
+  32%, 72% { transform: rotate(-43deg); }
+  52% { transform: rotate(-17deg); }
+}
+
+@keyframes cheer-right-arm {
+  0%, 100% { transform: rotate(0deg); }
+  32%, 72% { transform: rotate(43deg); }
+  52% { transform: rotate(17deg); }
+}

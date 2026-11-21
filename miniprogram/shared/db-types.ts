@@ -1,3 +1,5 @@
+import type { RigAppearance } from './rig-types';
+import type { StoryLink, Nomination, Vote } from './community';
 import type {
   AvatarState,
   Group,
@@ -62,6 +64,15 @@ export interface DbState {
   schemaVersion: 1;
   currentUserId: string;
   seededAt: string;
+  voiceJobs?: { id: string; userId: string; requestId: string; at: number; status: string }[];
+  follows?: { groupId: string; storyId: string; userId: string; from: string }[];
+  outfits?: { ownerId: string; slot: number; appearance: RigAppearance | null; version: number }[];
+  storyLinks?: StoryLink[];
+  nominations?: Nomination[];
+  votes?: Vote[];
+  closedPolls?: Pick<Nomination, 'groupId' | 'period' | 'award'>[];
+  pollBadges?: string[];
+  pilotInitialized?: boolean;
   users: UserRecord[];
   avatars: AvatarState[];
   groups: Group[];
@@ -78,5 +89,11 @@ export interface DbState {
   notifications: NotificationRecord[];
   weeklyGrants: WeeklyGrantRecord[];
   invites: InviteRecord[];
+  blocks?: Record<string, string[]>;
+  ignoredInbox?: Record<string, string[]>;
+  deletedAccounts?: Record<string, true>;
+  interactionControls?: { groupId: string; changedBy: string; paused: boolean; changedAt: string }[];
+  /** 发布请求与记录关联。删除后仅保留请求指纹，防止延迟请求重新发布。 */
+  storyPublishes?: Record<string, string | null>;
   operations: Record<string, OperationRecord>;
 }

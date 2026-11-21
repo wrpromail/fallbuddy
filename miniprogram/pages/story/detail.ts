@@ -27,6 +27,7 @@ interface DetailPageData {
   detail: StoryDetail | null;
   error: string;
   myAvatar: AvatarState | null;
+  hugActor: NonNullable<StoryDetail['replay']>['actorAppearance'] | null;
   reduceMotion: boolean;
   isMine: boolean;
   groupName: string;
@@ -54,7 +55,7 @@ interface DetailPageData {
   selectedItem: string;
   pendingStoryId: string;
   pendingGroupId: string;
-  pendingAction: string;
+  pendingReplayId: string;
 }
 
 let reqSeq = 0;
@@ -65,12 +66,30 @@ function requestId(): string {
 
 type RigHandle = { play?: (actionId: string) => void; stop?: () => void };
 
+function audienceLabel(detail: StoryDetail): string {
+  if (detail.story.publishStatus === 'withdrawn') return '故事已撤回';
+  if (detail.story.visibility === 'self') return '仅自己可见';
+  if (detail.story.moderationStatus !== 'approved') return '圈友暂不可见';
+  if (detail.viewerIsAuthor) {
+    const audiences = detail.authorAudiences ?? [
+      ...(detail.group ? [detail.group] : []),
+      ...(detail.retainedAudiences ?? []),
+    ];
+    if (audiences.length) {
+      const names = audiences.map(({ name }) => `「${name}」`).join('、');
+      return detail.retainedAudiences?.length ? `仍对${names}可见` : `对${names}可见`;
+    }
+  }
+  return detail.group?.name ?? '圈内可见';
+}
+
 Page({
   data: {
     loading: true,
     detail: null,
     error: '',
     myAvatar: null,
+    hugActor: null,
     reduceMotion: false,
     isMine: false,
     groupName: '',
@@ -98,18 +117,21 @@ Page({
     selectedItem: '',
     pendingStoryId: '',
     pendingGroupId: '',
-    pendingAction: '',
+    pendingReplayId: '',
   } as DetailPageData,
 
   animationTimer: 0 as unknown as number,
+  replayTimer: 0 as unknown as number,
+  loadSequence: 0,
 
+  composerVersion: 0,
   lastUpdate: null as { signature: string; id: string } | null,
 
   onLoad(query: Record<string, string | undefined>) {
     this.setData({
       pendingStoryId: query.storyId ?? '',
       pendingGroupId: query.groupId ?? '',
-      pendingAction: query.action ?? '',
+      pendingReplayId: query.eventId ?? '',
     });
   },
 
@@ -118,6 +140,8 @@ Page({
   },
 
   onUnload() {
+    this.loadSequence += 1;
+    if (this.replayTimer) clearTimeout(this.replayTimer);
     if (this.animationTimer) clearTimeout(this.animationTimer);
   },
 
@@ -126,11 +150,17 @@ Page({
       this.setData({ loading: false, error: '缺少 storyId' });
       return;
     }
+    const sequence = ++this.loadSequence;
     this.setData({ loading: true, error: '' });
     const [detailRes, meRes] = await Promise.all([
-      api.story.getDetail({ storyId: this.data.pendingStoryId, groupId: this.data.pendingGroupId || undefined }),
+      api.story.getDetail({
+        storyId: this.data.pendingStoryId,
+        groupId: this.data.pendingGroupId || undefined,
+        replayEventId: this.data.pendingReplayId || undefined,
+      }),
       api.auth.ensureUser(),
     ]);
+    if (sequence !== this.loadSequence) return;
     if (!detailRes.ok) {
       this.setData({ loading: false, error: detailRes.message, detail: null, updatesView: [], canEdit: false });
       return;
@@ -152,12 +182,7 @@ Page({
       myAvatar,
       reduceMotion: prefs?.reduceMotion ?? false,
       isMine: detail.viewerIsAuthor,
-      groupName:
-        detail.story.visibility === 'self'
-          ? '仅自己可见'
-          : detail.group
-            ? detail.group.name
-            : '私密记录',
+      groupName: audienceLabel(detail),
       timeText: relativeTime(detail.story.createdAt),
       sportLabel: SPORT_LABEL[incident.sport],
       sportEmoji: SPORT_EMOJI[incident.sport],
@@ -169,11 +194,25 @@ Page({
       bodyPartLabels: incident.bodyParts.map((part) => BODY_PART_LABEL[part]),
       canEdit: detail.viewerIsAuthor && detail.story.publishStatus === 'published' && detail.story.moderationStatus !== 'hidden',
     });
-    if (this.data.pendingAction) {
-      const action = this.data.pendingAction as ActionId;
-      this.setData({ pendingAction: '' });
-      setTimeout(() => this.playAction(action), 260);
+    if (this.data.pendingReplayId) {
+      const replay = detail.replay;
+      this.setData({ pendingReplayId: '' });
+      if (replay) {
+        this.replayTimer = setTimeout(() => {
+          if (sequence === this.loadSequence) this.playAction(replay.actionId, replay.actorAppearance);
+        }, 260) as unknown as number;
+      } else {
+        wx.showToast({ title: '这条互动已无法回放', icon: 'none' });
+      }
     }
+  },
+
+  async onFollow() {
+    const detail = this.data.detail;
+    if (!detail?.group) return;
+    const res = await api.story.setFollow({ groupId: detail.group.id, storyId: detail.story.id, follow: !detail.following });
+    if (!res.ok) wx.showToast({ title: res.message, icon: 'none' });
+    await this.load();
   },
 
   onEditStory() {
@@ -182,6 +221,7 @@ Page({
   },
 
   onComposeUpdate() {
+    if (!this.data.composingUpdate) this.composerVersion = this.data.detail?.story.version ?? 0;
     this.setData({ composingUpdate: !this.data.composingUpdate });
   },
 
@@ -198,14 +238,19 @@ Page({
     if (!detail || !canEdit || updateSaving || !updateBody.trim()) return;
     const body = updateBody.trim();
     const type = UPDATE_TYPES[updateTypeIndex];
-    const signature = JSON.stringify([type, body]);
+    const expectedVersion = this.composerVersion || detail.story.version;
+    const signature = JSON.stringify([detail.story.id, expectedVersion, type, body]);
     if (signature !== this.lastUpdate?.signature) this.lastUpdate = { signature, id: requestId() };
     this.setData({ updateSaving: true });
     try {
       const res = await api.story.appendUpdate({
-        storyId: detail.story.id, type, body, requestId: this.lastUpdate.id,
+        storyId: detail.story.id, expectedVersion, type, body, requestId: this.lastUpdate.id,
       });
       if (!res.ok) {
+        if (res.code === 'CONFLICT') {
+          await this.load();
+          this.composerVersion = this.data.detail?.story.version ?? expectedVersion;
+        }
         wx.showToast({ title: res.message, icon: 'none' });
         return;
       }
@@ -238,12 +283,12 @@ Page({
     });
   },
 
-  playAction(actionId: ActionId) {
+  playAction(actionId: ActionId, actor?: NonNullable<DetailPageData['hugActor']>) {
     const def = ACTION_MAP[actionId];
     if (!def) return;
     if (this.animationTimer) clearTimeout(this.animationTimer);
     if (this.data.reduceMotion) {
-      this.setData({ stageClass: '', stageEmoji: def.fallbackEmoji, animationHint: '已按你的设置使用静态效果' });
+      this.setData({ stageClass: '', hugActor: null, stageEmoji: def.fallbackEmoji, animationHint: '已按你的设置使用静态效果' });
       this.animationTimer = setTimeout(() => {
         this.setData({ stageEmoji: '', animationHint: '' });
       }, 1600) as unknown as number;
@@ -252,12 +297,13 @@ Page({
     const rig = this.selectComponent('#author-rig') as unknown as RigHandle | null;
     this.setData({
       stageClass: actionId === 'hug' ? 'is-hug' : '',
+      hugActor: actionId === 'hug' ? actor ?? this.data.myAvatar : null,
       stageEmoji: actionId === 'hug' ? '💗' : actionId === 'spin' ? '😵‍💫' : actionId === 'cheer' ? '🎉' : '🎁',
       animationHint: '',
     });
     rig?.play?.(actionId);
     this.animationTimer = setTimeout(() => {
-      this.setData({ stageClass: '', stageEmoji: '' });
+      this.setData({ stageClass: '', stageEmoji: '', hugActor: null });
       rig?.stop?.();
     }, def.durationMs + 700) as unknown as number;
   },
@@ -275,6 +321,7 @@ Page({
       return;
     }
     const res = await api.interaction.react({
+      groupId: detail.group?.id,
       storyId: detail.story.id,
       actionId,
       requestId: requestId(),
@@ -329,6 +376,7 @@ Page({
       return;
     }
     const res = await api.inventory.gift({
+      groupId: detail.group?.id,
       storyId: detail.story.id,
       itemDefId,
       requestId: requestId(),
@@ -364,6 +412,28 @@ Page({
           () => wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/atlas/index' }) }),
           500,
         );
+      },
+    });
+  },
+
+  onDeleteStory() {
+    const detail = this.data.detail;
+    if (!detail?.viewerIsAuthor) return;
+    wx.showModal({
+      title: '永久删除这条事故记录？',
+      content: '事故、故事和后续会从你的记录、圈子和对方的消息中移除。已到账的道具保留在接收方背包。此操作无法撤销。',
+      confirmText: '永久删除',
+      confirmColor: '#D93A3A',
+      success: async ({ confirm }) => {
+        if (!confirm) return;
+        const res = await api.story.delete({ storyId: detail.story.id, version: detail.story.version });
+        if (!res.ok && res.code !== 'NOT_FOUND') {
+          if (res.code === 'CONFLICT') await this.load();
+          wx.showToast({ title: res.message, icon: 'none' });
+          return;
+        }
+        wx.showToast({ title: '已删除', icon: 'success' });
+        wx.navigateBack({ fail: () => wx.switchTab({ url: '/pages/atlas/index' }) });
       },
     });
   },

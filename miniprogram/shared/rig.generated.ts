@@ -51,6 +51,14 @@ export const RIG_DATA = {
     "ground": {
       "x": 50,
       "y": 92.5
+    },
+    "shoulder_screen_left": {
+      "x": 35,
+      "y": 40.4
+    },
+    "shoulder_screen_right": {
+      "x": 65,
+      "y": 40.4
     }
   },
   "hotspots": {
@@ -251,6 +259,68 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "board_left",
+        "z": 19,
+        "bbox": {
+          "x": 0,
+          "y": 132,
+          "w": 88,
+          "h": 310
+        },
+        "slot": "handheld",
+        "arm": "left",
+        "carriedBy": "right",
+        "variants": {
+          "snowboard_dawn": "/assets/rigs/front/board_left/snowboard_dawn.png"
+        }
+      },
+      {
+        "id": "pole_left",
+        "z": 19,
+        "bbox": {
+          "x": 23,
+          "y": 258,
+          "w": 77,
+          "h": 183
+        },
+        "slot": "handheld",
+        "arm": "left",
+        "variants": {
+          "ski_poles": "/assets/rigs/front/pole_left/ski_poles.png"
+        }
+      },
+      {
+        "id": "board_right",
+        "z": 19,
+        "bbox": {
+          "x": 232,
+          "y": 132,
+          "w": 88,
+          "h": 310
+        },
+        "slot": "handheld",
+        "arm": "right",
+        "carriedBy": "left",
+        "variants": {
+          "snowboard_dawn": "/assets/rigs/front/board_right/snowboard_dawn.png"
+        }
+      },
+      {
+        "id": "pole_right",
+        "z": 19,
+        "bbox": {
+          "x": 220,
+          "y": 258,
+          "w": 77,
+          "h": 183
+        },
+        "slot": "handheld",
+        "arm": "right",
+        "variants": {
+          "ski_poles": "/assets/rigs/front/pole_right/ski_poles.png"
+        }
+      },
+      {
         "id": "outfit",
         "z": 20,
         "bbox": {
@@ -267,6 +337,104 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "arm_left",
+        "z": 21,
+        "bbox": {
+          "x": 56,
+          "y": 176,
+          "w": 78,
+          "h": 140
+        },
+        "slot": "palette",
+        "arm": "left",
+        "variants": {
+          "blue": "/assets/rigs/shared/arm_left/blue.png",
+          "orange": "/assets/rigs/shared/arm_left/orange.png",
+          "purple": "/assets/rigs/shared/arm_left/purple.png",
+          "mint": "/assets/rigs/shared/arm_left/mint.png"
+        }
+      },
+      {
+        "id": "arm_right",
+        "z": 21,
+        "bbox": {
+          "x": 186,
+          "y": 176,
+          "w": 78,
+          "h": 140
+        },
+        "slot": "palette",
+        "arm": "right",
+        "variants": {
+          "blue": "/assets/rigs/shared/arm_right/blue.png",
+          "orange": "/assets/rigs/shared/arm_right/orange.png",
+          "purple": "/assets/rigs/shared/arm_right/purple.png",
+          "mint": "/assets/rigs/shared/arm_right/mint.png"
+        }
+      },
+      {
+        "id": "sleeve_left",
+        "z": 22,
+        "bbox": {
+          "x": 70,
+          "y": 174,
+          "w": 64,
+          "h": 86
+        },
+        "slot": "outfit",
+        "arm": "left",
+        "variants": {
+          "ski_blue": "/assets/rigs/shared/sleeve_left/ski_blue.png",
+          "suit_orange": "/assets/rigs/shared/sleeve_left/suit_orange.png"
+        }
+      },
+      {
+        "id": "sleeve_right",
+        "z": 22,
+        "bbox": {
+          "x": 186,
+          "y": 174,
+          "w": 64,
+          "h": 86
+        },
+        "slot": "outfit",
+        "arm": "right",
+        "variants": {
+          "ski_blue": "/assets/rigs/shared/sleeve_right/ski_blue.png",
+          "suit_orange": "/assets/rigs/shared/sleeve_right/suit_orange.png"
+        }
+      },
+      {
+        "id": "glove_left",
+        "z": 23,
+        "bbox": {
+          "x": 54,
+          "y": 268,
+          "w": 44,
+          "h": 50
+        },
+        "slot": "gloves",
+        "arm": "left",
+        "variants": {
+          "gloves_frost": "/assets/rigs/front/glove_left/gloves_frost.png"
+        }
+      },
+      {
+        "id": "glove_right",
+        "z": 23,
+        "bbox": {
+          "x": 222,
+          "y": 268,
+          "w": 44,
+          "h": 50
+        },
+        "slot": "gloves",
+        "arm": "right",
+        "variants": {
+          "gloves_frost": "/assets/rigs/front/glove_right/gloves_frost.png"
+        }
+      },
+      {
         "id": "hip_protector",
         "z": 24,
         "bbox": {
@@ -279,6 +447,20 @@ export const RIG_DATA = {
         "variants": {
           "basic_hip_protector": "/assets/rigs/front/hip_protector/basic_hip_protector.png",
           "steel_hip_guard": "/assets/rigs/front/hip_protector/steel_hip_guard.png"
+        }
+      },
+      {
+        "id": "knee_pads",
+        "z": 25,
+        "bbox": {
+          "x": 106,
+          "y": 350,
+          "w": 108,
+          "h": 44
+        },
+        "slot": "knee_pads",
+        "variants": {
+          "pads_slate": "/assets/rigs/front/knee_pads/pads_slate.png"
         }
       },
       {
@@ -394,6 +576,68 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "board_left",
+        "z": 19,
+        "bbox": {
+          "x": 0,
+          "y": 132,
+          "w": 88,
+          "h": 310
+        },
+        "slot": "handheld",
+        "arm": "left",
+        "carriedBy": "left",
+        "variants": {
+          "snowboard_dawn": "/assets/rigs/back/board_left/snowboard_dawn.png"
+        }
+      },
+      {
+        "id": "pole_left",
+        "z": 19,
+        "bbox": {
+          "x": 23,
+          "y": 258,
+          "w": 77,
+          "h": 183
+        },
+        "slot": "handheld",
+        "arm": "left",
+        "variants": {
+          "ski_poles": "/assets/rigs/back/pole_left/ski_poles.png"
+        }
+      },
+      {
+        "id": "board_right",
+        "z": 19,
+        "bbox": {
+          "x": 232,
+          "y": 132,
+          "w": 88,
+          "h": 310
+        },
+        "slot": "handheld",
+        "arm": "right",
+        "carriedBy": "right",
+        "variants": {
+          "snowboard_dawn": "/assets/rigs/back/board_right/snowboard_dawn.png"
+        }
+      },
+      {
+        "id": "pole_right",
+        "z": 19,
+        "bbox": {
+          "x": 220,
+          "y": 258,
+          "w": 77,
+          "h": 183
+        },
+        "slot": "handheld",
+        "arm": "right",
+        "variants": {
+          "ski_poles": "/assets/rigs/back/pole_right/ski_poles.png"
+        }
+      },
+      {
         "id": "outfit",
         "z": 20,
         "bbox": {
@@ -410,6 +654,104 @@ export const RIG_DATA = {
         }
       },
       {
+        "id": "arm_left",
+        "z": 21,
+        "bbox": {
+          "x": 56,
+          "y": 176,
+          "w": 78,
+          "h": 140
+        },
+        "slot": "palette",
+        "arm": "left",
+        "variants": {
+          "blue": "/assets/rigs/shared/arm_left/blue.png",
+          "orange": "/assets/rigs/shared/arm_left/orange.png",
+          "purple": "/assets/rigs/shared/arm_left/purple.png",
+          "mint": "/assets/rigs/shared/arm_left/mint.png"
+        }
+      },
+      {
+        "id": "arm_right",
+        "z": 21,
+        "bbox": {
+          "x": 186,
+          "y": 176,
+          "w": 78,
+          "h": 140
+        },
+        "slot": "palette",
+        "arm": "right",
+        "variants": {
+          "blue": "/assets/rigs/shared/arm_right/blue.png",
+          "orange": "/assets/rigs/shared/arm_right/orange.png",
+          "purple": "/assets/rigs/shared/arm_right/purple.png",
+          "mint": "/assets/rigs/shared/arm_right/mint.png"
+        }
+      },
+      {
+        "id": "sleeve_left",
+        "z": 22,
+        "bbox": {
+          "x": 70,
+          "y": 174,
+          "w": 64,
+          "h": 86
+        },
+        "slot": "outfit",
+        "arm": "left",
+        "variants": {
+          "ski_blue": "/assets/rigs/shared/sleeve_left/ski_blue.png",
+          "suit_orange": "/assets/rigs/shared/sleeve_left/suit_orange.png"
+        }
+      },
+      {
+        "id": "sleeve_right",
+        "z": 22,
+        "bbox": {
+          "x": 186,
+          "y": 174,
+          "w": 64,
+          "h": 86
+        },
+        "slot": "outfit",
+        "arm": "right",
+        "variants": {
+          "ski_blue": "/assets/rigs/shared/sleeve_right/ski_blue.png",
+          "suit_orange": "/assets/rigs/shared/sleeve_right/suit_orange.png"
+        }
+      },
+      {
+        "id": "glove_left",
+        "z": 23,
+        "bbox": {
+          "x": 54,
+          "y": 268,
+          "w": 44,
+          "h": 50
+        },
+        "slot": "gloves",
+        "arm": "left",
+        "variants": {
+          "gloves_frost": "/assets/rigs/back/glove_left/gloves_frost.png"
+        }
+      },
+      {
+        "id": "glove_right",
+        "z": 23,
+        "bbox": {
+          "x": 222,
+          "y": 268,
+          "w": 44,
+          "h": 50
+        },
+        "slot": "gloves",
+        "arm": "right",
+        "variants": {
+          "gloves_frost": "/assets/rigs/back/glove_right/gloves_frost.png"
+        }
+      },
+      {
         "id": "hip_protector",
         "z": 24,
         "bbox": {
@@ -422,6 +764,20 @@ export const RIG_DATA = {
         "variants": {
           "basic_hip_protector": "/assets/rigs/back/hip_protector/basic_hip_protector.png",
           "steel_hip_guard": "/assets/rigs/back/hip_protector/steel_hip_guard.png"
+        }
+      },
+      {
+        "id": "knee_pads",
+        "z": 25,
+        "bbox": {
+          "x": 106,
+          "y": 350,
+          "w": 108,
+          "h": 44
+        },
+        "slot": "knee_pads",
+        "variants": {
+          "pads_slate": "/assets/rigs/back/knee_pads/pads_slate.png"
         }
       },
       {

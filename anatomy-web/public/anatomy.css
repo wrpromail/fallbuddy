@@ -298,3 +298,9 @@ body {
   animation: rise 0.25s ease;
   z-index: 10;
 }
+
+.reference-plates { margin: 8px 16px; }
+.reference-plates summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.plate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.plate-grid figure { margin: 0; text-align: center; }
+.plate-grid img { display: block; width: 100%; height: auto; }

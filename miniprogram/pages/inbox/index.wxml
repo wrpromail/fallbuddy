@@ -1,50 +1,47 @@
 <view class="page">
   <view class="head">
-    <view>
-      <view class="head__title">消息</view>
-      <view class="head__sub">谁对你的故事抱了抱、转了圈、送了装备</view>
-    </view>
-    <view wx:if="{{unreadCount}}" class="btn btn--ghost mark" bindtap="onMarkAllRead">全部已读</view>
+    <view class="head__title">消息</view>
+    <button wx:if="{{unreadCount}}" class="btn btn--ghost mark" bindtap="onMarkAllRead">全部已读</button>
   </view>
 
   <view wx:if="{{loading}}" class="loading">正在收消息…</view>
-
   <view wx:elif="{{error}}" class="empty card">
-    <view class="empty__emoji">📭</view>
     <view class="empty__title">{{error}}</view>
   </view>
 
   <block wx:else>
-    <view wx:if="{{!events.length}}" class="empty card">
-      <view class="empty__emoji">📭</view>
-      <view class="empty__title">还没有互动</view>
-      <view class="empty__text">去图鉴给雪友的故事抱一下，互动会出现在对方的消息里。</view>
-      <view class="btn btn--primary" bindtap="goAtlas">去图鉴看看</view>
+    <navigator wx:for="{{updates}}" wx:key="id" class="card event" url="/pages/story/detail?groupId={{item.groupId}}&amp;storyId={{item.storyId}}">关注的《{{item.title}}》有了后续 · {{item.body}}</navigator>
+    <navigator wx:for="{{requests}}" wx:key="id" class="card event" url="/pages/links/index?groupId={{item.groupId}}&amp;storyId={{item.storyId}}">《{{item.title}}》申请关联你的《{{item.targetTitle}}》 · 查看</navigator>
+    <view wx:if="{{!groups.length && !requests.length && !updates.length}}" class="empty card">
+      <view class="empty__title">暂无互动消息</view>
+      <button class="btn btn--primary" bindtap="goAtlas">去图鉴看看</button>
     </view>
 
     <view wx:else class="feed">
-      <view
-        wx:for="{{events}}"
-        wx:key="id"
-        class="event card {{item.read ? 'event--read' : ''}}"
-        data-index="{{index}}"
-        bindtap="onTapEvent"
-      >
-        <view class="event__emoji">{{item.emoji}}</view>
-        <view class="event__main">
-          <view class="event__text">
-            <text class="event__actor">{{item.actorName}}</text>
-            <text>{{item.text}}</text>
+      <view wx:for="{{groups}}" wx:key="id" class="card">
+        <view class="event {{item.unreadCount ? '' : 'event--read'}}" data-id="{{item.id}}" bindtap="onToggleGroup"
+          aria-role="button" aria-label="{{item.storyTitle}}，{{item.summary}}">
+          <view class="event__emoji">{{item.emoji}}</view>
+          <view class="event__main">
+            <view class="event__text">{{item.storyTitle}}</view>
+            <view class="event__time">{{item.summary}} · {{item.timeText}}</view>
           </view>
-          <view class="event__time">{{item.timeText}} · 点一下回放动画</view>
+          <view wx:if="{{item.unreadCount}}" class="event__dot"></view>
+          <text class="tiny">{{openGroupId === item.id ? '收起' : '展开'}}</text>
         </view>
-        <image wx:if="{{item.itemIcon}}" src="{{item.itemIcon}}" mode="aspectFit" class="event__item" />
-        <view wx:if="{{!item.read}}" class="event__dot"></view>
+        <view wx:if="{{openGroupId === item.id}}" class="event-details">
+          <view wx:for="{{item.events}}" wx:for-item="event" wx:key="id" class="event-details__row">
+            <view class="event-details__main">
+              <view>{{event.actorName}}</view>
+              <view class="event__time">{{event.itemName ? event.itemName + ' · ' : ''}}{{event.timeText}}</view>
+            </view>
+            <button class="btn btn--ghost" data-story="{{event.storyId}}" data-id="{{event.id}}" bindtap="onReplay">回放</button>
+            <button class="btn btn--ghost" data-id="{{event.actorId}}" data-name="{{event.actorName}}" bindtap="onBlock">屏蔽</button>
+          </view>
+          <button class="btn btn--ghost" data-id="{{item.id}}" bindtap="onIgnore">忽略这一组</button>
+        </view>
       </view>
-
       <view wx:if="{{nextCursor}}" class="more" bindtap="onLoadMore">{{loadingMore ? '加载中…' : '加载更多'}}</view>
     </view>
-
-    <view class="footnote">互动只是展示层效果，不会改变对方的角色配置；收到的装备需要本人确认才会穿上。</view>
   </block>
 </view>

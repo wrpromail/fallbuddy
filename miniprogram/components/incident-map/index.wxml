@@ -13,6 +13,7 @@
       <skeleton-map view="{{view}}" appearance-mode="{{mode}}" selected-parts="{{parts}}"
         selection-only="{{!selectable}}" bind:hotspot="selectPart" />
     </view>
+    <view wx:for="{{landmarks}}" wx:key="*this">{{item}}</view>
     <view class="muted tiny">左右按人体自身标记，后背和尾椎见背面 · Écorché · CC BY-SA 4.0</view>
   </block>
 </view>

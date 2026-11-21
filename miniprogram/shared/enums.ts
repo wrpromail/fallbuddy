@@ -148,14 +148,19 @@ export const UPDATE_TYPE_LABEL: Record<UpdateType, string> = {
 };
 
 /** 装备槽位（与 rig 图层 slot 对应） */
-export const EQUIP_SLOTS = ['headgear', 'goggles', 'outfit', 'hip_protector', 'boots'] as const;
+export const EQUIP_SLOTS = ['headgear', 'goggles', 'outfit', 'hip_protector', 'boots', 'gloves', 'knee_pads', 'handheld'] as const;
 export type EquipSlot = (typeof EQUIP_SLOTS)[number];
+export const CARRY_HANDS = ['left', 'right'] as const;
+export type CarryHand = (typeof CARRY_HANDS)[number];
 export const EQUIP_SLOT_LABEL: Record<EquipSlot, string> = {
-  headgear: '头部装备',
+  headgear: '头饰',
   goggles: '雪镜',
-  outfit: '雪服',
+  outfit: '服装',
   hip_protector: '护臀',
-  boots: '雪鞋',
+  boots: '鞋靴',
+  gloves: '手套',
+  knee_pads: '护膝',
+  handheld: '手持',
 };
 
 export function labelOf<T extends string>(map: Record<T, string>, value: string): string {

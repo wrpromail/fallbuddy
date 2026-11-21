@@ -1,9 +1,11 @@
-import { ITEM_MAP, STARTER_COSMETICS } from './items';
+import { CARRY_HANDS, type CarryHand } from './enums';
+import { ITEM_MAP, SNOWBOARD_ID, STARTER_COSMETICS } from './items';
 import type { DbState, UserRecord } from './db-types';
 import type { AvatarState, EquippedGear } from './types';
 
 export const EMPTY_GEAR: EquippedGear = {
   headgear: null, goggles: null, outfit: null, hip_protector: null, boots: null,
+  gloves: null, knee_pads: null, handheld: null,
 };
 
 export const ANONYMOUS_APPEARANCE = {
@@ -31,6 +33,17 @@ export function grantCosmetic(state: DbState, userId: string, itemId: string, no
   return true;
 }
 
+export function migrateAvatarCarry(avatar: AvatarState): boolean {
+  const legacy = avatar.equipped as EquippedGear & { carryHand?: CarryHand };
+  if (!Object.prototype.hasOwnProperty.call(legacy, 'carryHand')) return false;
+  if (avatar.equipped.handheld === SNOWBOARD_ID && avatar.carryHand === undefined &&
+      legacy.carryHand && CARRY_HANDS.includes(legacy.carryHand)) {
+    avatar.carryHand = legacy.carryHand;
+  }
+  delete legacy.carryHand;
+  return true;
+}
+
 export function ensureAvatar(state: DbState, user: UserRecord, now: string): boolean {
   const avatar = state.avatars.find((item) => item.ownerId === user.id);
   let changed = false;
@@ -45,6 +58,7 @@ export function ensureAvatar(state: DbState, user: UserRecord, now: string): boo
     state.avatars.push(initial);
     changed = true;
   } else {
+    if (migrateAvatarCarry(avatar)) changed = true;
     const legacy = avatar.equipped as EquippedGear & { hipProtector?: string | null };
     if ('hipProtector' in legacy || !('hip_protector' in legacy)) {
       const { hipProtector, ...equipped } = legacy;
@@ -66,4 +80,21 @@ export function ensureAvatar(state: DbState, user: UserRecord, now: string): boo
     if (ITEM_MAP[itemId]?.category === 'cosmetic' && grantCosmetic(state, user.id, itemId, now)) changed = true;
   }
   return changed;
+}
+
+export function withoutExpiredGear(state: DbState, avatar: AvatarState): AvatarState {
+  if (avatar.equipped.hip_protector !== 'steel_hip_guard') return avatar;
+  const guard = state.inventory.find((row) => row.ownerId === avatar.ownerId && row.itemDefId === 'steel_hip_guard');
+  if (guard && guard.quantity > 0 && (!guard.expiresAt || Date.parse(guard.expiresAt) > Date.now())) return avatar;
+  return { ...avatar, equipped: { ...avatar.equipped, hip_protector: null } };
+}
+
+export function removeUnavailableGear(state: DbState, userId: string) {
+  const avatar = state.avatars.find((row) => row.ownerId === userId);
+  if (!avatar) return;
+  const visible = withoutExpiredGear(state, avatar);
+  if (visible !== avatar) {
+    avatar.equipped = visible.equipped;
+    avatar.version++;
+  }
 }

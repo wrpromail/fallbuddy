@@ -69,6 +69,8 @@ function buildRigData() {
       const [x, y, w, h] = layer.bbox;
       const item = { id: layer.id, z: layer.z, bbox: { x, y, w, h } };
       if (layer.slot) item.slot = layer.slot;
+      if (layer.arm) item.arm = layer.arm;
+      if (layer.carriedBy) item.carriedBy = layer.carriedBy;
       if (layer.variants) {
         item.variants = Object.fromEntries(
           Object.keys(layer.variants).map((key) => [key, layerSrcPath({ layer, key })]),
@@ -123,8 +125,8 @@ async function main() {
 
   await pool(jobs, 2);
 
-  // 纯色身体图层使用带透明度的 256 色 PNG，降低小程序包体。
-  const bodyFiles = entries.filter(({ layer }) => layer.id === 'body')
+  // 身体、四肢与装备图层使用带透明度的索引 PNG，以控制小程序包体。
+  const bodyFiles = entries.filter(({ layer }) => layer.id === 'body' || layer.arm || layer.slot === 'knee_pads')
     .map((entry) => join(ASSETS, layerSrcPath(entry).replace('/assets/', '')));
   execFileSync('python3', ['-c', `
 import sys
@@ -146,6 +148,11 @@ for file in sys.argv[1:]:
     compositeSvg('front', { outfit: 'suit_orange', headgear: 'helmet_red', hip_protector: 'steel_hip_guard', goggles: 'snow_goggles' }),
     join(REVIEW, 'rig-front-gear.png'),
   );
+  const winterGear = { ...defaultEquip, gloves: 'gloves_frost', knee_pads: 'pads_slate', boots: 'snow_boots' };
+  await render(compositeSvg('front', { ...winterGear, handheld: 'snowboard_dawn' }), join(REVIEW, 'rig-snowboard-front.png'));
+  await render(compositeSvg('back', { ...winterGear, handheld: 'snowboard_dawn' }), join(REVIEW, 'rig-snowboard-back.png'));
+  await render(compositeSvg('front', { ...winterGear, handheld: 'ski_poles' }), join(REVIEW, 'rig-poles-front.png'));
+  await render(compositeSvg('back', { ...winterGear, handheld: 'ski_poles' }), join(REVIEW, 'rig-poles-back.png'));
   await render(sheetSvg(['happy', 'surprised', 'awkward', 'comfort', 'cool']), join(REVIEW, 'expressions.png'));
 
   console.log(`rendered ${entries.length} layers + icons → ${ASSETS}`);

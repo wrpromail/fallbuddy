@@ -52,6 +52,9 @@ Page({
     pendingGroupId: '',
   } as AtlasPageData,
 
+  loadSequence: 0,
+  atlasSequence: 0,
+
   onLoad(query: Record<string, string | undefined>) {
     if (query.groupId) this.setData({ pendingGroupId: query.groupId });
   },
@@ -66,15 +69,19 @@ Page({
   },
 
   async load() {
+    const sequence = ++this.loadSequence;
+    this.atlasSequence++;
     this.setData({ loading: true, error: '' });
     const [meRes, groupsRes] = await Promise.all([api.auth.ensureUser(), api.group.listMine()]);
+    if (sequence !== this.loadSequence) return;
     if (!groupsRes.ok) {
-      this.setData({ loading: false, error: groupsRes.message });
+      this.setData({ loading: false, error: groupsRes.message, groups: [], group: null, avatar: null, atlas: null,
+        sheetOpen: false, sheetStories: [] });
       return;
     }
     const groups = groupsRes.data;
     if (!groups.length) {
-      this.setData({ loading: false, groups: [], group: null, error: '你还没有加入任何圈子' });
+      this.setData({ loading: false, groups: [], group: null, atlas: null, hottest: [], sheetOpen: false, sheetStories: [], error: '你还没有加入任何圈子' });
       return;
     }
     const preferred =
@@ -86,14 +93,18 @@ Page({
     const avatar = meRes.ok ? meRes.data.avatar : null;
     this.setData({ groups, groupIndex: index, group: groups[index], avatar, pendingGroupId: '' });
     await this.refreshAtlas();
+    if (sequence !== this.loadSequence) return;
     this.setData({ loading: false });
     this.refreshBadge();
   },
 
   async refreshAtlas() {
+    const sequence = ++this.atlasSequence;
     const group = this.data.group;
     if (!group) return;
+    this.setData({ atlas: null, hottest: [], sheetOpen: false, sheetStories: [] });
     const res = await api.group.getAtlas({ groupId: group.id, view: this.data.view, period: this.data.period });
+    if (sequence !== this.atlasSequence) return;
     if (!res.ok) {
       this.setData({ error: res.message });
       return;
@@ -209,8 +220,7 @@ Page({
 
   onGroup() {
     const group = this.data.group;
-    if (!group) return;
-    wx.navigateTo({ url: `/pages/group/index?groupId=${group.id}` });
+    wx.navigateTo({ url: group ? `/pages/group/index?groupId=${group.id}` : '/pages/group/index' });
   },
 
   onSettings() {

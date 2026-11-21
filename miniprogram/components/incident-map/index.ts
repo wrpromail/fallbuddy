@@ -1,3 +1,5 @@
+import { landmarkLabels } from '../../shared/anatomy-landmarks';
+import type { BodyPart } from '../../shared/enums';
 Component({
   options: { addGlobalClass: true },
   properties: {
@@ -6,8 +8,14 @@ Component({
   },
   data: {
     open: false,
+    landmarks: [] as string[],
     view: 'front',
     mode: 'bones',
+  },
+  observers: {
+    'parts, mode'(parts: BodyPart[], mode: string) {
+      this.setData({ landmarks: landmarkLabels(parts, mode) });
+    },
   },
   methods: {
     toggle() {

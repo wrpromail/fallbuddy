@@ -22,7 +22,7 @@
       </view>
       <view class="stage__figure {{mode === 'chip' ? 'stage__figure--chip' : ''}}">
         <avatar-rig id="avatar-preview" view="{{view}}" mode="{{mode}}" palette="{{preview.palette}}"
-          head-shape="{{preview.headShape}}" expression="{{preview.expression}}" equipped="{{preview.equipped}}" reduce-motion="{{reduceMotion}}" />
+          head-shape="{{preview.headShape}}" expression="{{preview.expression}}" equipped="{{preview.equipped}}" carry-hand="{{preview.carryHand}}" reduce-motion="{{reduceMotion}}" />
       </view>
       <view wx:if="{{draft}}" class="character-controls">
         <button wx:for="{{actions}}" wx:key="id" class="btn btn--ghost" data-id="{{item.id}}" bindtap="onPreviewAction">{{item.label}}</button>
@@ -31,7 +31,17 @@
       <view wx:if="{{notice && !draft}}" class="tiny muted">{{notice}}</view>
     </view>
 
+    <view wx:if="{{!draft && outfits.length}}" class="panel card">
+      <view class="section-title">我的穿搭收藏</view>
+      <view wx:for="{{outfits}}" wx:key="slot" class="character-controls">
+        <text>穿搭 {{item.slot}}</text>
+        <button wx:if="{{item.appearance}}" class="btn" disabled="{{saving}}" data-slot="{{item.slot}}" bindtap="onTryOutfit">试穿</button>
+        <button class="btn btn--ghost" disabled="{{saving}}" data-slot="{{item.slot}}" bindtap="onStoreOutfit">{{item.appearance ? '用当前形象替换' : '收藏当前形象'}}</button>
+        <button wx:if="{{item.appearance}}" class="btn btn--ghost" disabled="{{saving}}" data-slot="{{item.slot}}" data-clear="yes" bindtap="onStoreOutfit">移除</button>
+      </view>
+    </view>
     <block wx:if="{{draft}}">
+      <button class="btn btn--ghost" disabled="{{saving}}" bindtap="onRandomOutfit">随机试穿已拥有的装备</button>
       <view class="panel card">
         <view class="section-title">头型</view>
         <view class="character-controls character-controls--left">
@@ -56,16 +66,23 @@
           <button wx:for="{{slots}}" wx:key="id" class="btn {{slot === item.id ? 'btn--primary' : 'btn--ghost'}}"
             data-id="{{item.id}}" bindtap="onSlot">{{item.label}}</button>
         </view>
-        <button class="btn btn--ghost" data-id="" disabled="{{!selectedItem || saving}}" bindtap="onTryGear">脱下这个部位的装备</button>
+        <button class="btn btn--ghost" data-id="" disabled="{{!selectedItem || saving}}" bindtap="onTryGear">{{slot === 'handheld' ? '放下手持装备' : '脱下这个部位的装备'}}</button>
+        <view wx:if="{{snowboardSelected}}" class="character-controls character-controls--left">
+          <button class="btn {{draft.carryHand === 'left' ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="left" bindtap="onCarryHand" disabled="{{saving}}">左手持板</button>
+          <button class="btn {{draft.carryHand !== 'left' ? 'btn--primary' : 'btn--ghost'}}"
+            data-id="right" bindtap="onCarryHand" disabled="{{saving}}">右手持板</button>
+        </view>
+        <view wx:if="{{slot === 'handheld' && selectedItem}}" class="tiny muted">抱抱和鼓掌时会暂时收好器材，动作结束后自动拿回。</view>
         <view wx:for="{{wardrobe}}" wx:key="id" class="wardrobe-item">
           <image class="wardrobe-item__image" src="{{item.src}}" mode="aspectFit" />
           <view class="wardrobe-item__text">
             <view>{{item.name}}</view>
             <view class="tiny muted">{{item.desc}}</view>
-            <view class="tiny muted">{{selectedItem === item.id ? (selectedOwned ? '穿戴中' : '试穿中') : (avatar.equipped[slot] === item.id ? '已保存穿戴' : (item.owned ? '已拥有' : '可免费领取'))}}</view>
+            <view class="tiny muted">{{selectedItem === item.id ? (selectedOwned ? '已选用' : '预览中') : (avatar.equipped[slot] === item.id ? '已保存' : (item.owned ? '已拥有' : '可免费领取'))}}</view>
           </view>
           <view class="wardrobe-item__actions">
-            <button class="btn btn--ghost" disabled="{{saving || selectedItem === item.id}}" data-id="{{item.id}}" bindtap="onTryGear">试穿</button>
+            <button class="btn btn--ghost" disabled="{{saving || selectedItem === item.id}}" data-id="{{item.id}}" bindtap="onTryGear">{{slot === 'handheld' ? '试拿' : '试穿'}}</button>
             <button wx:if="{{!item.owned}}" class="btn btn--ghost" disabled="{{claimingItem || saving}}" data-id="{{item.id}}" bindtap="onClaimGear">免费领取</button>
           </view>
         </view>
@@ -96,8 +113,12 @@
         bindtap="onClaimWeekly"
       >{{claiming ? '领取中…' : weeklyClaimed ? '已领取' : '领取'}}</view>
     </view>
+    <view wx:if="{{pollBadge}}" class="pill pill--accent">🏅 圈内故事评选参与纪念章</view>
     <view class="items">
-      <item-card wx:for="{{inventory}}" wx:key="itemDefId" item="{{item}}" />
+      <view wx:for="{{inventory}}" wx:key="itemDefId">
+        <item-card item="{{item}}" />
+        <button wx:if="{{item.category === 'consumable'}}" class="btn btn--ghost" data-id="{{item.itemDefId}}" bindtap="onConsume">使用一件</button>
+      </view>
     </view>
   </view>
 

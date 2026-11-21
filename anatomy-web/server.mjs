@@ -405,6 +405,15 @@ const server = http.createServer(async (req, res) => {
     return streamAI(res, messages, { temperature: 1.0, maxTokens: 520 }, fallbackRoast(body.scope, body.regionId));
   }
 
+  const plate = /^\/plates\/((?:bones|muscles)-(?:front|back)\.png)$/.exec(p);
+  if (req.method === 'GET' && plate) {
+    try {
+      const bytes = await readFile(path.join(__dirname, '../miniprogram/assets/anatomy', plate[1]));
+      res.writeHead(200, { 'content-type': 'image/png' });
+      return res.end(bytes);
+    } catch { return send(res, 404, { error: '图版暂不可用' }); }
+  }
+
   // ---- 静态文件 ----
   if (req.method === 'GET') {
     let file = p === '/' ? '/index.html' : p;

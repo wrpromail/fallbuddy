@@ -17,9 +17,13 @@
         "goggles": {"type": ["string", "null"], "maxLength": 64},
         "outfit": {"type": ["string", "null"], "maxLength": 64},
         "hip_protector": {"type": ["string", "null"], "maxLength": 64},
-        "boots": {"type": ["string", "null"], "maxLength": 64}
+        "boots": {"type": ["string", "null"], "maxLength": 64},
+        "gloves": {"type": ["string", "null"], "maxLength": 64},
+        "knee_pads": {"type": ["string", "null"], "maxLength": 64},
+        "handheld": {"type": ["string", "null"], "maxLength": 64}
       }
     },
+    "carryHand": {"type": "string", "enum": ["left", "right"]},
     "expression": {"type": "string", "enum": ["happy", "surprised", "awkward", "comfort", "cool"]},
     "privacy": {
       "type": "object", "additionalProperties": false,

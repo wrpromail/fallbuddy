@@ -10,6 +10,9 @@ interface SettingsPageData {
   dataSource: string;
   isCloud: boolean;
   reduceMotion: boolean;
+  blocked: { id: string; name: string }[];
+  accountDeleted: boolean;
+  deleting: boolean;
 }
 
 const DEFAULT_PREFS: UserPreferences = {
@@ -28,6 +31,9 @@ Page({
     dataSource: DATA_SOURCE === 'cloud' ? '微信云开发' : '本地演示数据',
     isCloud: DATA_SOURCE === 'cloud',
     reduceMotion: false,
+    blocked: [],
+    accountDeleted: false,
+    deleting: false,
   } as SettingsPageData,
 
   onLoad() {
@@ -35,13 +41,14 @@ Page({
   },
 
   async load() {
-    const res = await api.settings.get();
+    const [res, blocked] = await Promise.all([api.settings.get(), api.interaction.listBlocked()]);
     if (!res.ok) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, accountDeleted: res.code === 'ACCOUNT_DELETED' });
       wx.showToast({ title: res.message, icon: 'none' });
       return;
     }
-    this.setData({ loading: false, prefs: res.data, reduceMotion: res.data.reduceMotion });
+    this.setData({ loading: false, prefs: res.data, reduceMotion: res.data.reduceMotion,
+      blocked: blocked.ok ? blocked.data : [] });
   },
 
   async save(patch: Partial<UserPreferences>) {
@@ -67,8 +74,41 @@ Page({
     this.save({ reduceMotion: event.detail.value });
   },
 
+  onHideAvatar(event: WechatMiniprogram.SwitchChange) {
+    this.save({ hideAvatar: event.detail.value });
+  },
+
   onAnonymous(event: WechatMiniprogram.SwitchChange) {
     this.save({ anonymousByDefault: event.detail.value });
+  },
+
+  async onUnblock(event: WechatMiniprogram.TouchEvent) {
+    const id = event.currentTarget.dataset.id;
+    const res = await api.interaction.setBlocked({ userId: id, blocked: false });
+    if (!res.ok) wx.showToast({ title: res.message, icon: 'none' });
+    else this.setData({ blocked: this.data.blocked.filter((user) => user.id !== id) });
+  },
+
+  onDeleteAccount() {
+    if (!this.data.isCloud || this.data.deleting || this.data.accountDeleted) return;
+    wx.showModal({
+      title: '永久注销账号？',
+      content: '你的事故、草稿、角色和背包将被删除，圈友收到的道具会保留。注销立即生效，无法撤销。',
+      confirmText: '确认注销',
+      confirmColor: '#D93A3A',
+      success: async ({ confirm }) => {
+        if (!confirm || this.data.deleting) return;
+        this.setData({ deleting: true });
+        const res = await api.auth.deleteAccount({ confirm: true });
+        this.setData({ deleting: false });
+        if (!res.ok) {
+          wx.showToast({ title: res.message, icon: 'none' });
+          return;
+        }
+        this.setData({ accountDeleted: true, blocked: [], prefs: DEFAULT_PREFS });
+        wx.reLaunch({ url: '/pages/settings/index' });
+      },
+    });
   },
 
   onReset() {
@@ -89,9 +129,10 @@ Page({
 
   onAbout() {
     wx.showModal({
-      title: '关于摔友记 V0',
-      content:
-        '本地可交互原型：原生 TypeScript 微信小程序 + 本地 mock 数据。角色素材为原创几何造型。V0 不含云函数、录音与 AI，也不会向任何服务器发送数据。上线前需核验微信个人主体服务类目、UGC 审核、隐私保护指引与备案要求。',
+      title: '关于摔友记',
+      content: this.data.isCloud
+        ? '事故、圈子、角色和互动保存在试用云环境。发布和编辑的文字会经过微信内容安全检查。注销会删除账号和个人记录，保留已到账道具的最小交易记录。'
+        : '这里使用本机演示数据。可从设置重置在这台设备上创建的故事、互动和角色。',
       showCancel: false,
       confirmText: '知道了',
     });

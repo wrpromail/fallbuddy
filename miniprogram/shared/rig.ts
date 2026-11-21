@@ -2,6 +2,7 @@ import { RIG_DATA } from './rig.generated';
 import type { EquipSlot, Expression } from './enums';
 import type { LayerBox, ResolvedLayer, RigAppearance, RigDefinition, RigHotspot, RigLayerDef } from './rig-types';
 import { EQUIP_SLOTS } from './enums';
+import { SNOWBOARD_ID } from './items';
 
 export const RIG = RIG_DATA as unknown as RigDefinition;
 
@@ -56,6 +57,7 @@ export function resolveRigLayers(
   const layers = RIG.views[view] ?? RIG.views.front;
   const active: { layer: RigLayerDef; src: string }[] = [];
   for (const layer of layers) {
+    if (layer.carriedBy && layer.carriedBy !== (appearance.carryHand ?? 'right')) continue;
     const src = layerSource(layer, appearance);
     if (!src) continue;
     if (mode === 'chip' && !CHIP_LAYER_IDS.includes(layer.id)) continue;
@@ -76,6 +78,8 @@ export function resolveRigLayers(
     top: pct((layer.bbox.y - box.y) / box.h),
     width: pct(layer.bbox.w / box.w),
     height: pct(layer.bbox.h / box.h),
+    arm: layer.arm,
+    handheld: layer.slot === 'handheld',
   }));
 }
 
@@ -95,13 +99,11 @@ export function hotspotList(): RigHotspot[] {
 
 /** 从 rig 变体里推导可选的装备项（供角色页展示，真实权限仍由库存决定） */
 export function equipmentVariants(): Record<EquipSlot, string[]> {
-  const result = { headgear: [], goggles: [], outfit: [], hip_protector: [], boots: [] } as Record<EquipSlot, string[]>;
-  for (const layer of RIG.views.front) {
-    if (layer.slot && layer.slot !== 'expression' && layer.slot !== 'palette' && layer.slot !== 'headShape' && layer.variants) {
-      result[layer.slot] = Object.keys(layer.variants);
-    }
-  }
-  return result;
+  return Object.fromEntries(EQUIP_SLOTS.map((slot) => {
+    const keys = RIG.views.front.filter((layer) => layer.slot === slot)
+      .flatMap((layer) => Object.keys(layer.variants ?? {}));
+    return [slot, [...new Set(keys)]];
+  })) as Record<EquipSlot, string[]>;
 }
 
 export function expressionVariants(): Expression[] {
@@ -114,6 +116,7 @@ export function appearanceEquals(a: RigAppearance, b: RigAppearance): boolean {
     a.palette === b.palette &&
     a.expression === b.expression &&
     (a.headShape ?? 'round') === (b.headShape ?? 'round') &&
+    (a.equipped.handheld !== SNOWBOARD_ID || (a.carryHand ?? 'right') === (b.carryHand ?? 'right')) &&
     EQUIP_SLOTS.every((slot) => (a.equipped[slot] ?? null) === (b.equipped[slot] ?? null))
   );
 }

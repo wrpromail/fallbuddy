@@ -2,42 +2,48 @@ import { api } from '../../services/api';
 import { ACTION_MAP } from '../../shared/actions';
 import { ITEM_MAP } from '../../shared/items';
 import { relativeTime } from '../../shared/time';
-import type { ActionId, InboxEvent } from '../../shared/types';
+import type { InboxGroup } from '../../shared/types';
 
-interface EventView {
-  id: string;
-  actionId: ActionId;
-  storyId: string;
-  actorName: string;
-  text: string;
-  emoji: string;
-  timeText: string;
-  read: boolean;
-  itemIcon: string;
-  itemName: string;
-}
-
-interface InboxPageData {
-  loading: boolean;
-  events: EventView[];
-  unreadCount: number;
-  nextCursor: string | null;
-  loadingMore: boolean;
-  error: string;
+function toView(group: InboxGroup) {
+  const first = group.events[0];
+  const action = ACTION_MAP[first.actionId];
+  return {
+    id: group.id,
+    storyTitle: first.storyTitle,
+    emoji: action.fallbackEmoji,
+    summary: first.actionId === 'receive_gift'
+      ? `收到 ${group.events.length} 份礼物`
+      : `${action.name} × ${group.events.length}`,
+    timeText: relativeTime(first.createdAt),
+    unreadCount: group.unreadCount,
+    events: group.events.map((event) => ({
+      id: event.id,
+      actorId: event.actorId,
+      actorName: event.actorName,
+      storyId: event.storyId,
+      itemName: event.itemDefId ? ITEM_MAP[event.itemDefId]?.name ?? '道具' : '',
+      timeText: relativeTime(event.createdAt),
+    })),
+  };
 }
 
 Page({
   data: {
     loading: true,
-    events: [],
+    updates: [] as { id: string; groupId: string; storyId: string; title: string; body: string }[],
+    requests: [] as { id: string; title: string; targetTitle: string; storyId: string; groupId: string }[],
+    groups: [] as ReturnType<typeof toView>[],
+    openGroupId: '',
     unreadCount: 0,
-    nextCursor: null,
+    nextCursor: null as string | null,
     loadingMore: false,
     error: '',
-  } as InboxPageData,
+  },
+
+  loadSequence: 0,
 
   onShow() {
-    this.load();
+    void this.load();
   },
 
   async onPullDownRefresh() {
@@ -46,94 +52,105 @@ Page({
   },
 
   async load() {
-    this.setData({ loading: true, error: '' });
-    const res = await api.interaction.getInbox({ limit: 20 });
+    const sequence = ++this.loadSequence;
+    this.setData({ loading: true, loadingMore: false, error: '', openGroupId: '' });
+    const [res, links, followed] = await Promise.all([api.interaction.getInboxGroups({ limit: 20 }),
+      api.links.requests(), api.story.followedUpdates()]);
+    if (sequence === this.loadSequence) this.setData({ requests: links.ok ? links.data : [], updates: followed.ok ? followed.data : [] });
+    if (sequence !== this.loadSequence) return;
     if (!res.ok) {
-      this.setData({ loading: false, error: res.message });
+      this.setData({ loading: false, error: res.message, groups: [], unreadCount: 0, nextCursor: null });
+      this.syncBadge(0);
       return;
     }
     this.setData({
       loading: false,
-      events: res.data.events.map((event) => this.toView(event)),
+      groups: res.data.groups.map(toView),
       unreadCount: res.data.unreadCount,
       nextCursor: res.data.nextCursor,
     });
     this.syncBadge(res.data.unreadCount);
   },
 
-  toView(event: InboxEvent): EventView {
-    const action = ACTION_MAP[event.actionId];
-    const item = event.itemDefId ? ITEM_MAP[event.itemDefId] : undefined;
-    const text =
-      event.actionId === 'receive_gift'
-        ? `送你一件「${item?.name ?? '装备'}」`
-        : `${action?.name ?? '互动'}了你的故事`;
-    return {
-      id: event.id,
-      actionId: event.actionId,
-      storyId: event.storyId,
-      actorName: event.actorName,
-      text,
-      emoji: action?.fallbackEmoji ?? '💬',
-      timeText: relativeTime(event.createdAt),
-      read: event.read,
-      itemIcon: item && item.category !== 'cosmetic' ? `/assets/items/${item.id}.png` : item?.icon ?? '',
-      itemName: item?.name ?? '',
-    };
-  },
-
   syncBadge(unread: number) {
-    if (unread > 0) {
-      wx.setTabBarBadge({ index: 2, text: String(unread), fail: () => undefined });
-    } else {
-      wx.removeTabBarBadge({ index: 2, fail: () => undefined });
-    }
+    if (unread > 0) wx.setTabBarBadge({ index: 2, text: unread > 99 ? '99+' : String(unread), fail: () => undefined });
+    else wx.removeTabBarBadge({ index: 2, fail: () => undefined });
   },
 
   async onLoadMore() {
     if (!this.data.nextCursor || this.data.loadingMore) return;
+    const sequence = this.loadSequence;
     this.setData({ loadingMore: true });
-    const res = await api.interaction.getInbox({ cursor: this.data.nextCursor, limit: 20 });
+    const res = await api.interaction.getInboxGroups({ cursor: this.data.nextCursor, limit: 20 });
+    if (sequence !== this.loadSequence) return;
     if (!res.ok) {
       this.setData({ loadingMore: false });
+      wx.showToast({ title: res.message, icon: 'none' });
       return;
     }
+    const loaded = new Set(this.data.groups.map((group) => group.id));
     this.setData({
       loadingMore: false,
-      events: [...this.data.events, ...res.data.events.map((event) => this.toView(event))],
+      groups: [...this.data.groups, ...res.data.groups.filter((group) => !loaded.has(group.id)).map(toView)],
       nextCursor: res.data.nextCursor,
+      unreadCount: res.data.unreadCount,
     });
+    this.syncBadge(res.data.unreadCount);
   },
 
   async onMarkAllRead() {
     if (!this.data.unreadCount) return;
-    // 由服务端把当前用户的全部未读标为已读（覆盖未加载的分页），客户端不再只交已加载的 id
     const res = await api.interaction.markRead({ all: true });
+    if (!res.ok) wx.showToast({ title: res.message, icon: 'none' });
+    else await this.load();
+  },
+
+  async onToggleGroup(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id);
+    const group = this.data.groups.find((item) => item.id === id);
+    if (!group) return;
+    const open = this.data.openGroupId !== id;
+    this.setData({ openGroupId: open ? id : '' });
+    if (!open || !group.unreadCount) return;
+    const sequence = this.loadSequence;
+    const res = await api.interaction.markRead({ groupKey: id });
+    if (sequence !== this.loadSequence) return;
     if (!res.ok) {
       wx.showToast({ title: res.message, icon: 'none' });
       return;
     }
+    const unreadCount = Math.max(0, this.data.unreadCount - res.data.updatedCount);
     this.setData({
-      events: this.data.events.map((event) => ({ ...event, read: true })),
-      unreadCount: 0,
+      groups: this.data.groups.map((item) => item.id === id ? { ...item, unreadCount: 0 } : item),
+      unreadCount,
     });
-    this.syncBadge(0);
-    wx.showToast({ title: '都看完啦', icon: 'none' });
+    this.syncBadge(unreadCount);
   },
 
-  async onTapEvent(event: WechatMiniprogram.TouchEvent) {
-    const dataset = event.currentTarget.dataset as { index: number };
-    const item = this.data.events[dataset.index];
-    if (!item) return;
-    if (!item.read) {
-      await api.interaction.markRead({ eventIds: [item.id] });
-      const events = this.data.events.slice();
-      events[dataset.index] = { ...item, read: true };
-      const unreadCount = Math.max(0, this.data.unreadCount - 1);
-      this.setData({ events, unreadCount });
-      this.syncBadge(unreadCount);
-    }
-    wx.navigateTo({ url: `/pages/story/detail?storyId=${item.storyId}&action=${item.actionId}` });
+  onReplay(event: WechatMiniprogram.TouchEvent) {
+    const { story, id } = event.currentTarget.dataset;
+    wx.navigateTo({ url: `/pages/story/detail?storyId=${encodeURIComponent(story)}&eventId=${encodeURIComponent(id)}` });
+  },
+
+  async onIgnore(event: WechatMiniprogram.TouchEvent) {
+    const res = await api.interaction.ignoreInboxGroup({ groupKey: String(event.currentTarget.dataset.id) });
+    if (!res.ok) wx.showToast({ title: res.message, icon: 'none' });
+    else await this.load();
+  },
+
+  onBlock(event: WechatMiniprogram.TouchEvent) {
+    const { id, name } = event.currentTarget.dataset;
+    wx.showModal({
+      title: `屏蔽${name}？`,
+      content: '双方将无法互相互动或赠礼。你可以在设置里取消屏蔽。',
+      confirmText: '屏蔽',
+      success: async ({ confirm }) => {
+        if (!confirm) return;
+        const res = await api.interaction.setBlocked({ userId: id, blocked: true });
+        wx.showToast({ title: res.ok ? '已屏蔽' : res.message, icon: 'none' });
+        if (res.ok) await this.load();
+      },
+    });
   },
 
   goAtlas() {

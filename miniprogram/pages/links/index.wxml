@@ -1,0 +1,15 @@
+<view class="page">
+  <view wx:if="{{error}}" class="card panel">{{error}}</view>
+  <block wx:else>
+    <picker wx:if="{{choices.length}}" disabled="{{busy}}" range="{{choices}}" range-key="title" bindchange="onChoose">
+      <view class="btn btn--primary">从我在本圈的故事中选择一条关联</view>
+    </picker>
+    <view wx:if="{{!links.length}}" class="card panel">暂无同款经历。两位作者确认后，圈友就能沿关联阅读。</view>
+    <view wx:for="{{links}}" wx:key="id" class="card panel">
+      <button class="btn btn--ghost" data-id="{{item.otherId}}" bindtap="openStory">{{item.title}}</button>
+      <text>{{item.status === 'pending' ? '等待作者确认' : '已关联'}}</text>
+      <button wx:if="{{item.canReview && item.status === 'pending'}}" class="btn" data-id="{{item.id}}" data-decision="accept" disabled="{{busy}}" bindtap="onDecide">同意关联</button>
+      <button wx:if="{{item.canRevoke}}" class="btn" data-id="{{item.id}}" data-decision="revoke" disabled="{{busy}}" bindtap="onDecide">{{item.canReview && item.status === 'pending' ? '拒绝' : '取消关联'}}</button>
+    </view>
+  </block>
+</view>

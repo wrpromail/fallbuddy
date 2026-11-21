@@ -234,23 +234,83 @@ function legsFront() {
     .join('');
 }
 
-function armsFront() {
-  return `
-    ${capsule(208, 194, 234, 244, 15)}
-    ${knob(208, 194, 10)}
-    ${knob(234, 244, 8.5)}
-    ${capsule(234, 244, 241, 286, 13)}
-    ${hand(244, 293)}
+function arm(viewSide, content) {
+  return viewSide === 'right' ? `<g transform="translate(320 0) scale(-1 1)">${content}</g>` : content;
+}
+
+function bareArm(side) {
+  return arm(side, `
     ${capsule(112, 194, 86, 244, 15)}
     ${knob(112, 194, 10)}
     ${knob(86, 244, 8.5)}
     ${capsule(86, 244, 79, 286, 13)}
     ${hand(76, 293)}
-  `;
+  `);
+}
+
+function sleeve(side, outfitId) {
+  const p = C.outfit[outfitId];
+  return arm(side, `
+    ${capsule(115, 192, 88, 242, 22, { fill: p.main, ow: 3.2 })}
+    <path d="M104,236 Q94,244 88,238" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>
+  `);
+}
+
+function glove(side, view) {
+  return arm(side, `
+    <path d="M66,283 L67,276 Q78,272 90,278 L88,288 Q94,291 93,298 Q92,303 88,303 Q86,313 76,313 Q61,313 59,301 Q57,293 66,283Z"
+      fill="#406D98" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M67,280 Q77,284 88,284" fill="none" stroke="#A7E1EF" stroke-width="3" stroke-linecap="round"/>
+    ${view === 'front'
+      ? '<path d="M64,296 Q66,288 77,290 Q87,292 84,302 Q79,308 67,305Z" fill="#243D62"/><path d="M66,299 Q75,302 81,298" fill="none" stroke="#81ABC9" stroke-width="1.7"/>'
+      : '<path d="M65,299 Q75,291 85,295 M66,303 Q75,297 84,300" fill="none" stroke="#A7E1EF" stroke-width="2" stroke-linecap="round"/>'}
+  `);
+}
+
+function kneePads(view) {
+  return [126, 194].map((x) => `<g transform="translate(${x} 372)">
+    <path d="M-15,-12 Q0,-16 15,-12 L16,12 Q0,18 -16,12Z" fill="#344754" stroke="${C.ink}" stroke-width="2.5"/>
+    ${view === 'front'
+      ? `<path d="M-11,-12 Q0,-18 11,-12 L12,3 Q8,14 0,17 Q-8,14 -12,3Z" fill="#739F9C" stroke="${C.ink}" stroke-width="2.5"/>
+        <path d="M-7,-6 Q0,-10 7,-6 L6,0 Q0,5 -6,0Z" fill="#CBEEE1"/>`
+      : `<path d="M-13,-7 H13 M-14,7 H14" stroke="#92B6B5" stroke-width="4"/>
+        <rect x="2" y="3" width="7" height="7" rx="2" fill="#D1E5DB" stroke="${C.ink}" stroke-width="1.4"/>`}
+  </g>`).join('');
+}
+
+function snowboard(side, view) {
+  const front = view === 'front';
+  const binding = (y) => `<g transform="translate(0 ${y})">
+    <rect x="30" y="-10" width="26" height="20" rx="7" fill="#384C62" stroke="${C.ink}" stroke-width="2"/>
+    <path d="M34,-3 Q43,-10 52,-3 L51,4 Q43,1 35,5Z" fill="#C6EBEB"/>
+  </g>`;
+  return arm(side, `<g transform="rotate(-7 65 293)">
+    <path d="M22,178 Q20,143 42,140 Q64,142 63,174 L61,246 Q58,294 62,340 L64,400 Q64,429 43,433 Q22,430 22,400 L25,336 Q28,280 25,239Z"
+      fill="${front ? '#EAB276' : '#477B8F'}" stroke="${C.ink}" stroke-width="3.5"/>
+    ${front
+      ? `<path d="M25,194 L61,168 L61,185 L26,222Z M26,353 L62,326 L63,378 L23,404Z" fill="#5E9799"/>
+         <path d="M25,194 Q43,172 61,168 M25,218 L61,189 M26,352 L62,326" fill="none" stroke="#F9E9BC" stroke-width="3"/>
+         ${binding(235)}${binding(336)}`
+      : '<path d="M24,203 L61,178 L61,207 L25,241Z M26,345 L62,318 L63,350 L24,393Z" fill="#93C7C0"/><path d="M42,170 L43,408" stroke="#E2C388" stroke-width="4" stroke-linecap="round"/>'}
+    <path d="M38,151 Q26,156 28,181 M28,403 Q28,419 39,423" fill="none" stroke="#FFF2DD" stroke-width="2.3" stroke-linecap="round" opacity=".72"/>
+  </g>
+  <path d="M55,287 Q63,284 76,293 M55,295 Q65,297 76,293" fill="none" stroke="${C.ink}" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M55,287 Q63,284 76,293" fill="none" stroke="${front ? '#C98056' : '#ACD3CD'}" stroke-width="1.4" stroke-linecap="round"/>`);
+}
+
+function skiPole(side, view) {
+  return arm(side, `<g transform="rotate(17 76 293)">
+    <path d="M76,295 V431" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>
+    <path d="M76,297 V423" stroke="${view === 'front' ? '#8AD2DC' : '#5F9CB5'}" stroke-width="3"/>
+    <path d="M76,270 Q91,269 88,283" fill="none" stroke="#547196" stroke-width="3" stroke-linecap="round"/>
+    <path d="M76,270 V298" stroke="${C.ink}" stroke-width="9" stroke-linecap="round"/>
+    <path d="M76,270 V278" stroke="#F3BE71" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="76" cy="410" rx="9" ry="3.5" stroke="${C.ink}" stroke-width="2" fill="#78B6CB"/>
+  </g>`);
 }
 
 function bodyFront() {
-  return `${legsFront()}${torsoFront()}${armsFront()}`;
+  return `${legsFront()}${torsoFront()}`;
 }
 
 /* -------------------------------------------------------------- body back */
@@ -286,16 +346,6 @@ function bodyBack() {
     ${vertebrae}
     <path d="M130,288 L190,288 L186,318 Q160,330 134,318 Z" fill="${C.bone}" stroke="${C.ink}" stroke-width="3.4" stroke-linejoin="round"/>
     <path d="M148,296 L172,296 L160,310 Z" fill="${C.boneShade}" stroke="${C.boneLine}" stroke-width="2"/>
-    ${capsule(208, 194, 234, 244, 15)}
-    ${knob(208, 194, 10)}
-    ${knob(234, 244, 8.5)}
-    ${capsule(234, 244, 241, 286, 13)}
-    ${hand(244, 293)}
-    ${capsule(112, 194, 86, 244, 15)}
-    ${knob(112, 194, 10)}
-    ${knob(86, 244, 8.5)}
-    ${capsule(86, 244, 79, 286, 13)}
-    ${hand(76, 293)}
   `;
 }
 
@@ -303,34 +353,17 @@ function bodyBack() {
 
 function outfitFront(outfitId) {
   const p = C.outfit[outfitId] || C.outfit.ski_blue;
-  const sleeves =
-    outfitId === 'vest_mint'
-      ? ''
-      : `
-      ${capsule(205, 192, 232, 242, 22, { fill: p.main, ow: 3.2 })}
-      ${capsule(115, 192, 88, 242, 22, { fill: p.main, ow: 3.2 })}
-      <path d="M216,236 Q226,244 232,238" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M104,236 Q94,244 88,238" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
   return `
     <path d="M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z" fill="${p.main}" stroke="${C.ink}" stroke-width="3.6" stroke-linejoin="round"/>
     <path d="M118,186 C128,198 192,198 202,186" fill="${p.dark}" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round" opacity="0.9"/>
     <path d="M160,196 L160,288" stroke="${p.light}" stroke-width="4" stroke-linecap="round" stroke-dasharray="7 6" opacity="0.9"/>
     <path d="M112,262 C124,276 196,276 208,262" stroke="${p.dark}" stroke-width="6" fill="none" opacity="0.55"/>
     <path d="M126,206 L134,206 M126,220 L132,220" stroke="${p.light}" stroke-width="3.4" stroke-linecap="round" opacity="0.85"/>
-    ${sleeves}
   `;
 }
 
 function outfitBack(outfitId) {
   const p = C.outfit[outfitId] || C.outfit.ski_blue;
-  const sleeves =
-    outfitId === 'vest_mint'
-      ? ''
-      : `
-      ${capsule(205, 192, 232, 242, 22, { fill: p.main, ow: 3.2 })}
-      ${capsule(115, 192, 88, 242, 22, { fill: p.main, ow: 3.2 })}
-      <path d="M216,236 Q226,244 232,238" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M104,236 Q94,244 88,238" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
   return `
     <path d="M118,186 C128,175 192,175 202,186 L208,262 C204,286 186,296 160,296 C134,296 116,286 112,262 Z" fill="${p.main}" stroke="${C.ink}" stroke-width="3.6" stroke-linejoin="round"/>
     <path d="M126,186 C142,196 178,196 194,186" fill="none" stroke="${p.dark}" stroke-width="6" opacity="0.6"/>
@@ -341,7 +374,6 @@ function outfitBack(outfitId) {
     <path d="M130,268 L122,274 M190,268 L198,274" stroke="${p.dark}" stroke-width="3" opacity="0.45" stroke-linecap="round"/>
     <path d="M138,222 Q160,232 182,222" stroke="${p.light}" stroke-width="4" fill="none" opacity="0.8" stroke-linecap="round"/>
     <path d="M112,262 C124,276 196,276 208,262" stroke="${p.dark}" stroke-width="6" fill="none" opacity="0.55"/>
-    ${sleeves}
   `;
 }
 
@@ -519,6 +551,26 @@ export const LAYERS = [
       helmet_red: { content: () => headgearHelmet(true) },
     },
   },
+  ...['front', 'back'].flatMap((view) => [
+    { id: 'knee_pads', view, bbox: [106, 350, 108, 44], z: 25, slot: 'knee_pads',
+      variants: { pads_slate: { content: () => kneePads(view) } } },
+    ...['left', 'right'].flatMap((side) => {
+      const box = (x, y, w, h) => [side === 'left' ? x : CANVAS.width - x - w, y, w, h];
+      return [
+        { id: `arm_${side}`, arm: side, view, assetView: 'shared', bbox: box(56, 176, 78, 140), z: 21, slot: 'palette',
+          variants: variants(Object.keys(BONE_TINTS), (palette) => tinted(bareArm(side), palette)) },
+        { id: `sleeve_${side}`, arm: side, view, assetView: 'shared', bbox: box(70, 174, 64, 86), z: 22, slot: 'outfit',
+          variants: variants(['ski_blue', 'suit_orange'], (outfitId) => sleeve(side, outfitId)) },
+        { id: `glove_${side}`, arm: side, view, bbox: box(54, 268, 44, 50), z: 23, slot: 'gloves',
+          variants: { gloves_frost: { content: () => glove(side, view) } } },
+        { id: `board_${side}`, arm: side, view, bbox: box(0, 132, 88, 310), z: 19, slot: 'handheld',
+          carriedBy: view === 'front' ? (side === 'left' ? 'right' : 'left') : side,
+          variants: { snowboard_dawn: { content: () => snowboard(side, view) } } },
+        { id: `pole_${side}`, arm: side, view, bbox: box(23, 258, 77, 183), z: 19, slot: 'handheld',
+          variants: { ski_poles: { content: () => skiPole(side, view) } } },
+      ];
+    }),
+  ]),
 ];
 
 /* --------------------------------------------------------------- hotspots */
@@ -572,6 +624,8 @@ export const ANCHORS = {
   foot_l: pct(198, 424),
   foot_r: pct(122, 424),
   ground: pct(160, 444),
+  shoulder_screen_left: pct(112, 194),
+  shoulder_screen_right: pct(208, 194),
 };
 
 
@@ -581,6 +635,7 @@ export function figureContent(view, equipment = {}) {
   const palette = equipment.palette ?? 'blue';
   const appearance = { expression: equipment.expression ?? 'happy', palette, headShape: (equipment.headShape ?? 'round') + '-' + palette };
   for (const layer of LAYERS.filter((l) => l.view === view).sort((a, b) => a.z - b.z)) {
+    if (layer.carriedBy && layer.carriedBy !== (equipment.carryHand ?? 'right')) continue;
     if (!layer.slot) {
       parts.push(layer.content());
       continue;
@@ -596,12 +651,10 @@ export function figureContent(view, equipment = {}) {
 export function layerMap() {
   const map = new Map();
   for (const layer of LAYERS) {
-    if (layer.variants) {
-      for (const [key, variant] of Object.entries(layer.variants)) {
-        map.set(`${layer.view}/${layer.id}/${key}`, { layer, key, content: variant.content() });
-      }
-    } else {
-      map.set(`${layer.view}/${layer.id}`, { layer, key: 'default', content: layer.content() });
+    const variants = layer.variants ?? { default: layer };
+    for (const [key, variant] of Object.entries(variants)) {
+      const src = layerSrcPath({ layer, key });
+      if (!map.has(src)) map.set(src, { layer, key, content: variant.content() });
     }
   }
   return map;
@@ -617,7 +670,7 @@ export function svgFor(entry, scale = 1, padding = 0) {
 }
 
 export function layerSrcPath(entry) {
-  const parts = ['rigs', entry.layer.view, entry.layer.id];
+  const parts = ['rigs', entry.layer.assetView ?? entry.layer.view, entry.layer.id];
   if (entry.key !== 'default') parts.push(entry.key);
   return `/assets/${parts.join('/')}.png`;
 }

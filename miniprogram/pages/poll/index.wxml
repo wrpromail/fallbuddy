@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="card panel">
+    <picker disabled="{{busy}}" range="{{awards}}" bindchange="onAward"><view class="btn btn--ghost">{{awardLabel}} ▾</view></picker>
+    <picker disabled="{{busy}}" range="{{periods}}" bindchange="onPeriod"><view class="btn">{{period}} {{closed ? '· 已结束' : '· 本周'}} ▾</view></picker>
+    <text class="tiny muted">每人每周每个奖项一票，周一零点结算。首次投票可获得纪念章。</text>
+  </view>
+  <button wx:if="{{owner && !closed && !busy && !error}}" class="btn btn--ghost" bindtap="onClosePoll">提前结束这个奖项</button>
+  <view wx:if="{{paused && !closed}}" class="card panel">评选已暂停，圈友仍可查看结果，作者可退出。</view>
+  <view wx:if="{{error}}" class="card panel">{{error}}</view>
+  <picker wx:if="{{choices.length}}" disabled="{{busy}}" range="{{choices}}" range-key="title" bindchange="onNominate"><view class="btn btn--primary">提名本圈故事</view></picker>
+  <view wx:if="{{!error && !busy && !candidates.length}}" class="card panel">本期这个奖项还没有参选故事。</view>
+  <view wx:for="{{candidates}}" wx:key="id" class="card panel">
+    <button class="btn btn--ghost" data-id="{{item.id}}" bindtap="openStory">{{item.title}}</button>
+    <text>{{item.pending ? '等待作者同意' : (item.rank ? '第 ' + item.rank + ' 名 · ' : '') + item.votes + ' 票'}}</text>
+    <button wx:if="{{item.mine && item.pending && !closed && !paused}}" class="btn" disabled="{{busy}}" data-id="{{item.id}}" data-action="accept" bindtap="onAction">同意参选</button>
+    <button wx:if="{{item.mine}}" class="btn" disabled="{{busy}}" data-id="{{item.id}}" data-action="withdraw" bindtap="onAction">退出本期评选</button>
+    <button wx:if="{{!closed && !item.pending}}" class="btn btn--primary" disabled="{{voted || busy || paused}}" data-id="{{item.id}}" data-action="vote" bindtap="onAction">{{voted ? '本奖项已投票' : '投给这条故事'}}</button>
+  </view>
+</view>

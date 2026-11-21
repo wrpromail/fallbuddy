@@ -461,6 +461,7 @@ body.full-mode .form-footer {
 }
 
 .rig--spin {
+  transform-origin: 50% 50%;
   animation: rig-spin 900ms cubic-bezier(0.42, 0, 0.28, 1);
 }
 
@@ -1101,6 +1102,17 @@ body.full-mode .form-footer {
   transform: translateX(-50%);
 }
 
+.avatar-stage__rig--chip {
+  bottom: 50%;
+  width: 148px;
+  height: 148px;
+  transform: translate(-50%, 50%);
+}
+
+.avatar-stage__controls {
+  margin: 10px 0;
+}
+
 .panel {
   margin-top: 10px;
   padding: 14px;
@@ -1599,8 +1611,14 @@ body.full-mode .form-footer {
   0% {
     transform: rotate(0deg) scale(1);
   }
-  55% {
-    transform: rotate(200deg) scale(0.94);
+  25% {
+    transform: rotate(90deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.88);
+  }
+  75% {
+    transform: rotate(270deg) scale(0.9);
   }
   100% {
     transform: rotate(360deg) scale(1);

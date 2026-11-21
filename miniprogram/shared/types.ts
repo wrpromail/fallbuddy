@@ -2,6 +2,7 @@ import type {
   BodyPart,
   Cause,
   EquipSlot,
+  CarryHand,
   Expression,
   HeadShape,
   ImpactKind,
@@ -17,6 +18,7 @@ import type {
 
 export type ApiCode =
   | 'OK'
+  | 'ACCOUNT_DELETED'
   | 'UNAUTHORIZED'
   | 'UNAVAILABLE'
   | 'NOT_MEMBER'
@@ -62,6 +64,7 @@ export interface UserPreferences {
   allowGifts: boolean;
   reduceMotion: boolean;
   anonymousByDefault: boolean;
+  hideAvatar?: boolean;
 }
 
 export interface EquippedGear {
@@ -70,6 +73,9 @@ export interface EquippedGear {
   outfit: string | null;
   hip_protector: string | null;
   boots: string | null;
+  gloves?: string | null;
+  knee_pads?: string | null;
+  handheld?: string | null;
 }
 
 export interface AvatarState {
@@ -79,6 +85,7 @@ export interface AvatarState {
   customized?: boolean;
   palette: Palette;
   equipped: EquippedGear;
+  carryHand?: CarryHand;
   expression: Expression;
   headShape?: HeadShape;
   privacy: {
@@ -95,6 +102,7 @@ export interface Group {
   name: string;
   ownerId: string;
   joinMode: 'open' | 'approval';
+  interactionsPaused?: boolean;
   createdAt: string;
 }
 
@@ -204,6 +212,12 @@ export interface InboxEvent extends InteractionEvent {
   actorName: string;
   storyTitle: string;
   read: boolean;
+}
+
+export interface InboxGroup {
+  id: string;
+  events: InboxEvent[];
+  unreadCount: number;
 }
 
 export type ItemCategory = 'cosmetic' | 'consumable' | 'badge';
@@ -326,6 +340,14 @@ export interface StoryDetail {
   canInteract: boolean;
   /** 当前调用者是否是作者（匿名故事不能靠 authorId 判断） */
   viewerIsAuthor: boolean;
+  following?: boolean;
+  /** 圈子受众名单仅向作者返回，包括退圈后保留的受众。 */
+  authorAudiences?: Pick<Group, 'id' | 'name'>[];
+  retainedAudiences?: Pick<Group, 'id' | 'name'>[];
+  replay?: {
+    actionId: ActionId;
+    actorAppearance: Pick<AvatarState, 'palette' | 'headShape' | 'expression' | 'equipped' | 'carryHand'>;
+  };
 }
 
 /* -------------------------------------------------------------------- 动作 */
@@ -345,6 +367,7 @@ export interface ActionDefinition {
 
 export interface CreateStoryInput {
   incident: {
+    source?: Incident['source'];
     sport: Sport;
     scenario: Scenario[];
     selfReportedCause: Cause[];

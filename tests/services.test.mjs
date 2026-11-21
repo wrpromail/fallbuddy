@@ -576,9 +576,11 @@ test('事故闭环：续写私人草稿、幂等发布、纠正侧别、追加�
     assert.equal(detail.updates[0].body, followUp.body);
     expectErr(await mockApi.story.withdrawUpdate({ storyId, updateId: update.id }), 'UNAUTHORIZED');
   });
+  const afterFollowUp = expectOk(await mockApi.story.getDetail({ storyId }));
+  assert.equal(afterFollowUp.story.version, revision.version + 1);
   expectOk(await mockApi.story.update({
     ...edit,
-    version: revision.version,
+    version: afterFollowUp.story.version,
     input: { ...corrected, story: { ...corrected.story, visibility: 'self' } },
     requestId: 'req_incident_private',
   }));

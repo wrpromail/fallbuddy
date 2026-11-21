@@ -12,6 +12,7 @@
     screen: 'atlas',
     groupId: (DATA.groups[0] || {}).id || '',
     view: 'front',
+    avatarView: 'front',
     me: JSON.parse(JSON.stringify(DATA.me.avatar)),
     prefs: Object.assign({}, DATA.me.preferences),
     inventory: DATA.inventory.map((item) => Object.assign({}, item)),
@@ -112,6 +113,7 @@
     const defs = (RIG.views[view] || RIG.views.front) || [];
     const active = [];
     for (const layer of defs) {
+      if (layer.carriedBy && layer.carriedBy !== (avatar.carryHand || 'right')) continue;
       let src = null;
       if (layer.slot === 'expression') src = layer.variants[avatar.expression] || layer.variants.happy;
       else if (layer.slot === 'palette') src = layer.variants[avatar.palette] || layer.variants.blue;
@@ -141,6 +143,9 @@
       box = { x: raw.x - (side - raw.w) / 2, y: raw.y - (side - raw.h) / 2, w: side, h: side };
     }
     return active.map(({ layer, src }) => ({
+      id: layer.id,
+      arm: layer.arm,
+      handheld: layer.slot === 'handheld',
       src,
       z: layer.z,
       left: ((layer.bbox.x - box.x) / box.w) * 100,
@@ -152,17 +157,16 @@
 
   function rigHtml(avatar, view, mode, className) {
     const layers = layered(avatar, view || 'front', mode || 'full');
-    const inner = layers
-      .map(
-        (layer) =>
-          `<div class="rig-layer" style="left:${layer.left.toFixed(2)}%;top:${layer.top.toFixed(
-            2,
-          )}%;width:${layer.width.toFixed(2)}%;height:${layer.height.toFixed(2)}%;z-index:${layer.z}">${
-            ART[layer.src] || ''
-          }</div>`,
-      )
-      .join('');
-    return `<div class="rig ${className || ''}">${inner}</div>`;
+    const layerHtml = (layer) => `<div class="rig-layer ${layer.handheld ? 'rig__handheld' : ''}" data-layer="${layer.id}"
+      style="left:${layer.left}%;top:${layer.top}%;width:${layer.width}%;height:${layer.height}%;z-index:${layer.z}">${ART[layer.src] || ''}</div>`;
+    const inner = layers.filter((layer) => !layer.arm).map(layerHtml).join('');
+    const arms = mode === 'chip' ? '' : ['left', 'right'].map((side) => {
+      const pivot = RIG.anchors[`shoulder_screen_${side}`];
+      return `<div class="rig__arm rig__arm--${side}" style="transform-origin:${pivot.x}% ${pivot.y}%">${
+        layers.filter((layer) => layer.arm === side).map(layerHtml).join('')
+      }</div>`;
+    }).join('');
+    return `<div class="rig ${className || ''}">${inner}${arms}</div>`;
   }
 
   function chipHtml(chip, size) {
@@ -396,6 +400,8 @@
 
   function renderAvatar() {
     const avatar = S.me;
+    const onBoard = avatar.equipped.handheld === DATA.snowboardId;
+    const wardrobe = DATA.items.filter((item) => ['gloves', 'knee_pads', 'handheld'].includes(item.slot));
     const expressions = DATA.labels.expressions
       .map(
         (item) => `<button class="expression ${avatar.expression === item.id ? 'on' : ''}" onclick="P.setExpression('${item.id}')">
@@ -439,7 +445,15 @@
       .join('');
     return `<div class="scroll">
       <div class="form-intro"><div class="form-intro__title">我的角色</div><div class="form-intro__sub">换装、表情和配色都会同步到图鉴小头像</div></div>
-      <div class="avatar-stage"><div class="avatar-stage__rig">${rigHtml(avatar, 'front', 'full')}</div></div>
+      <div class="avatar-stage"><div class="avatar-stage__rig ${S.avatarView === 'chip' ? 'avatar-stage__rig--chip' : ''}">${
+        rigHtml(avatar, S.avatarView === 'back' ? 'back' : 'front', S.avatarView === 'chip' ? 'chip' : 'full')
+      }</div></div>
+      <div class="chips avatar-stage__controls">
+        ${[['front', '正面'], ['back', '背面'], ['chip', '小头像']].map(([id, label]) =>
+          `<button class="chip ${S.avatarView === id ? 'on' : ''}" data-avatar-view="${id}" onclick="P.showAvatar('${id}')">${label}</button>`).join('')}
+        ${DATA.actions.filter((action) => action.id !== 'receive_gift').map(({ id, name }) =>
+          `<button class="chip" data-avatar-action="${id}" onclick="P.replayAvatar('${id}')">${name}</button>`).join('')}
+      </div>
 
       <div class="card panel">
         <div class="panel__head"><div class="section-title">表情</div><div class="tiny">会显示在故事图鉴上</div></div>
@@ -470,6 +484,18 @@
           <div><div class="toggle-row__name">护臀</div><div class="tiny">尾椎的忠实伙伴</div></div>
           <button class="switch ${avatar.equipped.hip_protector ? 'on' : ''}" onclick="P.toggleGear('hip_protector','basic_hip_protector')"></button>
         </div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel__head"><div class="section-title">手套、护膝与雪具</div></div>
+        <div class="chips">${wardrobe.map((item) =>
+          `<button class="chip ${avatar.equipped[item.slot] === item.id ? 'on' : ''}" data-gear="${item.id}"
+            onclick="P.toggleGear('${item.slot}','${item.id}')">${esc(item.name)}</button>`).join('')}
+        </div>
+        ${onBoard ? `<div class="chips">
+          <button class="chip ${avatar.carryHand === 'left' ? 'on' : ''}" data-carry-hand="left" onclick="P.carryBoard('left')">左手持板</button>
+          <button class="chip ${avatar.carryHand !== 'left' ? 'on' : ''}" data-carry-hand="right" onclick="P.carryBoard('right')">右手持板</button>
+        </div>` : ''}
       </div>
 
       <div class="card panel">
@@ -813,11 +839,17 @@
     openEvent(index) {
       const event = S.inbox[index];
       if (!event) return;
+      if (!event.read) S.unread = Math.max(0, S.unread - 1);
       event.read = true;
-      S.unread = Math.max(0, S.unread - 1);
       S.storyId = event.storyId;
       go('story');
-      if (event.actionId && event.actionId !== 'receive_gift') setTimeout(() => animateStory(event.actionId), 320);
+      if (event.replay) {
+        setTimeout(() => {
+          if (S.screen === 'story' && S.storyId === event.storyId) {
+            animateStory(event.replay.actionId, event.replay.actorAppearance);
+          }
+        }, 320);
+      }
     },
     markAllRead() {
       S.inbox.forEach((event) => (event.read = true));
@@ -895,8 +927,21 @@
       render();
     },
     toggleGear(slot, value) {
-      S.me.equipped = Object.assign({}, S.me.equipped, { [slot]: S.me.equipped[slot] ? null : value });
+      S.me.equipped = Object.assign({}, S.me.equipped, { [slot]: S.me.equipped[slot] === value ? null : value });
+      if (S.avatarView === 'chip' && ['gloves', 'knee_pads', 'handheld'].includes(slot)) S.avatarView = 'front';
       render();
+    },
+    showAvatar(view) {
+      S.avatarView = view;
+      render();
+    },
+    carryBoard(hand) {
+      S.me.carryHand = hand;
+      render();
+    },
+    replayAvatar(actionId) {
+      const rig = document.querySelector('.avatar-stage__rig .rig');
+      if (rig) animateRig(rig, actionId);
     },
     claimWeekly() {
       if (S.weeklyClaimed) return toast('本周补给已经领过啦');
@@ -1008,13 +1053,14 @@
       const group = groupIds.length ? groupOf(groupIds[0]) : null;
       const avatar = JSON.parse(JSON.stringify(S.me));
       if (F.anonymous) {
+        Object.assign(avatar, DATA.anonymousAppearance, { carryHand: undefined });
         avatar.id = `avt_${authorId}`;
         avatar.ownerId = authorId;
       }
       const detail = {
         story,
         incident,
-        author: { id: authorId, displayName: F.anonymous ? '匿名雪友' : '小北', palette: S.me.palette, isMe: true },
+        author: { id: authorId, displayName: F.anonymous ? '匿名雪友' : '小北', palette: avatar.palette, isMe: true },
         avatar,
         updates: [],
         reactions: DATA.actions
@@ -1044,9 +1090,10 @@
         allowGifts: F.gifts,
         publishStatus: 'published',
         createdAt: now,
-        palette: S.me.palette,
-        expression: S.me.expression,
-        equipped: JSON.parse(JSON.stringify(S.me.equipped)),
+        palette: avatar.palette,
+        headShape: avatar.headShape,
+        expression: avatar.expression,
+        equipped: JSON.parse(JSON.stringify(avatar.equipped)),
       };
       S.publishedDetails[storyId] = detail;
       S.published.push({ groupIds, detail, card });
@@ -1058,21 +1105,43 @@
     },
   };
 
-  function animateStory(actionId) {
+  const RIG_ANIMATIONS = { spin: 'rig--spin', hug: 'rig--hug', cheer: 'rig--cheer', receive_gift: 'rig--gift' };
+  const rigTimers = new WeakMap();
+
+  function animateRig(rig, actionId) {
+    const action = DATA.actions.find((entry) => entry.id === actionId);
+    if (!action || !rig || S.prefs.reduceMotion) return;
+    const classes = [RIG_ANIMATIONS[actionId], `is-${actionId}`];
+    const previous = rigTimers.get(rig);
+    if (previous) {
+      clearTimeout(previous.timer);
+      rig.classList.remove(...previous.classes);
+    }
+    // Restart when the same action is previewed twice in a row.
+    void rig.offsetWidth;
+    rig.classList.add(...classes);
+    const timer = setTimeout(() => rig.classList.remove(...classes), action.durationMs);
+    rigTimers.set(rig, { classes, timer });
+  }
+
+  function animateStory(actionId, actor = S.me) {
     const stage = document.getElementById('story-stage');
     if (!stage) return;
     const rig = stage.querySelector('.story-stage__rig .rig');
     if (!rig) return;
-    const classes = { spin: 'rig--spin', hug: 'rig--hug', cheer: 'rig--cheer', receive_gift: 'rig--gift' };
     const emojis = { spin: '😵‍💫', hug: '💗', cheer: '🎉', receive_gift: '🎁' };
-    rig.classList.add(classes[actionId] || '');
-    if (actionId === 'hug') stage.classList.add('hug');
+    animateRig(rig, actionId);
+    if (actionId === 'hug' && !S.prefs.reduceMotion) {
+      stage.classList.add('hug');
+      const companion = stage.querySelector('.story-stage__me');
+      companion.innerHTML = rigHtml(actor, 'front', 'full');
+      animateRig(companion.querySelector('.rig'), actionId);
+    }
     const fx = document.createElement('div');
     fx.className = 'fx';
     fx.textContent = emojis[actionId] || '';
     stage.appendChild(fx);
     setTimeout(() => {
-      rig.classList.remove(classes[actionId] || '');
       stage.classList.remove('hug');
       if (fx.parentNode) fx.parentNode.removeChild(fx);
     }, 1600);

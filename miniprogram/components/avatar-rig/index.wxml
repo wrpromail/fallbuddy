@@ -7,5 +7,11 @@
     mode="aspectFit"
     style="left:{{item.left}}%;top:{{item.top}}%;width:{{item.width}}%;height:{{item.height}}%;z-index:{{item.z}}"
   />
+  <view wx:for="{{arms}}" wx:for-item="arm" wx:key="side" class="rig__arm rig__arm--{{arm.side}}"
+    style="transform-origin:{{arm.origin}}">
+    <image wx:for="{{arm.layers}}" wx:key="id" class="rig__layer {{item.handheld ? 'rig__handheld' : ''}}"
+      src="{{item.src}}" mode="aspectFit"
+      style="left:{{item.left}}%;top:{{item.top}}%;width:{{item.width}}%;height:{{item.height}}%;z-index:{{item.z}}" />
+  </view>
   <view wx:if="{{emoji}}" class="rig__fx">{{emoji}}</view>
 </view>

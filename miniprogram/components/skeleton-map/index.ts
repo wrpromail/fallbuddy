@@ -24,6 +24,7 @@ interface MapAppearance {
   headShape?: string;
   expression: string;
   equipped: unknown;
+  carryHand?: string;
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -53,6 +54,7 @@ Component({
     figHeadShape: 'round',
     figExpression: 'happy',
     figEquipped: null as unknown,
+    figCarryHand: 'right',
   },
   observers: {
     'view, hotspots, appearance, appearanceMode, selectedParts, selectionOnly': function () {
@@ -107,6 +109,7 @@ Component({
         figHeadShape: appearance?.headShape ?? 'round',
         figExpression: appearance?.expression ?? 'happy',
         figEquipped: appearance?.equipped ?? null,
+        figCarryHand: appearance?.carryHand ?? 'right',
       });
     },
     onTap(event: WechatMiniprogram.TouchEvent) {
